@@ -22,7 +22,8 @@ Exit criteria:
 Current note:
 - Flutter SDK is installed
 - Android tooling is configured
-- Xcode still needs full installation and initialization
+- Xcode is installed
+- The iOS simulator runtime still needs to be installed in Xcode for local simulator builds
 
 ## Step 3: Mock-first mobile flows
 
@@ -39,6 +40,10 @@ Current note:
 
 Exit criteria:
 - mobile navigation and UI shell are stable with mock data
+
+Current note:
+- home, following, alerts, settings, event detail, and fighter profile are now wired to shared app state
+- fighter and event follow state updates now propagate across screens
 
 ## Step 4: Persistence and contracts
 
@@ -63,6 +68,10 @@ Exit criteria:
 
 Exit criteria:
 - at least one reliable source feeds the app end to end
+
+Current note:
+- the first UFC source pilot is implemented against the official UFC events page
+- backend now exposes a UFC source-preview endpoint alongside mock detail endpoints
 
 ## Step 6: Release features
 

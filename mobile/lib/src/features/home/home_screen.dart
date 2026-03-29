@@ -1,99 +1,132 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/domain_models.dart';
-import '../../models/mock_data.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key, required this.strings});
+  const HomeScreen({
+    super.key,
+    required this.snapshotListenable,
+    required this.strings,
+    required this.onOpenEvent,
+    required this.onOpenFighter,
+    required this.onToggleEventFollow,
+  });
 
+  final ValueListenable<HomeSnapshot> snapshotListenable;
   final AppStrings strings;
+  final ValueChanged<String> onOpenEvent;
+  final ValueChanged<String> onOpenFighter;
+  final ValueChanged<String> onToggleEventFollow;
 
   @override
   Widget build(BuildContext context) {
-    final snapshot = sampleHomeSnapshot;
-    final heroEvent = snapshot.events.first;
-    final followedEvents = snapshot.events.where((event) => event.isFollowed).toList();
+    return ValueListenableBuilder<HomeSnapshot>(
+      valueListenable: snapshotListenable,
+      builder: (context, snapshot, _) {
+        final heroEvent = snapshot.events.first;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-      children: [
-        Text(
-          strings.appName.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
-        const SizedBox(height: 10),
-        Text(strings.homeTitle, style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: 280,
-          child: Text(
-            strings.homeSubtitle,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-        ),
-        const SizedBox(height: 28),
-        _SectionTitle(label: strings.nextFight),
-        const SizedBox(height: 12),
-        _HeroEventCard(event: heroEvent, strings: strings),
-        const SizedBox(height: 24),
-        _SectionTitle(label: strings.followedFightersTitle),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 142,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: snapshot.followedFighters.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              return _FollowedFighterCard(
-                fighter: snapshot.followedFighters[index],
-                strings: strings,
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 24),
-        if (followedEvents.isNotEmpty) ...[
-          _SectionTitle(label: strings.followedEventsTitle),
-          const SizedBox(height: 12),
-          ...followedEvents.map(
-            (event) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _ExpandableEventCard(event: event, strings: strings),
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          children: [
+            Text(
+              strings.appName.toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall,
             ),
-          ),
-          const SizedBox(height: 8),
-        ],
-        _SectionTitle(label: strings.upcomingEventsTitle),
-        const SizedBox(height: 12),
-        ...snapshot.events.map(
-          (event) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _ExpandableEventCard(event: event, strings: strings),
-          ),
-        ),
-        const SizedBox(height: 8),
-        if (snapshot.premiumState == PremiumState.free) ...[
-          _SectionTitle(label: strings.quietAdsTitle),
-          const SizedBox(height: 12),
-          _InfoPanel(
-            title: strings.quietAdsTitle,
-            body: strings.quietAdsBody,
-          ),
-          const SizedBox(height: 12),
-        ],
-        _InfoPanel(
-          title: strings.accountModelTitle,
-          body: strings.accountModelBody,
-        ),
-        const SizedBox(height: 12),
-        _InfoPanel(
-          title: strings.watchInfoTitle,
-          body: strings.watchInfoBody,
-        ),
-      ],
+            const SizedBox(height: 10),
+            Text(strings.homeTitle, style: Theme.of(context).textTheme.headlineMedium),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: 280,
+              child: Text(
+                strings.homeSubtitle,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+            const SizedBox(height: 28),
+            _SectionTitle(label: strings.nextFight),
+            const SizedBox(height: 12),
+            _HeroEventCard(
+              event: heroEvent,
+              strings: strings,
+              onOpenEvent: () => onOpenEvent(heroEvent.id),
+              onToggleFollow: () => onToggleEventFollow(heroEvent.id),
+            ),
+            const SizedBox(height: 24),
+            _SectionTitle(label: strings.followedFightersTitle),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 152,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: snapshot.followedFighters.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final fighter = snapshot.followedFighters[index];
+                  return _FollowedFighterCard(
+                    fighter: fighter,
+                    strings: strings,
+                    onTap: () => onOpenFighter(fighter.id),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+            if (snapshot.followedEvents.isNotEmpty) ...[
+              _SectionTitle(label: strings.followedEventsTitle),
+              const SizedBox(height: 12),
+              ...snapshot.followedEvents.map(
+                (event) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _ExpandableEventCard(
+                    event: event,
+                    strings: strings,
+                    onOpenEvent: () => onOpenEvent(event.id),
+                    onOpenFighter: onOpenFighter,
+                    onToggleFollow: () => onToggleEventFollow(event.id),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            _SectionTitle(label: strings.upcomingEventsTitle),
+            const SizedBox(height: 12),
+            ...snapshot.events.map(
+              (event) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ExpandableEventCard(
+                  event: event,
+                  strings: strings,
+                  onOpenEvent: () => onOpenEvent(event.id),
+                  onOpenFighter: onOpenFighter,
+                  onToggleFollow: () => onToggleEventFollow(event.id),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (snapshot.premiumState == PremiumState.free) ...[
+              _SectionTitle(label: strings.quietAdsTitle),
+              const SizedBox(height: 12),
+              _InfoPanel(
+                title: strings.quietAdsTitle,
+                body: strings.quietAdsBody,
+              ),
+              const SizedBox(height: 12),
+            ],
+            _InfoPanel(
+              title: strings.accountModelTitle,
+              body: strings.accountModelBody,
+            ),
+            const SizedBox(height: 12),
+            _InfoPanel(
+              title: strings.watchInfoTitle,
+              body: strings.watchInfoBody,
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -126,176 +159,229 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _HeroEventCard extends StatelessWidget {
-  const _HeroEventCard({required this.event, required this.strings});
+  const _HeroEventCard({
+    required this.event,
+    required this.strings,
+    required this.onOpenEvent,
+    required this.onToggleFollow,
+  });
 
   final EventSummary event;
   final AppStrings strings;
+  final VoidCallback onOpenEvent;
+  final VoidCallback onToggleFollow;
 
   @override
   Widget build(BuildContext context) {
     final mainBout = event.bouts.firstWhere((bout) => bout.isMainEvent);
 
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: AppColors.accent,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              _InversePill(label: event.organization),
-              const Spacer(),
-              Text(
-                strings.mainEventBannerLabel.toUpperCase(),
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Colors.white,
-                    ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            '${mainBout.fighterAName}\nvs\n${mainBout.fighterBName}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 30,
-              height: 0.98,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -1.0,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            event.localTimeLabel,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 34,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -1.0,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            strings.yourTime,
-            style: const TextStyle(
-              color: Color(0xFFFCE1E5),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return InkWell(
+      onTap: onOpenEvent,
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: AppColors.accent,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: AppShadows.card,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
+                _InversePill(label: event.organization),
+                const Spacer(),
                 Text(
-                  '${event.localDateLabel}  •  ${event.locationLabel}',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '${strings.whereToWatch}: ${event.watchProviders.first.label}',
-                  style: const TextStyle(color: AppColors.textPrimary),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${strings.selectedCountryLabel}: ${event.selectedCountryCode}',
-                  style: const TextStyle(color: AppColors.textSecondary),
+                  strings.mainEventBannerLabel.toUpperCase(),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Colors.white,
+                      ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+            Text(
+              '${mainBout.fighterAName}\nvs\n${mainBout.fighterBName}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 30,
+                height: 0.98,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -1.0,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              event.localTimeLabel,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 34,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -1.0,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              strings.yourTime,
+              style: const TextStyle(
+                color: Color(0xFFFCE1E5),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${event.localDateLabel}  •  ${event.locationLabel}',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    event.tagline,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ActionPill(
+                          label: strings.viewEventDetails,
+                          emphasized: true,
+                          onTap: onOpenEvent,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _ActionPill(
+                          label: event.isFollowed
+                              ? strings.unfollowAction
+                              : strings.followAction,
+                          onTap: onToggleFollow,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _FollowedFighterCard extends StatelessWidget {
-  const _FollowedFighterCard({required this.fighter, required this.strings});
+  const _FollowedFighterCard({
+    required this.fighter,
+    required this.strings,
+    required this.onTap,
+  });
 
   final FighterSummary fighter;
   final AppStrings strings;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 190,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            strings.trackedTagLabel.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.accent,
-                ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            fighter.name,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-              letterSpacing: -0.4,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        width: 200,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppShadows.card,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              strings.trackedTagLabel.toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.accent,
+                  ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            fighter.organizationHint,
-            style: const TextStyle(color: AppColors.textSecondary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Text(
-              fighter.nextAppearanceLabel,
+            const SizedBox(height: 10),
+            Text(
+              fighter.name,
               style: const TextStyle(
                 color: AppColors.textPrimary,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+                letterSpacing: -0.4,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              fighter.organizationHint,
+              style: const TextStyle(color: AppColors.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              fighter.recordLabel,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceAlt,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                fighter.nextAppearanceLabel,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _ExpandableEventCard extends StatelessWidget {
-  const _ExpandableEventCard({required this.event, required this.strings});
+  const _ExpandableEventCard({
+    required this.event,
+    required this.strings,
+    required this.onOpenEvent,
+    required this.onOpenFighter,
+    required this.onToggleFollow,
+  });
 
   final EventSummary event;
   final AppStrings strings;
+  final VoidCallback onOpenEvent;
+  final ValueChanged<String> onOpenFighter;
+  final VoidCallback onToggleFollow;
 
   @override
   Widget build(BuildContext context) {
@@ -374,18 +460,41 @@ class _ExpandableEventCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                _ActionPill(label: strings.followAction),
+                Expanded(
+                  child: _ActionPill(
+                    label: strings.viewEventDetails,
+                    emphasized: true,
+                    onTap: onOpenEvent,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                _ActionPill(label: strings.alertAction),
-                const SizedBox(width: 8),
-                _ActionPill(label: strings.calendarAction),
+                Expanded(
+                  child: _ActionPill(
+                    label: event.isFollowed
+                        ? strings.unfollowAction
+                        : strings.followAction,
+                    onTap: onToggleFollow,
+                  ),
+                ),
               ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              strings.openFighterHint,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12,
+              ),
             ),
             const SizedBox(height: 14),
             ...event.bouts.map(
               (bout) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: _BoutRow(bout: bout, strings: strings),
+                child: _BoutRow(
+                  bout: bout,
+                  strings: strings,
+                  onOpenFighter: onOpenFighter,
+                ),
               ),
             ),
           ],
@@ -446,24 +555,39 @@ class _InversePill extends StatelessWidget {
 }
 
 class _ActionPill extends StatelessWidget {
-  const _ActionPill({required this.label});
+  const _ActionPill({
+    required this.label,
+    required this.onTap,
+    this.emphasized = false,
+  });
 
   final String label;
+  final VoidCallback onTap;
+  final bool emphasized;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.accent),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.accent,
-          fontWeight: FontWeight.w700,
+    final background = emphasized ? AppColors.accent : Colors.white;
+    final textColor = emphasized ? Colors.white : AppColors.accent;
+    final borderColor = AppColors.accent;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: background,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: borderColor),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -471,10 +595,15 @@ class _ActionPill extends StatelessWidget {
 }
 
 class _BoutRow extends StatelessWidget {
-  const _BoutRow({required this.bout, required this.strings});
+  const _BoutRow({
+    required this.bout,
+    required this.strings,
+    required this.onOpenFighter,
+  });
 
   final BoutSummary bout;
   final AppStrings strings;
+  final ValueChanged<String> onOpenFighter;
 
   @override
   Widget build(BuildContext context) {
@@ -501,12 +630,26 @@ class _BoutRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${bout.fighterAName} vs ${bout.fighterBName}',
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    _FighterLink(
+                      label: bout.fighterAName,
+                      onTap: () => onOpenFighter(bout.fighterAId),
+                    ),
+                    const Text(
+                      'vs',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    _FighterLink(
+                      label: bout.fighterBName,
+                      onTap: () => onOpenFighter(bout.fighterBId),
+                    ),
+                  ],
                 ),
                 if (bout.weightClass != null) ...[
                   const SizedBox(height: 4),
@@ -536,6 +679,29 @@ class _BoutRow extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _FighterLink extends StatelessWidget {
+  const _FighterLink({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w700,
+          decoration: TextDecoration.underline,
+          decorationColor: AppColors.accent,
+        ),
       ),
     );
   }

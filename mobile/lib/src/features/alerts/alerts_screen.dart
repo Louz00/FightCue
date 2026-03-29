@@ -1,70 +1,92 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
-import '../../models/mock_data.dart';
+import '../../models/domain_models.dart';
 
 class AlertsScreen extends StatelessWidget {
-  const AlertsScreen({super.key, required this.strings});
+  const AlertsScreen({
+    super.key,
+    required this.snapshotListenable,
+    required this.strings,
+    required this.onOpenEvent,
+    required this.onOpenFighter,
+  });
 
+  final ValueListenable<HomeSnapshot> snapshotListenable;
   final AppStrings strings;
+  final ValueChanged<String> onOpenEvent;
+  final ValueChanged<String> onOpenFighter;
 
   @override
   Widget build(BuildContext context) {
-    final snapshot = sampleHomeSnapshot;
-    final followedEvents = snapshot.events.where((event) => event.isFollowed).toList();
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-      children: [
-        Text(
-          strings.alerts.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
-        const SizedBox(height: 10),
-        Text(strings.alerts, style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 10),
-        Text(strings.alertsSubtitle, style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: 28),
-        _SectionHeader(label: strings.fighterReminderPresetsTitle),
-        const SizedBox(height: 12),
-        ...snapshot.followedFighters.map(
-          (fighter) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _ReminderCard(
-              title: fighter.name,
-              subtitle: fighter.nextAppearanceLabel,
-              reminders: [
-                strings.reminderPreset24h,
-                strings.reminderPreset1h,
-                strings.reminderPresetChanges,
-              ],
+    return ValueListenableBuilder<HomeSnapshot>(
+      valueListenable: snapshotListenable,
+      builder: (context, snapshot, _) {
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          children: [
+            Text(
+              strings.alerts.toUpperCase(),
+              style: Theme.of(context).textTheme.labelSmall,
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _SectionHeader(label: strings.eventReminderPresetsTitle),
-        const SizedBox(height: 12),
-        ...followedEvents.map(
-          (event) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _ReminderCard(
-              title: event.title,
-              subtitle: '${event.localDateLabel}  •  ${event.localTimeLabel}',
-              reminders: [
-                strings.reminderPreset24h,
-                strings.reminderPresetChanges,
-                strings.reminderPresetWatch,
-              ],
+            const SizedBox(height: 10),
+            Text(
+              strings.alerts,
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _PolicyCard(
-          title: strings.alertPolicyTitle,
-          body: strings.alertPolicyBody,
-        ),
-      ],
+            const SizedBox(height: 10),
+            Text(
+              strings.alertsSubtitle,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 28),
+            _SectionHeader(label: strings.fighterReminderPresetsTitle),
+            const SizedBox(height: 12),
+            ...snapshot.followedFighters.map(
+              (fighter) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ReminderCard(
+                  title: fighter.name,
+                  subtitle: fighter.nextAppearanceLabel,
+                  reminders: [
+                    strings.reminderPreset24h,
+                    strings.reminderPreset1h,
+                    strings.reminderPresetChanges,
+                  ],
+                  actionLabel: strings.aboutFighterTitle,
+                  onTap: () => onOpenFighter(fighter.id),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _SectionHeader(label: strings.eventReminderPresetsTitle),
+            const SizedBox(height: 12),
+            ...snapshot.followedEvents.map(
+              (event) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _ReminderCard(
+                  title: event.title,
+                  subtitle: '${event.localDateLabel}  •  ${event.localTimeLabel}',
+                  reminders: [
+                    strings.reminderPreset24h,
+                    strings.reminderPresetChanges,
+                    strings.reminderPresetWatch,
+                  ],
+                  actionLabel: strings.viewEventDetails,
+                  onTap: () => onOpenEvent(event.id),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            _PolicyCard(
+              title: strings.alertPolicyTitle,
+              body: strings.alertPolicyBody,
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -101,46 +123,81 @@ class _ReminderCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.reminders,
+    required this.actionLabel,
+    required this.onTap,
   });
 
   final String title;
   final String subtitle;
   final List<String> reminders;
+  final String actionLabel;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 21,
-              letterSpacing: -0.4,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(22),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppShadows.card,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+                fontSize: 21,
+                letterSpacing: -0.4,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: reminders.map((reminder) => _ReminderPill(label: reminder)).toList(),
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              subtitle,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: reminders
+                  .map((reminder) => _ReminderPill(label: reminder))
+                  .toList(),
+            ),
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.accent),
+                  ),
+                  child: Text(
+                    actionLabel,
+                    style: const TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

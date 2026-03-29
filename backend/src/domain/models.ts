@@ -12,6 +12,7 @@ export type EventStatus =
   | "changed"
   | "cancelled"
   | "completed";
+export type SourceMode = "live" | "fallback";
 
 export type UserProfile = {
   id: string;
@@ -44,15 +45,22 @@ export type Organization = {
 export type FighterSummary = {
   id: string;
   name: string;
-  nickname?: string;
+  sport: Sport;
   organizationHints: string[];
+  recordLabel: string;
+  nationalityLabel: string;
+  headline: string;
+  nextAppearanceLabel: string;
+  nickname?: string;
   isFollowed: boolean;
 };
 
 export type BoutSummary = {
   id: string;
   slotLabel: string;
+  fighterAId: string;
   fighterAName: string;
+  fighterBId: string;
   fighterBName: string;
   weightClass?: string;
   isMainEvent: boolean;
@@ -74,7 +82,9 @@ export type EventSummary = {
   organizationName: string;
   sport: Sport;
   title: string;
+  tagline: string;
   locationLabel: string;
+  venueLabel: string;
   scheduledStartUtc: string;
   scheduledTimezone: string;
   localDateLabel: string;
@@ -83,6 +93,8 @@ export type EventSummary = {
   selectedCountryCode: string;
   status: EventStatus;
   isFollowed: boolean;
+  sourceLabel: string;
+  officialUrl?: string;
   watchProviders: WatchProviderSummary[];
   bouts: BoutSummary[];
 };
@@ -109,6 +121,18 @@ export type LeaderboardSummary = {
   sourceType: LeaderboardSourceType;
   sourceLabel: string;
   entries: LeaderboardEntry[];
+};
+
+export type SourcePreview<T> = {
+  source: string;
+  mode: SourceMode;
+  officialUrl: string;
+  timezone: string;
+  selectedCountryCode: string;
+  fetchedAt: string;
+  itemCount: number;
+  warnings: string[];
+  items: T[];
 };
 
 export const fightCueRuntimeProfile = {

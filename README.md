@@ -26,22 +26,19 @@ Last updated: 2026-03-29
 
 ### In progress
 
-- Project foundation and documentation
-- MVP definition for `FightCue`
-- Technical architecture and delivery order
-- Source channel plan for boxing, MMA, and kickboxing
-- UX and UI direction for clean event and fight presentation
-- Data, privacy, ads, and optional account model
+- Mock-first mobile flows for home, following, alerts, settings, event detail, and fighter profile
+- First live UFC source pilot against the official UFC events page
+- Backend contract shaping for event detail, fighter detail, and source preview endpoints
+- iOS simulator runtime setup in Xcode for local Apple build testing
 
 ### Next build steps
 
-1. Confirm product and business inputs with owner
-2. Shape the event, fighter, and watch-availability data models
-3. Build mock-first mobile flows for home, event detail, follows, alerts, and paywall
-4. Scaffold backend persistence for anonymous users and optional accounts
-5. Implement the first source adapter
-6. Add notifications, calendar export, subscriptions, and quiet ads
-7. Add privacy, consent, and security surfaces
+1. Connect the mobile app to backend detail and source-preview endpoints
+2. Add persistence for anonymous users, follows, alerts, and optional accounts
+3. Add calendar export, notifications, and subscription state
+4. Add quiet ad placement wiring for the free tier
+5. Expand source coverage after UFC: Matchroom, GLORY, then more boxing organizations
+6. Finish iOS simulator/runtime setup and begin device-level build testing
 
 ## Project structure
 
@@ -102,11 +99,17 @@ Not in the first release:
 - Chose Google AdMob as the default quiet-ad direction for the free tier
 - Deferred boxing leaderboards until a defensible official source framing is selected
 - Set `Solmeriq Labs` as the temporary company and store-publisher name pending legal clearance
+- Built stateful mobile flows for followed fighters, followed events, alerts, and settings
+- Added dedicated event-detail and fighter-profile screens with shared follow state
+- Added the first live UFC source adapter against the official UFC events page
+- Added backend endpoints for event detail, fighter detail, and UFC source preview
+- Validated the new mobile flows with `flutter analyze` and `flutter test`
+- Validated the backend UFC parser with a successful live source check and TypeScript build
 
 ## Current constraints
 
 - Android is ready in Flutter tooling.
-- Xcode still needs to be fully installed and initialized for local iOS builds.
+- Xcode is installed, but the iOS simulator runtime still needs to be installed from Xcode Settings > Components for local simulator builds.
 - Apple and Google developer accounts are not connected yet, so bundle IDs cannot be truly reserved yet.
 - `Solmeriq Labs` is a working company/publisher name and can still be changed later after legal and trademark checks.
 

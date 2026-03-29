@@ -70,7 +70,8 @@ export function buildRuntimeEvents(
   const followedEventIds = new Set(state.follows.eventIds);
   const followedFighterIds = new Set(state.follows.fighterIds);
 
-  return sampleEvents.map((event) => {
+  return [...sampleEvents]
+    .map((event) => {
     const { localDateLabel, localTimeLabel } = formatForTimezone(
       new Date(event.scheduledStartUtc),
       profile.timezone,
@@ -90,7 +91,8 @@ export function buildRuntimeEvents(
           followedFighterIds.has(bout.fighterBId),
       })),
     };
-  });
+    })
+    .sort(compareEventsByStart);
 }
 
 export function buildRuntimeEventById(
@@ -143,6 +145,86 @@ export function buildRuntimeAlerts(state: PersistedUserState): AlertsResponse {
         state.alerts.events[eventId] ?? ["before_24h", "time_changes", "watch_updates"],
     })),
   };
+}
+
+export function mergeExternalEvents(
+  state: PersistedUserState,
+  baseEvents: EventSummary[],
+  externalEvents: EventSummary[],
+  sourceOrganizationSlug: string,
+  profile = buildRuntimeProfile(state),
+): EventSummary[] {
+  const followedEventIds = new Set(state.follows.eventIds);
+  const followedFighterIds = new Set(state.follows.fighterIds);
+  const retainedEvents = baseEvents.filter(
+    (event) => event.organizationSlug !== sourceOrganizationSlug,
+  );
+  const sourceBaseEvents = baseEvents.filter(
+    (event) => event.organizationSlug === sourceOrganizationSlug,
+  );
+
+  const mergedSourceEvents = externalEvents.map((event) => {
+    const matchingBaseEvent = sourceBaseEvents.find(
+      (baseEvent) => eventIdentity(baseEvent) === eventIdentity(event),
+    );
+    const stableEventId = matchingBaseEvent?.id ?? event.id;
+
+    return {
+      ...event,
+      id: stableEventId,
+      selectedCountryCode: profile.viewingCountryCode,
+      isFollowed: followedEventIds.has(stableEventId),
+      bouts: event.bouts.map((bout) => ({
+        ...bout,
+        includesFollowedFighter:
+          followedFighterIds.has(bout.fighterAId) ||
+          followedFighterIds.has(bout.fighterBId),
+      })),
+    };
+  });
+
+  return [...retainedEvents, ...mergedSourceEvents].sort(compareEventsByStart);
+}
+
+export function buildRuntimeFightersFromEvents(
+  state: PersistedUserState,
+  events: EventSummary[],
+): FighterSummary[] {
+  const followedIds = new Set(state.follows.fighterIds);
+  const fightersById = new Map<string, FighterSummary>();
+  const fighterIdsByName = new Map<string, string>();
+
+  for (const fighter of sampleFighters) {
+    const runtimeFighter = {
+      ...fighter,
+      isFollowed: followedIds.has(fighter.id),
+    };
+    fightersById.set(runtimeFighter.id, runtimeFighter);
+    fighterIdsByName.set(runtimeFighter.name.toLowerCase(), runtimeFighter.id);
+  }
+
+  for (const event of events) {
+    for (const bout of event.bouts) {
+      upsertEventFighter(
+        fightersById,
+        fighterIdsByName,
+        followedIds,
+        event,
+        bout.fighterAId,
+        bout.fighterAName,
+      );
+      upsertEventFighter(
+        fightersById,
+        fighterIdsByName,
+        followedIds,
+        event,
+        bout.fighterBId,
+        bout.fighterBName,
+      );
+    }
+  }
+
+  return [...fightersById.values()].sort((left, right) => left.name.localeCompare(right.name));
 }
 
 export function buildEventCalendarIcs(event: EventSummary): string {
@@ -204,6 +286,49 @@ function buildSyntheticRankingFighter(
   }
 
   return getSampleFighterById(fighterId);
+}
+
+function upsertEventFighter(
+  fightersById: Map<string, FighterSummary>,
+  fighterIdsByName: Map<string, string>,
+  followedIds: Set<string>,
+  event: EventSummary,
+  fighterId: string,
+  fighterName: string,
+): void {
+  const existingById = fightersById.get(fighterId);
+  if (existingById) {
+    return;
+  }
+
+  const existingIdByName = fighterIdsByName.get(fighterName.toLowerCase());
+  if (existingIdByName) {
+    const existing = fightersById.get(existingIdByName);
+    if (existing) {
+      fightersById.set(existing.id, {
+        ...existing,
+        nextAppearanceLabel: event.localDateLabel,
+        isFollowed: followedIds.has(existing.id),
+      });
+    }
+    return;
+  }
+
+  const organizationHint = event.organizationSlug.toLowerCase();
+  const created: FighterSummary = {
+    id: fighterId,
+    name: fighterName,
+    sport: event.sport,
+    organizationHints: [organizationHint],
+    recordLabel: "Record pending",
+    nationalityLabel: "TBD",
+    headline: `Upcoming ${event.organizationName} fighter imported from the live event feed.`,
+    nextAppearanceLabel: event.localDateLabel,
+    isFollowed: followedIds.has(fighterId),
+  };
+
+  fightersById.set(created.id, created);
+  fighterIdsByName.set(created.name.toLowerCase(), created.id);
 }
 
 function buildProvidersForCountry(
@@ -280,6 +405,24 @@ function normalizeConfidence(confidenceLabel: string): ProviderConfidence {
   }
 }
 
+function eventIdentity(event: EventSummary): string {
+  const mainBout =
+    event.bouts.find((bout) => bout.isMainEvent) ??
+    (event.bouts.length === 0 ? undefined : event.bouts[0]);
+  if (mainBout) {
+    return `${slugify(mainBout.fighterAName)}:${slugify(mainBout.fighterBName)}`;
+  }
+
+  return slugify(event.title);
+}
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function formatForTimezone(
   date: Date,
   timezone: string,
@@ -316,6 +459,13 @@ function normalizeTimeZone(timezone: string): string {
   } catch {
     return sampleUserProfile.timezone;
   }
+}
+
+function compareEventsByStart(left: EventSummary, right: EventSummary): number {
+  return (
+    new Date(left.scheduledStartUtc).getTime() -
+    new Date(right.scheduledStartUtc).getTime()
+  );
 }
 
 function toIcsDateTime(iso: string): string {

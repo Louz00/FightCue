@@ -18,9 +18,9 @@ import {
   buildRuntimeEvents,
   buildRuntimeEventsForFighter,
   buildRuntimeFighterById,
-  buildRuntimeFighters,
-  buildRuntimeHome,
   buildRuntimeProfile,
+  buildRuntimeFightersFromEvents,
+  mergeExternalEvents,
 } from "./domain/runtime-data.js";
 import { loadUfcEventsPreview } from "./sources/ufc/ufc-events-source.js";
 import { UserStateStore } from "./store/user-state-store.js";
@@ -28,6 +28,7 @@ import { UserStateStore } from "./store/user-state-store.js";
 dotenv.config();
 
 const app = Fastify({ logger: true });
+const UFC_SOURCE_CACHE_TTL_MS = 2 * 60 * 1000;
 
 const stateStore = new UserStateStore(sampleUserProfile, {
   profile: {
@@ -47,6 +48,14 @@ const stateStore = new UserStateStore(sampleUserProfile, {
     events: {},
   },
 });
+
+let ufcPreviewCache:
+  | {
+      cacheKey: string;
+      expiresAt: number;
+      preview: Awaited<ReturnType<typeof loadUfcEventsPreview>>;
+    }
+  | undefined;
 
 const sourceQuerySchema = z.object({
   timezone: z.string().optional(),
@@ -106,20 +115,22 @@ app.get("/v1/meta", async () => ({
 
 app.get("/v1/home", async () => {
   const state = await stateStore.read();
-  return buildRuntimeHome(state);
+  return resolveRuntimeData(state);
 });
 
 app.get("/v1/events", async () => {
   const state = await stateStore.read();
+  const runtime = await resolveRuntimeData(state);
   return {
-    items: buildRuntimeEvents(state),
+    items: runtime.events,
     nextCursor: null,
   };
 });
 
 app.get<{ Params: { eventId: string } }>("/v1/events/:eventId", async (request, reply) => {
   const state = await stateStore.read();
-  const item = buildRuntimeEventById(state, request.params.eventId);
+  const runtime = await resolveRuntimeData(state);
+  const item = runtime.events.find((event) => event.id === request.params.eventId);
 
   if (!item) {
     return reply.code(404).send({
@@ -138,7 +149,8 @@ app.get<{ Params: { eventId: string } }>(
   "/v1/events/:eventId/calendar.ics",
   async (request, reply) => {
     const state = await stateStore.read();
-    const item = buildRuntimeEventById(state, request.params.eventId);
+    const runtime = await resolveRuntimeData(state);
+    const item = runtime.events.find((event) => event.id === request.params.eventId);
 
     if (!item) {
       return reply.code(404).send({
@@ -189,8 +201,9 @@ app.put<{ Body: unknown }>("/v1/me/preferences", async (request) => {
 
 app.get("/v1/me/fighters", async () => {
   const state = await stateStore.read();
+  const runtime = await resolveRuntimeData(state);
   return {
-    items: buildRuntimeFighters(state).filter((fighter) => fighter.isFollowed),
+    items: runtime.fighters.filter((fighter) => fighter.isFollowed),
   };
 });
 
@@ -204,7 +217,10 @@ app.put<{ Params: { fighterId: string }; Body: unknown }>(
   async (request, reply) => {
     const presetKeys = alertPresetSchema.parse(request.body).presetKeys;
     const state = await stateStore.read();
-    const existing = buildRuntimeFighterById(state, request.params.fighterId);
+    const runtime = await resolveRuntimeData(state);
+    const existing = runtime.fighters.find(
+      (fighter) => fighter.id === request.params.fighterId,
+    );
 
     if (!existing) {
       return reply.code(404).send({
@@ -251,7 +267,10 @@ app.put<{ Params: { fighterId: string }; Body: unknown }>(
   "/v1/me/follows/fighters/:fighterId",
   async (request, reply) => {
     const followed = followSchema.parse(request.body).followed;
-    const existing = buildRuntimeFighterById(await stateStore.read(), request.params.fighterId);
+    const runtime = await resolveRuntimeData(await stateStore.read());
+    const existing = runtime.fighters.find(
+      (fighter) => fighter.id === request.params.fighterId,
+    );
 
     if (!existing) {
       return reply.code(404).send({
@@ -271,7 +290,8 @@ app.put<{ Params: { eventId: string }; Body: unknown }>(
   "/v1/me/follows/events/:eventId",
   async (request, reply) => {
     const followed = followSchema.parse(request.body).followed;
-    const existing = buildRuntimeEventById(await stateStore.read(), request.params.eventId);
+    const runtime = await resolveRuntimeData(await stateStore.read());
+    const existing = runtime.events.find((event) => event.id === request.params.eventId);
 
     if (!existing) {
       return reply.code(404).send({
@@ -291,7 +311,8 @@ app.get<{ Params: { fighterId: string } }>(
   "/v1/fighters/:fighterId",
   async (request, reply) => {
     const state = await stateStore.read();
-    const item = buildRuntimeFighterById(state, request.params.fighterId);
+    const runtime = await resolveRuntimeData(state);
+    const item = runtime.fighters.find((fighter) => fighter.id === request.params.fighterId);
 
     if (!item) {
       return reply.code(404).send({
@@ -302,7 +323,13 @@ app.get<{ Params: { fighterId: string } }>(
 
     return {
       item,
-      relatedEvents: buildRuntimeEventsForFighter(state, request.params.fighterId),
+      relatedEvents: runtime.events.filter((event) =>
+        event.bouts.some(
+          (bout) =>
+            bout.fighterAId === request.params.fighterId ||
+            bout.fighterBId === request.params.fighterId,
+        ),
+      ),
     };
   },
 );
@@ -325,6 +352,51 @@ app.get<{ Querystring: { timezone?: string; country?: string } }>(
     });
   },
 );
+
+async function resolveRuntimeData(state: Awaited<ReturnType<UserStateStore["read"]>>) {
+  const profile = buildRuntimeProfile(state);
+  const baseEvents = buildRuntimeEvents(state, profile);
+  const ufcPreview = await getCachedUfcPreview(profile.timezone, profile.viewingCountryCode);
+  const events = mergeExternalEvents(
+    state,
+    baseEvents,
+    ufcPreview.items,
+    "ufc",
+    profile,
+  );
+  const fighters = buildRuntimeFightersFromEvents(state, events);
+
+  return {
+    profile,
+    fighters,
+    events,
+  };
+}
+
+async function getCachedUfcPreview(timezone: string, countryCode: string) {
+  const cacheKey = `${timezone}:${countryCode}`;
+
+  if (
+    ufcPreviewCache &&
+    ufcPreviewCache.cacheKey === cacheKey &&
+    ufcPreviewCache.expiresAt > Date.now()
+  ) {
+    return ufcPreviewCache.preview;
+  }
+
+  const preview = await loadUfcEventsPreview({
+    timezone,
+    selectedCountryCode: countryCode,
+  });
+
+  ufcPreviewCache = {
+    cacheKey,
+    expiresAt: Date.now() + UFC_SOURCE_CACHE_TTL_MS,
+    preview,
+  };
+
+  return preview;
+}
 
 const port = Number(process.env.PORT || 3000);
 

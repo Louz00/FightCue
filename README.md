@@ -27,17 +27,18 @@ Last updated: 2026-03-29
 ### In progress
 
 - Live-backed mobile shell for home, following, settings, detail screens, and persisted follow actions
-- First live UFC source pilot against the official UFC events page
+- First live UFC source pilot now merged into the main home feed with cached fallback behavior
 - Backend persistence for anonymous profile state, follows, alert presets, and country-specific watch info
 - Mobile settings controls for language and viewing-country preferences
 - First calendar-export endpoint for event-level `.ics` downloads
+- Home feed filtering for key combat-sports slices such as boxing, UFC, GLORY, and followed cards
 
 ### Next build steps
 
 1. Add event-level alert actions and calendar export entry points in more surfaces beyond the detail screen
 2. Add push notification delivery, reminder scheduling, and subscription state
 3. Add quiet ad placement wiring for the free tier
-4. Expand source coverage after UFC: Matchroom, GLORY, then more boxing organizations
+4. Add real GLORY and Matchroom source adapters so the new home filters have live coverage beyond UFC
 5. Add optional account linking on top of the anonymous default profile
 6. Begin device-level Android and iOS build testing
 
@@ -113,6 +114,8 @@ Not in the first release:
 - Connected event-detail and fighter-profile screens to dedicated backend detail endpoints with graceful fallback
 - Added persisted alert presets for followed fighters and followed events
 - Added a first `.ics` calendar export endpoint per event and surfaced it in the event detail screen
+- Fixed the main event feed so live UFC source data is merged into `/v1/home` instead of living only behind the source-preview endpoint
+- Added clean home-feed filters for boxing, UFC, GLORY, and followed events
 - Validated the new mobile flows with `flutter analyze` and `flutter test`
 - Validated the backend UFC parser with a successful live source check and TypeScript build
 - Validated iOS simulator builds with `flutter build ios --simulator --no-codesign`

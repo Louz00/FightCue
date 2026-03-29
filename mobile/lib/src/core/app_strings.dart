@@ -155,10 +155,50 @@ class AppStrings {
         nl: 'Gevolgde evenementen',
         es: 'Eventos seguidos',
       );
+  String get filterAllLabel => _pick(
+        en: 'All',
+        nl: 'Alles',
+        es: 'Todo',
+      );
+  String get filterBoxingLabel => _pick(
+        en: 'Boxing',
+        nl: 'Boksen',
+        es: 'Boxeo',
+      );
+  String get filterUfcLabel => _pick(
+        en: 'UFC',
+        nl: 'UFC',
+        es: 'UFC',
+      );
+  String get filterGloryLabel => _pick(
+        en: 'GLORY',
+        nl: 'GLORY',
+        es: 'GLORY',
+      );
+  String get filterFollowingLabel => _pick(
+        en: 'Following',
+        nl: 'Volgend',
+        es: 'Seguidos',
+      );
   String get upcomingEventsTitle => _pick(
         en: 'Upcoming events',
         nl: 'Aankomende evenementen',
         es: 'Proximos eventos',
+      );
+  String get filteredFeedTitle => _pick(
+        en: 'Filter the feed',
+        nl: 'Filter de feed',
+        es: 'Filtra el feed',
+      );
+  String get noFilteredEventsTitle => _pick(
+        en: 'No events in this filter yet',
+        nl: 'Nog geen evenementen in dit filter',
+        es: 'Aun no hay eventos en este filtro',
+      );
+  String get noFilteredEventsBody => _pick(
+        en: 'We will keep this feed ready as more live UFC data and future GLORY sources are added.',
+        nl: 'We houden deze feed klaar terwijl meer live UFC-data en toekomstige GLORY-bronnen worden toegevoegd.',
+        es: 'Mantendremos este feed listo mientras se agregan mas datos en vivo de UFC y futuras fuentes de GLORY.',
       );
   String get whereToWatch => _pick(
         en: 'Where to watch',

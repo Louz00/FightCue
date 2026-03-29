@@ -9,6 +9,6 @@ void main() {
 
     expect(find.text('Upcoming fights'), findsOneWidget);
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Following'), findsOneWidget);
+    expect(find.text('Following'), findsWidgets);
   });
 }

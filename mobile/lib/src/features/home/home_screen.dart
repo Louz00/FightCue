@@ -6,7 +6,9 @@ import '../../core/theme/app_theme.dart';
 import '../../models/domain_models.dart';
 import '../../widgets/fighter_avatar.dart';
 
-class HomeScreen extends StatelessWidget {
+enum _HomeFeedFilter { all, boxing, ufc, glory, following }
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.snapshotListenable,
@@ -23,111 +25,316 @@ class HomeScreen extends StatelessWidget {
   final ValueChanged<String> onToggleEventFollow;
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  _HomeFeedFilter _selectedFilter = _HomeFeedFilter.all;
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<HomeSnapshot>(
-      valueListenable: snapshotListenable,
+      valueListenable: widget.snapshotListenable,
       builder: (context, snapshot, _) {
-        final heroEvent = snapshot.events.first;
+        final filteredEvents = _filterEvents(snapshot);
+        final heroEvent = filteredEvents.isEmpty ? null : filteredEvents.first;
+        final remainingEvents = heroEvent == null
+            ? filteredEvents
+            : filteredEvents.where((event) => event.id != heroEvent.id).toList();
+        final filteredFollowedEvents = snapshot.followedEvents
+            .where((event) => _matchesFilter(event))
+            .where((event) => event.id != heroEvent?.id)
+            .toList();
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           children: [
             Text(
-              strings.appName.toUpperCase(),
+              widget.strings.appName.toUpperCase(),
               style: Theme.of(context).textTheme.labelSmall,
             ),
             const SizedBox(height: 10),
-            Text(strings.homeTitle, style: Theme.of(context).textTheme.headlineMedium),
+            Text(
+              widget.strings.homeTitle,
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
             const SizedBox(height: 10),
             SizedBox(
               width: 280,
               child: Text(
-                strings.homeSubtitle,
+                widget.strings.homeSubtitle,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
-            const SizedBox(height: 28),
-            _SectionTitle(label: strings.nextFight),
-            const SizedBox(height: 12),
-            _HeroEventCard(
-              event: heroEvent,
-              strings: strings,
-              onOpenEvent: () => onOpenEvent(heroEvent.id),
-              onToggleFollow: () => onToggleEventFollow(heroEvent.id),
-            ),
             const SizedBox(height: 24),
-            _SectionTitle(label: strings.followedFightersTitle),
+            _SectionTitle(label: widget.strings.filteredFeedTitle),
             const SizedBox(height: 12),
-            SizedBox(
-              height: 224,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: snapshot.followedFighters.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  final fighter = snapshot.followedFighters[index];
-                  return _FollowedFighterCard(
-                    fighter: fighter,
-                    strings: strings,
-                    onTap: () => onOpenFighter(fighter.id),
-                  );
-                },
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _FilterChip(
+                    label: widget.strings.filterAllLabel,
+                    selected: _selectedFilter == _HomeFeedFilter.all,
+                    onTap: () => setState(() => _selectedFilter = _HomeFeedFilter.all),
+                  ),
+                  _FilterChip(
+                    label: widget.strings.filterBoxingLabel,
+                    selected: _selectedFilter == _HomeFeedFilter.boxing,
+                    onTap: () => setState(() => _selectedFilter = _HomeFeedFilter.boxing),
+                  ),
+                  _FilterChip(
+                    label: widget.strings.filterUfcLabel,
+                    selected: _selectedFilter == _HomeFeedFilter.ufc,
+                    onTap: () => setState(() => _selectedFilter = _HomeFeedFilter.ufc),
+                  ),
+                  _FilterChip(
+                    label: widget.strings.filterGloryLabel,
+                    selected: _selectedFilter == _HomeFeedFilter.glory,
+                    onTap: () => setState(() => _selectedFilter = _HomeFeedFilter.glory),
+                  ),
+                  _FilterChip(
+                    label: widget.strings.filterFollowingLabel,
+                    selected: _selectedFilter == _HomeFeedFilter.following,
+                    onTap: () =>
+                        setState(() => _selectedFilter = _HomeFeedFilter.following),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 24),
-            if (snapshot.followedEvents.isNotEmpty) ...[
-              _SectionTitle(label: strings.followedEventsTitle),
+            if (heroEvent != null) ...[
+              _SectionTitle(label: widget.strings.nextFight),
               const SizedBox(height: 12),
-              ...snapshot.followedEvents.map(
+              _HeroEventCard(
+                event: heroEvent,
+                strings: widget.strings,
+                onOpenEvent: () => widget.onOpenEvent(heroEvent.id),
+                onToggleFollow: () => widget.onToggleEventFollow(heroEvent.id),
+              ),
+              const SizedBox(height: 24),
+            ] else ...[
+              _EmptyFilterState(strings: widget.strings),
+              const SizedBox(height: 24),
+            ],
+            _SectionTitle(label: widget.strings.followedFightersTitle),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 224,
+              child: snapshot.followedFighters.isEmpty
+                  ? _EmptyFollowedFightersCard(strings: widget.strings)
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: snapshot.followedFighters.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final fighter = snapshot.followedFighters[index];
+                        return _FollowedFighterCard(
+                          fighter: fighter,
+                          strings: widget.strings,
+                          onTap: () => widget.onOpenFighter(fighter.id),
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 24),
+            if (filteredFollowedEvents.isNotEmpty) ...[
+              _SectionTitle(label: widget.strings.followedEventsTitle),
+              const SizedBox(height: 12),
+              ...filteredFollowedEvents.map(
                 (event) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: _ExpandableEventCard(
                     event: event,
-                    strings: strings,
-                    onOpenEvent: () => onOpenEvent(event.id),
-                    onOpenFighter: onOpenFighter,
-                    onToggleFollow: () => onToggleEventFollow(event.id),
+                    strings: widget.strings,
+                    onOpenEvent: () => widget.onOpenEvent(event.id),
+                    onOpenFighter: widget.onOpenFighter,
+                    onToggleFollow: () => widget.onToggleEventFollow(event.id),
                   ),
                 ),
               ),
               const SizedBox(height: 8),
             ],
-            _SectionTitle(label: strings.upcomingEventsTitle),
-            const SizedBox(height: 12),
-            ...snapshot.events.map(
-              (event) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ExpandableEventCard(
-                  event: event,
-                  strings: strings,
-                  onOpenEvent: () => onOpenEvent(event.id),
-                  onOpenFighter: onOpenFighter,
-                  onToggleFollow: () => onToggleEventFollow(event.id),
+            if (remainingEvents.isNotEmpty) ...[
+              _SectionTitle(label: widget.strings.upcomingEventsTitle),
+              const SizedBox(height: 12),
+              ...remainingEvents.map(
+                (event) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _ExpandableEventCard(
+                    event: event,
+                    strings: widget.strings,
+                    onOpenEvent: () => widget.onOpenEvent(event.id),
+                    onOpenFighter: widget.onOpenFighter,
+                    onToggleFollow: () => widget.onToggleEventFollow(event.id),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
+              const SizedBox(height: 8),
+            ],
             if (snapshot.premiumState == PremiumState.free) ...[
-              _SectionTitle(label: strings.quietAdsTitle),
+              _SectionTitle(label: widget.strings.quietAdsTitle),
               const SizedBox(height: 12),
               _InfoPanel(
-                title: strings.quietAdsTitle,
-                body: strings.quietAdsBody,
+                title: widget.strings.quietAdsTitle,
+                body: widget.strings.quietAdsBody,
               ),
               const SizedBox(height: 12),
             ],
             _InfoPanel(
-              title: strings.accountModelTitle,
-              body: strings.accountModelBody,
+              title: widget.strings.accountModelTitle,
+              body: widget.strings.accountModelBody,
             ),
             const SizedBox(height: 12),
             _InfoPanel(
-              title: strings.watchInfoTitle,
-              body: strings.watchInfoBody,
+              title: widget.strings.watchInfoTitle,
+              body: widget.strings.watchInfoBody,
             ),
           ],
         );
       },
+    );
+  }
+
+  List<EventSummary> _filterEvents(HomeSnapshot snapshot) {
+    return snapshot.events.where(_matchesFilter).toList();
+  }
+
+  bool _matchesFilter(EventSummary event) {
+    switch (_selectedFilter) {
+      case _HomeFeedFilter.all:
+        return true;
+      case _HomeFeedFilter.boxing:
+        return event.sport == Sport.boxing;
+      case _HomeFeedFilter.ufc:
+        return event.organization.toLowerCase() == 'ufc';
+      case _HomeFeedFilter.glory:
+        return event.organization.toLowerCase() == 'glory';
+      case _HomeFeedFilter.following:
+        return event.isFollowed;
+    }
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.accent : AppColors.surface,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? AppColors.accent : AppColors.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyFilterState extends StatelessWidget {
+  const _EmptyFilterState({required this.strings});
+
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            strings.noFilteredEventsTitle,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 22,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            strings.noFilteredEventsBody,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyFollowedFightersCard extends StatelessWidget {
+  const _EmptyFollowedFightersCard({required this.strings});
+
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            strings.followedFightersEmptyTitle,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            strings.followedFightersEmptyBody,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

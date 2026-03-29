@@ -17,30 +17,44 @@ class HomeScreen extends StatelessWidget {
     final followedEvents = snapshot.events.where((event) => event.isFollowed).toList();
 
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
       children: [
-        Text(strings.appName, style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 8),
-        Text(strings.homeTitle, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 20),
+        Text(
+          strings.appName.toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+        const SizedBox(height: 10),
+        Text(strings.homeTitle, style: Theme.of(context).textTheme.headlineMedium),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: 280,
+          child: Text(
+            strings.homeSubtitle,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+        const SizedBox(height: 28),
         _SectionTitle(label: strings.nextFight),
         const SizedBox(height: 12),
         _HeroEventCard(event: heroEvent, strings: strings),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         _SectionTitle(label: strings.followedFightersTitle),
         const SizedBox(height: 12),
         SizedBox(
-          height: 124,
+          height: 142,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: snapshot.followedFighters.length,
             separatorBuilder: (_, __) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              return _FollowedFighterCard(fighter: snapshot.followedFighters[index]);
+              return _FollowedFighterCard(
+                fighter: snapshot.followedFighters[index],
+                strings: strings,
+              );
             },
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         if (followedEvents.isNotEmpty) ...[
           _SectionTitle(label: strings.followedEventsTitle),
           const SizedBox(height: 12),
@@ -72,7 +86,7 @@ class HomeScreen extends StatelessWidget {
         ],
         _InfoPanel(
           title: strings.accountModelTitle,
-          body: snapshot.accountModeLabel,
+          body: strings.accountModelBody,
         ),
         const SizedBox(height: 12),
         _InfoPanel(
@@ -91,7 +105,23 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(label, style: Theme.of(context).textTheme.titleLarge);
+    return Row(
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppColors.textPrimary,
+              ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            height: 2,
+            color: AppColors.accent,
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -106,46 +136,86 @@ class _HeroEventCard extends StatelessWidget {
     final mainBout = event.bouts.firstWhere((bout) => bout.isMainEvent);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        gradient: const LinearGradient(
-          colors: [AppColors.surface, AppColors.surfaceAlt],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.accent,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _OrgPill(label: event.organization),
-          const SizedBox(height: 14),
-          Text(
-            '${mainBout.fighterAName} vs ${mainBout.fighterBName}',
-            style: Theme.of(context).textTheme.titleLarge,
+          Row(
+            children: [
+              _InversePill(label: event.organization),
+              const Spacer(),
+              Text(
+                strings.mainEventBannerLabel.toUpperCase(),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Colors.white,
+                    ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
+          Text(
+            '${mainBout.fighterAName}\nvs\n${mainBout.fighterBName}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              height: 0.98,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1.0,
+            ),
+          ),
+          const SizedBox(height: 18),
           Text(
             event.localTimeLabel,
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 4),
-          Text(strings.yourTime, style: Theme.of(context).textTheme.bodyMedium),
-          const SizedBox(height: 8),
-          Text(
-            '${event.localDateLabel}  •  ${event.locationLabel}',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '${strings.whereToWatch}: ${event.watchProviders.first.label}',
-            style: const TextStyle(color: AppColors.textPrimary),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -1.0,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
-            '${strings.selectedCountryLabel}: ${event.selectedCountryCode}',
-            style: const TextStyle(color: AppColors.textSecondary),
+            strings.yourTime,
+            style: const TextStyle(
+              color: Color(0xFFFCE1E5),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${event.localDateLabel}  •  ${event.locationLabel}',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '${strings.whereToWatch}: ${event.watchProviders.first.label}',
+                  style: const TextStyle(color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${strings.selectedCountryLabel}: ${event.selectedCountryCode}',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -154,28 +224,39 @@ class _HeroEventCard extends StatelessWidget {
 }
 
 class _FollowedFighterCard extends StatelessWidget {
-  const _FollowedFighterCard({required this.fighter});
+  const _FollowedFighterCard({required this.fighter, required this.strings});
 
   final FighterSummary fighter;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 188,
-      padding: const EdgeInsets.all(14),
+      width: 190,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
+            strings.trackedTagLabel.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.accent,
+                ),
+          ),
+          const SizedBox(height: 10),
+          Text(
             fighter.name,
             style: const TextStyle(
               color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              letterSpacing: -0.4,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -187,16 +268,21 @@ class _FollowedFighterCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: Text(
-                fighter.nextAppearanceLabel,
-                style: const TextStyle(color: AppColors.accent),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceAlt,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              fighter.nextAppearanceLabel,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w700,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
@@ -218,14 +304,15 @@ class _ExpandableEventCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          tilePadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          childrenPadding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -235,17 +322,21 @@ class _ExpandableEventCard extends StatelessWidget {
                   const Spacer(),
                   Text(
                     event.localDateLabel,
-                    style: const TextStyle(color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Text(
                 '${mainBout.fighterAName} vs ${mainBout.fighterBName}',
                 style: const TextStyle(
                   color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 22,
+                  letterSpacing: -0.6,
                 ),
               ),
               const SizedBox(height: 10),
@@ -253,10 +344,20 @@ class _ExpandableEventCard extends StatelessWidget {
                 '${event.localTimeLabel}  •  ${event.locationLabel}',
                 style: const TextStyle(color: AppColors.textSecondary),
               ),
-              const SizedBox(height: 8),
-              Text(
-                '${strings.whereToWatch}: ${event.watchProviders.first.label}',
-                style: const TextStyle(color: AppColors.textPrimary),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceAlt,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  '${strings.whereToWatch}: ${event.watchProviders.first.label}',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
@@ -264,7 +365,10 @@ class _ExpandableEventCard extends StatelessWidget {
             padding: const EdgeInsets.only(top: 10),
             child: Text(
               strings.expandCardHint,
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: const TextStyle(
+                color: AppColors.accent,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           children: [
@@ -281,7 +385,7 @@ class _ExpandableEventCard extends StatelessWidget {
             ...event.bouts.map(
               (bout) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
-                child: _BoutRow(bout: bout),
+                child: _BoutRow(bout: bout, strings: strings),
               ),
             ),
           ],
@@ -301,13 +405,38 @@ class _OrgPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.12),
+        color: AppColors.surfaceAlt,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
         label,
         style: const TextStyle(
-          color: AppColors.accent,
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w700,
+          fontSize: 11,
+        ),
+      ),
+    );
+  }
+}
+
+class _InversePill extends StatelessWidget {
+  const _InversePill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.ink,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
           fontWeight: FontWeight.w700,
           fontSize: 11,
         ),
@@ -324,20 +453,28 @@ class _ActionPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.accent),
       ),
-      child: Text(label, style: const TextStyle(color: AppColors.textPrimary)),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: AppColors.accent,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }
 
 class _BoutRow extends StatelessWidget {
-  const _BoutRow({required this.bout});
+  const _BoutRow({required this.bout, required this.strings});
 
   final BoutSummary bout;
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
@@ -345,7 +482,7 @@ class _BoutRow extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -354,7 +491,10 @@ class _BoutRow extends StatelessWidget {
             width: 84,
             child: Text(
               bout.slotLabel,
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           Expanded(
@@ -365,7 +505,7 @@ class _BoutRow extends StatelessWidget {
                   '${bout.fighterAName} vs ${bout.fighterBName}',
                   style: const TextStyle(
                     color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 if (bout.weightClass != null) ...[
@@ -381,15 +521,15 @@ class _BoutRow extends StatelessWidget {
           if (bout.includesFollowedFighter)
             Container(
               margin: const EdgeInsets.only(left: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
               decoration: BoxDecoration(
-                color: AppColors.accent.withValues(alpha: 0.12),
+                color: AppColors.accent,
                 borderRadius: BorderRadius.circular(999),
               ),
-              child: const Text(
-                'FOLLOWED',
-                style: TextStyle(
-                  color: AppColors.accent,
+              child: Text(
+                strings.followedTagLabel.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
                   fontWeight: FontWeight.w700,
                   fontSize: 10,
                 ),
@@ -410,20 +550,32 @@ class _InfoPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Container(
+            width: 44,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.accent,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(height: 14),
           Text(
             title,
             style: const TextStyle(
               color: AppColors.textPrimary,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              letterSpacing: -0.3,
             ),
           ),
           const SizedBox(height: 8),

@@ -13,7 +13,7 @@ class FightCueApp extends StatelessWidget {
     return MaterialApp(
       title: 'FightCue',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.dark,
+      themeMode: ThemeMode.light,
       theme: buildAppTheme(),
       supportedLocales: AppStrings.supportedLocales,
       localizationsDelegates: const [

@@ -23,6 +23,17 @@ class FightCueApi {
     return 'http://127.0.0.1:3000';
   }
 
+  Future<HomeSnapshot> fetchHome() async {
+    final response = await _client.get(Uri.parse('$_baseUrl/v1/home'));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Home request failed: ${response.statusCode}');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return HomeSnapshotJson.fromJson(json).toMobile();
+  }
+
   Future<UfcSourcePreview> fetchUfcEventsPreview({
     String timezone = 'Europe/Amsterdam',
     String countryCode = 'NL',
@@ -66,6 +77,182 @@ class FightCueApi {
         .map((entry) => entry.toMobile())
         .toList();
   }
+
+  Future<HomeSnapshot> updatePreferences({
+    String? languageCode,
+    String? timezone,
+    String? viewingCountryCode,
+  }) async {
+    final body = <String, dynamic>{};
+    if (languageCode != null) {
+      body['language'] = languageCode;
+    }
+    if (timezone != null) {
+      body['timezone'] = timezone;
+    }
+    if (viewingCountryCode != null) {
+      body['viewingCountryCode'] = viewingCountryCode;
+    }
+
+    final response = await _client.put(
+      Uri.parse('$_baseUrl/v1/me/preferences'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Preferences request failed: ${response.statusCode}');
+    }
+
+    return fetchHome();
+  }
+
+  Future<EventSummary> setEventFollow(String eventId, bool followed) async {
+    final response = await _client.put(
+      Uri.parse('$_baseUrl/v1/me/follows/events/$eventId'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({'followed': followed}),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Event follow request failed: ${response.statusCode}');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return EventSummaryJson.fromJson(json['item'] as Map<String, dynamic>).toMobile();
+  }
+
+  Future<FighterSummary> setFighterFollow(String fighterId, bool followed) async {
+    final response = await _client.put(
+      Uri.parse('$_baseUrl/v1/me/follows/fighters/$fighterId'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({'followed': followed}),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Fighter follow request failed: ${response.statusCode}');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return FighterSummaryJson.fromJson(json['item'] as Map<String, dynamic>).toMobile();
+  }
+}
+
+class HomeSnapshotJson {
+  const HomeSnapshotJson({
+    required this.languageCode,
+    required this.timezone,
+    required this.viewingCountryCode,
+    required this.premiumState,
+    required this.accountModeLabel,
+    required this.fighters,
+    required this.events,
+  });
+
+  final String languageCode;
+  final String timezone;
+  final String viewingCountryCode;
+  final PremiumState premiumState;
+  final String accountModeLabel;
+  final List<FighterSummary> fighters;
+  final List<EventSummary> events;
+
+  factory HomeSnapshotJson.fromJson(Map<String, dynamic> json) {
+    final profile = json['profile'] as Map<String, dynamic>? ?? const {};
+
+    return HomeSnapshotJson(
+      languageCode: profile['language'] as String? ?? 'en',
+      timezone: profile['timezone'] as String? ?? 'Europe/Amsterdam',
+      viewingCountryCode: profile['viewingCountryCode'] as String? ?? 'NL',
+      premiumState: _parsePremiumState(profile['premiumState'] as String?),
+      accountModeLabel:
+          profile['isAnonymous'] as bool? ?? true
+              ? 'Anonymous by default, email login optional'
+              : 'Email account active',
+      fighters: (json['fighters'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(FighterSummaryJson.fromJson)
+          .map((entry) => entry.toMobile())
+          .toList(),
+      events: (json['events'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(EventSummaryJson.fromJson)
+          .map((entry) => entry.toMobile())
+          .toList(),
+    );
+  }
+
+  HomeSnapshot toMobile() {
+    return HomeSnapshot(
+      fighters: fighters,
+      events: events,
+      premiumState: premiumState,
+      accountModeLabel: accountModeLabel,
+      languageCode: languageCode,
+      timezone: timezone,
+      viewingCountryCode: viewingCountryCode,
+    );
+  }
+}
+
+class FighterSummaryJson {
+  const FighterSummaryJson({
+    required this.id,
+    required this.name,
+    required this.sport,
+    required this.organizationHint,
+    required this.recordLabel,
+    required this.nationalityLabel,
+    required this.headline,
+    required this.nextAppearanceLabel,
+    required this.isFollowed,
+    this.nickname,
+  });
+
+  final String id;
+  final String name;
+  final Sport sport;
+  final String organizationHint;
+  final String recordLabel;
+  final String nationalityLabel;
+  final String headline;
+  final String nextAppearanceLabel;
+  final String? nickname;
+  final bool isFollowed;
+
+  factory FighterSummaryJson.fromJson(Map<String, dynamic> json) {
+    final organizationHints = (json['organizationHints'] as List<dynamic>? ?? const [])
+        .map((value) => value.toString())
+        .toList();
+
+    return FighterSummaryJson(
+      id: json['id'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      sport: _parseSport(json['sport'] as String?),
+      organizationHint: _organizationLabelFromHints(organizationHints),
+      recordLabel: json['recordLabel'] as String? ?? 'Record pending',
+      nationalityLabel: json['nationalityLabel'] as String? ?? 'TBD',
+      headline: json['headline'] as String? ?? '',
+      nextAppearanceLabel: json['nextAppearanceLabel'] as String? ?? '',
+      nickname: json['nickname'] as String?,
+      isFollowed: json['isFollowed'] as bool? ?? false,
+    );
+  }
+
+  FighterSummary toMobile() {
+    return FighterSummary(
+      id: id,
+      name: name,
+      sport: sport,
+      organizationHint: organizationHint,
+      recordLabel: recordLabel,
+      nationalityLabel: nationalityLabel,
+      headline: headline,
+      nextAppearanceLabel: nextAppearanceLabel,
+      nickname: nickname,
+      isFollowed: isFollowed,
+    );
+  }
 }
 
 class UfcSourcePreview {
@@ -93,6 +280,7 @@ class EventSummaryJson {
     required this.eventLocalTimeLabel,
     required this.selectedCountryCode,
     required this.sourceLabel,
+    required this.isFollowed,
     required this.watchProviders,
     required this.bouts,
   });
@@ -108,6 +296,7 @@ class EventSummaryJson {
   final String eventLocalTimeLabel;
   final String selectedCountryCode;
   final String sourceLabel;
+  final bool isFollowed;
   final List<WatchProviderSummary> watchProviders;
   final List<BoutSummary> bouts;
 
@@ -124,6 +313,7 @@ class EventSummaryJson {
       eventLocalTimeLabel: json['eventLocalTimeLabel'] as String? ?? '',
       selectedCountryCode: json['selectedCountryCode'] as String? ?? 'NL',
       sourceLabel: json['sourceLabel'] as String? ?? 'Official UFC events page',
+      isFollowed: json['isFollowed'] as bool? ?? false,
       watchProviders: (json['watchProviders'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(
@@ -169,7 +359,7 @@ class EventSummaryJson {
       localTimeLabel: localTimeLabel,
       eventLocalTimeLabel: eventLocalTimeLabel,
       selectedCountryCode: selectedCountryCode,
-      isFollowed: false,
+      isFollowed: isFollowed,
       sourceLabel: sourceLabel,
       watchProviders: watchProviders,
       bouts: bouts,
@@ -268,5 +458,44 @@ RankingGroup _parseRankingGroup(String? rawGroup) {
     case 'men':
     default:
       return RankingGroup.men;
+  }
+}
+
+PremiumState _parsePremiumState(String? rawState) {
+  switch (rawState) {
+    case 'premium':
+      return PremiumState.premium;
+    case 'free':
+    default:
+      return PremiumState.free;
+  }
+}
+
+Sport _parseSport(String? rawSport) {
+  switch (rawSport) {
+    case 'boxing':
+      return Sport.boxing;
+    case 'kickboxing':
+      return Sport.kickboxing;
+    case 'mma':
+    default:
+      return Sport.mma;
+  }
+}
+
+String _organizationLabelFromHints(List<String> organizationHints) {
+  final primary = organizationHints.isEmpty ? 'fightcue' : organizationHints.first;
+
+  switch (primary.toLowerCase()) {
+    case 'ufc':
+      return 'UFC';
+    case 'matchroom':
+      return 'Matchroom';
+    case 'glory':
+      return 'GLORY';
+    default:
+      return primary.isEmpty
+          ? 'FightCue'
+          : '${primary[0].toUpperCase()}${primary.substring(1)}';
   }
 }

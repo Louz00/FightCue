@@ -16,6 +16,7 @@ node_modules/
 dist/
 .env
 .env.local
+backend/.data/
 
 # Python legacy
 .pytest_cache/

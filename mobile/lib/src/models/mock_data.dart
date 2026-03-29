@@ -3,6 +3,9 @@ import 'domain_models.dart';
 const sampleHomeSnapshot = HomeSnapshot(
   premiumState: PremiumState.free,
   accountModeLabel: 'Anonymous by default, email login optional later',
+  languageCode: 'en',
+  timezone: 'Europe/Amsterdam',
+  viewingCountryCode: 'NL',
   fighters: [
     FighterSummary(
       id: 'ftr_katie_taylor',

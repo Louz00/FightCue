@@ -16,7 +16,12 @@ import '../rankings/rankings_screen.dart';
 import '../settings/settings_screen.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  const AppShell({
+    super.key,
+    this.onLanguageChanged,
+  });
+
+  final ValueChanged<String>? onLanguageChanged;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -31,8 +36,7 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _snapshotNotifier = ValueNotifier(sampleHomeSnapshot);
-    unawaited(_loadUfcSourcePilot());
-    unawaited(_loadLeaderboardFighters());
+    unawaited(_bootstrap());
   }
 
   @override
@@ -41,21 +45,22 @@ class _AppShellState extends State<AppShell> {
     super.dispose();
   }
 
-  Future<void> _loadUfcSourcePilot() async {
-    try {
-      final preview = await _api.fetchUfcEventsPreview();
-      final snapshot = _snapshotNotifier.value;
+  Future<void> _bootstrap() async {
+    await _syncHome();
+  }
 
-      _snapshotNotifier.value = snapshot.copyWith(
-        fighters: _mergePilotFighters(snapshot, preview.items),
-        events: _mergePilotEvents(snapshot, preview.items),
-      );
+  Future<void> _syncHome() async {
+    try {
+      final snapshot = await _api.fetchHome();
+      _snapshotNotifier.value = snapshot;
+      widget.onLanguageChanged?.call(snapshot.languageCode);
+      await _mergeLeaderboardFighters();
     } catch (_) {
-      // Keep the curated mock snapshot if the local backend is not available.
+      // Keep the curated fallback snapshot if the local backend is unavailable.
     }
   }
 
-  Future<void> _loadLeaderboardFighters() async {
+  Future<void> _mergeLeaderboardFighters() async {
     try {
       final leaderboards = await _api.fetchLeaderboards();
       final snapshot = _snapshotNotifier.value;
@@ -106,29 +111,50 @@ class _AppShellState extends State<AppShell> {
 
       _snapshotNotifier.value = snapshot.copyWith(fighters: nextFighters);
     } catch (_) {
-      // Keep the local roster if leaderboards are not available.
+      // Rankings stay optional so the main event flow remains stable.
     }
   }
 
-  void _toggleEventFollow(String eventId) {
+  Future<void> _toggleEventFollow(String eventId) async {
     final snapshot = _snapshotNotifier.value;
-    final nextEvents = snapshot.events
-        .map(
-          (event) => event.id == eventId
-              ? event.copyWith(isFollowed: !event.isFollowed)
-              : event,
-        )
-        .toList();
+    final current = snapshot.eventById(eventId);
 
-    _snapshotNotifier.value = snapshot.copyWith(events: nextEvents);
+    if (current == null) {
+      return;
+    }
+
+    final nextFollowed = !current.isFollowed;
+    _snapshotNotifier.value = snapshot.copyWith(
+      events: snapshot.events
+          .map(
+            (event) => event.id == eventId
+                ? event.copyWith(isFollowed: nextFollowed)
+                : event,
+          )
+          .toList(),
+    );
+
+    try {
+      await _api.setEventFollow(eventId, nextFollowed);
+      await _syncHome();
+    } catch (_) {
+      _snapshotNotifier.value = snapshot;
+    }
   }
 
-  void _toggleFighterFollow(String fighterId) {
+  Future<void> _toggleFighterFollow(String fighterId) async {
     final snapshot = _snapshotNotifier.value;
+    final current = snapshot.fighterById(fighterId);
+
+    if (current == null) {
+      return;
+    }
+
+    final nextFollowed = !current.isFollowed;
     final nextFighters = snapshot.fighters
         .map(
           (fighter) => fighter.id == fighterId
-              ? fighter.copyWith(isFollowed: !fighter.isFollowed)
+              ? fighter.copyWith(isFollowed: nextFollowed)
               : fighter,
         )
         .toList();
@@ -155,103 +181,45 @@ class _AppShellState extends State<AppShell> {
       fighters: nextFighters,
       events: nextEvents,
     );
+
+    try {
+      await _api.setFighterFollow(fighterId, nextFollowed);
+      await _syncHome();
+    } catch (_) {
+      _snapshotNotifier.value = snapshot;
+    }
   }
 
-  List<EventSummary> _mergePilotEvents(
-    HomeSnapshot snapshot,
-    List<EventSummary> liveUfcEvents,
-  ) {
-    final existingTitles = {
-      for (final event in snapshot.events) event.title.toLowerCase(): event,
-    };
-    final nonUfcEvents = snapshot.events
-        .where((event) => event.organization != 'UFC')
-        .toList();
-    final mergedUfcEvents = liveUfcEvents
-        .map((event) {
-          final existing = existingTitles[event.title.toLowerCase()];
-          return event.copyWith(isFollowed: existing?.isFollowed ?? false);
-        })
-        .toList();
+  Future<void> _updateLanguage(String languageCode) async {
+    final snapshot = _snapshotNotifier.value;
 
-    return [...nonUfcEvents, ...mergedUfcEvents];
+    _snapshotNotifier.value = snapshot.copyWith(languageCode: languageCode);
+    widget.onLanguageChanged?.call(languageCode);
+
+    try {
+      final updated = await _api.updatePreferences(languageCode: languageCode);
+      _snapshotNotifier.value = updated;
+      widget.onLanguageChanged?.call(updated.languageCode);
+      await _mergeLeaderboardFighters();
+    } catch (_) {
+      _snapshotNotifier.value = snapshot;
+      widget.onLanguageChanged?.call(snapshot.languageCode);
+    }
   }
 
-  List<FighterSummary> _mergePilotFighters(
-    HomeSnapshot snapshot,
-    List<EventSummary> liveUfcEvents,
-  ) {
-    final fightersById = {
-      for (final fighter in snapshot.fighters) fighter.id: fighter,
-    };
-    final fightersByName = {
-      for (final fighter in snapshot.fighters) fighter.name.toLowerCase(): fighter,
-    };
-    final nextFighters = [...snapshot.fighters];
+  Future<void> _updateViewingCountry(String countryCode) async {
+    final snapshot = _snapshotNotifier.value;
 
-    for (final event in liveUfcEvents) {
-      for (final bout in event.bouts) {
-        _upsertPilotFighter(
-          nextFighters,
-          fightersById,
-          fightersByName,
-          fighterId: bout.fighterAId,
-          fighterName: bout.fighterAName,
-          nextAppearanceLabel: event.localDateLabel,
-        );
-        _upsertPilotFighter(
-          nextFighters,
-          fightersById,
-          fightersByName,
-          fighterId: bout.fighterBId,
-          fighterName: bout.fighterBName,
-          nextAppearanceLabel: event.localDateLabel,
-        );
-      }
+    _snapshotNotifier.value = snapshot.copyWith(viewingCountryCode: countryCode);
+
+    try {
+      final updated = await _api.updatePreferences(viewingCountryCode: countryCode);
+      _snapshotNotifier.value = updated;
+      widget.onLanguageChanged?.call(updated.languageCode);
+      await _mergeLeaderboardFighters();
+    } catch (_) {
+      _snapshotNotifier.value = snapshot;
     }
-
-    return nextFighters;
-  }
-
-  void _upsertPilotFighter(
-    List<FighterSummary> fighters,
-    Map<String, FighterSummary> fightersById,
-    Map<String, FighterSummary> fightersByName, {
-    required String fighterId,
-    required String fighterName,
-    required String nextAppearanceLabel,
-  }) {
-    final existingById = fightersById[fighterId];
-    if (existingById != null) {
-      return;
-    }
-
-    final existingByName = fightersByName[fighterName.toLowerCase()];
-    if (existingByName != null) {
-      final updated = existingByName.copyWith(
-        nextAppearanceLabel: nextAppearanceLabel,
-      );
-      final index = fighters.indexOf(existingByName);
-      fighters[index] = updated;
-      fightersById[fighterId] = updated;
-      fightersByName[fighterName.toLowerCase()] = updated;
-      return;
-    }
-
-    final created = FighterSummary(
-      id: fighterId,
-      name: fighterName,
-      sport: Sport.mma,
-      organizationHint: 'UFC',
-      recordLabel: 'Record pending',
-      nationalityLabel: 'TBD',
-      headline: 'Official UFC source pilot fighter entry.',
-      nextAppearanceLabel: nextAppearanceLabel,
-      isFollowed: false,
-    );
-    fighters.add(created);
-    fightersById[fighterId] = created;
-    fightersByName[fighterName.toLowerCase()] = created;
   }
 
   void _openEvent(String eventId) {
@@ -261,8 +229,12 @@ class _AppShellState extends State<AppShell> {
           snapshotListenable: _snapshotNotifier,
           eventId: eventId,
           onOpenFighter: _openFighter,
-          onToggleEventFollow: _toggleEventFollow,
-          onToggleFighterFollow: _toggleFighterFollow,
+          onToggleEventFollow: (targetEventId) {
+            unawaited(_toggleEventFollow(targetEventId));
+          },
+          onToggleFighterFollow: (fighterId) {
+            unawaited(_toggleFighterFollow(fighterId));
+          },
         ),
       ),
     );
@@ -275,7 +247,9 @@ class _AppShellState extends State<AppShell> {
           snapshotListenable: _snapshotNotifier,
           fighterId: fighterId,
           onOpenEvent: _openEvent,
-          onToggleFighterFollow: _toggleFighterFollow,
+          onToggleFighterFollow: (targetFighterId) {
+            unawaited(_toggleFighterFollow(targetFighterId));
+          },
         ),
       ),
     );
@@ -290,7 +264,9 @@ class _AppShellState extends State<AppShell> {
         strings: strings,
         onOpenEvent: _openEvent,
         onOpenFighter: _openFighter,
-        onToggleEventFollow: _toggleEventFollow,
+        onToggleEventFollow: (eventId) {
+          unawaited(_toggleEventFollow(eventId));
+        },
       ),
       RankingsScreen(
         api: _api,
@@ -302,8 +278,12 @@ class _AppShellState extends State<AppShell> {
         strings: strings,
         onOpenEvent: _openEvent,
         onOpenFighter: _openFighter,
-        onToggleEventFollow: _toggleEventFollow,
-        onToggleFighterFollow: _toggleFighterFollow,
+        onToggleEventFollow: (eventId) {
+          unawaited(_toggleEventFollow(eventId));
+        },
+        onToggleFighterFollow: (fighterId) {
+          unawaited(_toggleFighterFollow(fighterId));
+        },
       ),
       AlertsScreen(
         snapshotListenable: _snapshotNotifier,
@@ -314,6 +294,12 @@ class _AppShellState extends State<AppShell> {
       SettingsScreen(
         snapshotListenable: _snapshotNotifier,
         strings: strings,
+        onSelectLanguage: (languageCode) {
+          unawaited(_updateLanguage(languageCode));
+        },
+        onSelectViewingCountry: (countryCode) {
+          unawaited(_updateViewingCountry(countryCode));
+        },
       ),
     ];
 

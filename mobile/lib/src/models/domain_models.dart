@@ -241,12 +241,18 @@ class HomeSnapshot {
     required this.events,
     required this.premiumState,
     required this.accountModeLabel,
+    required this.languageCode,
+    required this.timezone,
+    required this.viewingCountryCode,
   });
 
   final List<FighterSummary> fighters;
   final List<EventSummary> events;
   final PremiumState premiumState;
   final String accountModeLabel;
+  final String languageCode;
+  final String timezone;
+  final String viewingCountryCode;
 
   List<FighterSummary> get followedFighters =>
       fighters.where((fighter) => fighter.isFollowed).toList();
@@ -287,12 +293,18 @@ class HomeSnapshot {
     List<EventSummary>? events,
     PremiumState? premiumState,
     String? accountModeLabel,
+    String? languageCode,
+    String? timezone,
+    String? viewingCountryCode,
   }) {
     return HomeSnapshot(
       fighters: fighters ?? this.fighters,
       events: events ?? this.events,
       premiumState: premiumState ?? this.premiumState,
       accountModeLabel: accountModeLabel ?? this.accountModeLabel,
+      languageCode: languageCode ?? this.languageCode,
+      timezone: timezone ?? this.timezone,
+      viewingCountryCode: viewingCountryCode ?? this.viewingCountryCode,
     );
   }
 }

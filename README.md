@@ -26,19 +26,19 @@ Last updated: 2026-03-29
 
 ### In progress
 
-- Mock-first mobile flows for home, following, alerts, settings, event detail, and fighter profile
+- Live-backed mobile shell for home, following, settings, and persisted follow actions
 - First live UFC source pilot against the official UFC events page
-- Backend contract shaping for event detail, fighter detail, and source preview endpoints
-- iOS simulator runtime setup in Xcode for local Apple build testing
+- Backend persistence for anonymous profile state, follows, and country-specific watch info
+- Mobile settings controls for language and viewing-country preferences
 
 ### Next build steps
 
-1. Connect the mobile app to backend detail and source-preview endpoints
-2. Add persistence for anonymous users, follows, alerts, and optional accounts
-3. Add calendar export, notifications, and subscription state
-4. Add quiet ad placement wiring for the free tier
-5. Expand source coverage after UFC: Matchroom, GLORY, then more boxing organizations
-6. Finish iOS simulator/runtime setup and begin device-level build testing
+1. Connect event-detail and fighter-detail screens to dedicated backend detail endpoints
+2. Add alert persistence, calendar export, notifications, and subscription state
+3. Add quiet ad placement wiring for the free tier
+4. Expand source coverage after UFC: Matchroom, GLORY, then more boxing organizations
+5. Add optional account linking on top of the anonymous default profile
+6. Begin device-level Android and iOS build testing
 
 ## Project structure
 
@@ -105,13 +105,18 @@ Not in the first release:
 - Added backend endpoints for event detail, fighter detail, and UFC source preview
 - Added a dedicated rankings section with weight-class leaderboards for men and women
 - Added a stylized fighter-avatar system as a safe interim alternative to real fighter photos
+- Added a persisted backend state layer for anonymous profile data, follows, and viewing-country preferences
+- Connected the mobile shell to a real backend home payload instead of relying only on local mock merges
+- Added language and viewing-country controls in Settings with backend-backed persistence
+- Validated real API roundtrips for home loading, preference updates, and fighter follow persistence
 - Validated the new mobile flows with `flutter analyze` and `flutter test`
 - Validated the backend UFC parser with a successful live source check and TypeScript build
+- Validated iOS simulator builds with `flutter build ios --simulator --no-codesign`
 
 ## Current constraints
 
 - Android is ready in Flutter tooling.
-- Xcode is installed, but the iOS simulator runtime still needs to be installed from Xcode Settings > Components for local simulator builds.
+- Xcode and the iOS simulator runtime are installed, but real device signing and store provisioning are still not configured.
 - Apple and Google developer accounts are not connected yet, so bundle IDs cannot be truly reserved yet.
 - `Solmeriq Labs` is a working company/publisher name and can still be changed later after legal and trademark checks.
 

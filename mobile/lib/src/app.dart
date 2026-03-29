@@ -5,8 +5,27 @@ import 'core/app_strings.dart';
 import 'core/theme/app_theme.dart';
 import 'features/shell/app_shell.dart';
 
-class FightCueApp extends StatelessWidget {
+class FightCueApp extends StatefulWidget {
   const FightCueApp({super.key});
+
+  @override
+  State<FightCueApp> createState() => _FightCueAppState();
+}
+
+class _FightCueAppState extends State<FightCueApp> {
+  Locale? _locale;
+
+  void _updateLanguage(String languageCode) {
+    if (!AppStrings.supportedLocales.any(
+      (locale) => locale.languageCode == languageCode,
+    )) {
+      return;
+    }
+
+    setState(() {
+      _locale = Locale(languageCode);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,13 +34,14 @@ class FightCueApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       themeMode: ThemeMode.light,
       theme: buildAppTheme(),
+      locale: _locale,
       supportedLocales: AppStrings.supportedLocales,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: const AppShell(),
+      home: AppShell(onLanguageChanged: _updateLanguage),
     );
   }
 }

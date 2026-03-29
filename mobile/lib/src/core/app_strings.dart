@@ -425,4 +425,49 @@ class AppStrings {
         nl: 'Kijkproviders hangen af van het gekozen kijkland en kunnen handmatig worden aangepast.',
         es: 'Los proveedores dependen del pais seleccionado y se pueden cambiar manualmente.',
       );
+  String get currentTimezoneTitle => _pick(
+        en: 'Current timezone',
+        nl: 'Huidige tijdzone',
+        es: 'Zona horaria actual',
+      );
+  String get currentTimezoneBody => _pick(
+        en: 'Event times are recalculated from your saved timezone preference.',
+        nl: 'Eventtijden worden opnieuw berekend vanuit je opgeslagen tijdzonevoorkeur.',
+        es: 'Las horas de los eventos se recalculan desde tu preferencia guardada de zona horaria.',
+      );
+  String get languageEnglishLabel => _pick(
+        en: 'English',
+        nl: 'Engels',
+        es: 'Ingles',
+      );
+  String get languageDutchLabel => _pick(
+        en: 'Dutch',
+        nl: 'Nederlands',
+        es: 'Neerlandes',
+      );
+  String get languageSpanishLabel => _pick(
+        en: 'Spanish',
+        nl: 'Spaans',
+        es: 'Espanol',
+      );
+  String get countryNetherlandsLabel => _pick(
+        en: 'Netherlands',
+        nl: 'Nederland',
+        es: 'Paises Bajos',
+      );
+  String get countryUnitedKingdomLabel => _pick(
+        en: 'United Kingdom',
+        nl: 'Verenigd Koninkrijk',
+        es: 'Reino Unido',
+      );
+  String get countryUnitedStatesLabel => _pick(
+        en: 'United States',
+        nl: 'Verenigde Staten',
+        es: 'Estados Unidos',
+      );
+  String get countrySpainLabel => _pick(
+        en: 'Spain',
+        nl: 'Spanje',
+        es: 'Espana',
+      );
 }

@@ -73,8 +73,16 @@
 - app works anonymously by default
 - optional account exists for sync, restore, and future cross-device continuity
 - premium purchases should not require an account, but optional account linking improves restore and portability
+- first optional account method is email magic link
 
 ## Leaderboards
 
 - leaderboards are desirable, but must be clearly labeled by source and organization
 - for boxing this likely lands after MVP unless a defensible ranking source is chosen
+- if boxing leaderboards are added later, they should use clearly labeled official source families rather than promoter marketing copy
+
+## Ads
+
+- default ad-network direction is Google AdMob
+- free tier should use quiet placements only
+- premium removes ads entirely

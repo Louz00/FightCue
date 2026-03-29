@@ -54,7 +54,7 @@ FightCue/
 ## Identity model
 
 - every installation gets an anonymous app user profile first
-- optional account creation can later attach that profile to email or another sign-in method
+- optional account creation can later attach that profile to an email magic link account first
 - premium entitlement must be server-aware
 - optional account improves restore, sync, and future multi-device continuity
 - paid usage does not have to depend on mandatory account creation
@@ -91,6 +91,7 @@ The product promise depends on this being correct.
 ## Ads and privacy
 
 - ads only in free tier
+- default ad-network direction is Google AdMob
 - ad placements must stay quiet and not block core event interactions
 - respect consent requirements for ads and analytics by jurisdiction
 - premium users should see no ads
@@ -101,6 +102,7 @@ The product promise depends on this being correct.
 - UFC and GLORY can use official ranking structures where available
 - boxing requires careful source labeling because rankings are fragmented
 - if a ranking is not official or directly source-backed, it must be clearly labeled as a FightCue-specific list and not implied as official
+- boxing leaderboards should not be promoter-defined by default
 
 ## App identifiers
 

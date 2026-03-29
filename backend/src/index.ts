@@ -2,6 +2,15 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import dotenv from "dotenv";
+import {
+  fightCueRuntimeProfile,
+} from "./domain/models.js";
+import {
+  sampleEvents,
+  sampleFollowedFighters,
+  sampleLeaderboards,
+  sampleUserProfile,
+} from "./domain/mock-data.js";
 
 dotenv.config();
 
@@ -27,22 +36,22 @@ app.get("/v1/meta", async () => ({
   languages: ["en", "nl", "es"],
   storeReadyOnly: true,
   firstSourceCandidates: ["matchroom", "ufc", "glory"],
+  runtimeProfile: fightCueRuntimeProfile,
 }));
 
 app.get("/v1/events", async () => ({
-  items: [
-    {
-      id: "evt_demo_ufc_001",
-      organization: "UFC",
-      sport: "mma",
-      title: "Demo Event",
-      scheduledStartUtc: "2026-04-12T01:00:00Z",
-      scheduledTimezone: "America/New_York",
-      status: "scheduled",
-      isPremiumLocked: false,
-    },
-  ],
+  items: sampleEvents,
   nextCursor: null,
+}));
+
+app.get("/v1/me/profile", async () => sampleUserProfile);
+
+app.get("/v1/me/fighters", async () => ({
+  items: sampleFollowedFighters,
+}));
+
+app.get("/v1/leaderboards", async () => ({
+  items: sampleLeaderboards,
 }));
 
 const port = Number(process.env.PORT || 3000);

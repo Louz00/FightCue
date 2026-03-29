@@ -97,6 +97,9 @@ Not in the first release:
 - Published the repository to GitHub
 - Locked in anonymous-by-default users with optional accounts
 - Added product requirements for quiet ads, fighter follows, watch by country, and privacy-first data handling
+- Chose email magic link as the first optional account method
+- Chose Google AdMob as the default quiet-ad direction for the free tier
+- Deferred boxing leaderboards until a defensible official source framing is selected
 
 ## Current constraints
 
@@ -185,3 +188,7 @@ See [docs/07_user_data_privacy_and_ads.md](docs/07_user_data_privacy_and_ads.md)
 ## UX and UI
 
 See [docs/08_ux_ui_direction.md](docs/08_ux_ui_direction.md).
+
+## Domain Data Model
+
+See [docs/09_domain_data_model.md](docs/09_domain_data_model.md).

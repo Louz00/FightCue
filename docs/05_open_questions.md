@@ -7,9 +7,9 @@ These are the inputs still needed from the owner to keep building without avoida
 1. What public developer or company name should eventually appear in the App Store and Google Play listings?
 2. Do you want to keep the temporary working app ID `com.lou.fightcue`, or replace it with another reverse-domain identifier later?
 3. Which real source should be implemented first after the scaffold: `Matchroom`, `UFC`, or `GLORY`?
-4. What account method should optional sign-in use first: email magic link, Google, Apple, or a mix?
-5. How should boxing leaderboards be defined first: official sanctioning-body rankings, promoter-specific rankings, or FightCue popularity/trending?
-6. Which ad network should be the default choice for free-tier ads?
+4. Do you want optional account creation to be visible in v1 UI immediately, or only after sync/restore is ready?
+5. Which official boxing ranking family should be evaluated first for a later leaderboard feature: WBA, WBC, IBF, WBO, or Ring-style editorial rankings?
+6. Should ad consent be handled with a lightweight custom consent flow first, or should we plan for a dedicated consent SDK from the start?
 
 ## Working assumptions for now
 
@@ -22,9 +22,12 @@ These are the inputs still needed from the owner to keep building without avoida
 - store setup is prepared in code, but not connected to live Apple or Google accounts yet
 - source coverage will use official promoter/organization channels first
 - users are anonymous by default with optional account creation
+- email magic link is the first optional account method
 - free tier uses quiet ads and premium removes ads
+- Google AdMob is the default ad-network direction
 - users can follow fighters as well as events
 - watch availability is country-based with manual override
+- boxing leaderboards are deferred until official-source framing is chosen
 
 ## Inputs needed later
 

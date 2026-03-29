@@ -65,6 +65,56 @@ class AppStrings {
         nl: 'Instellingen',
         es: 'Ajustes',
       );
+  String get rankingsNavLabel => _pick(
+        en: 'Rankings',
+        nl: 'Ranglijsten',
+        es: 'Rankings',
+      );
+  String get rankingsTitle => _pick(
+        en: 'Division rankings',
+        nl: 'Divisie-ranglijsten',
+        es: 'Rankings por division',
+      );
+  String get rankingsSubtitle => _pick(
+        en: 'Clean weight-class leaderboards with a clear source label for every list.',
+        nl: 'Strakke gewichtsklasse-ranglijsten met een duidelijke bronvermelding per lijst.',
+        es: 'Rankings limpios por peso con una fuente clara para cada lista.',
+      );
+  String get menLabel => _pick(
+        en: 'Men',
+        nl: 'Mannen',
+        es: 'Hombres',
+      );
+  String get womenLabel => _pick(
+        en: 'Women',
+        nl: 'Vrouwen',
+        es: 'Mujeres',
+      );
+  String get championLabel => _pick(
+        en: 'Champion',
+        nl: 'Kampioen',
+        es: 'Campeon',
+      );
+  String get rankingsSourceBody => _pick(
+        en: 'Each leaderboard must stay source-labeled. UFC can ship earlier because official division rankings are clearer than boxing.',
+        nl: 'Elke ranglijst moet een duidelijke bron houden. UFC kan eerder live omdat officiele divisierankings daar helderder zijn dan in boxing.',
+        es: 'Cada ranking debe mostrar su fuente. UFC puede lanzarse antes porque sus rankings oficiales por division son mas claros que en boxeo.',
+      );
+  String get noRankingsTitle => _pick(
+        en: 'No rankings loaded',
+        nl: 'Geen ranglijsten geladen',
+        es: 'No se cargaron rankings',
+      );
+  String get noRankingsBody => _pick(
+        en: 'The app will keep the event flow usable even if rankings are temporarily unavailable.',
+        nl: 'De app houdt de eventflow bruikbaar, ook als ranglijsten tijdelijk niet beschikbaar zijn.',
+        es: 'La app mantiene util el flujo de eventos aunque los rankings no esten disponibles temporalmente.',
+      );
+  String get stylizedAvatarNote => _pick(
+        en: 'Stylized avatar',
+        nl: 'Gestileerde avatar',
+        es: 'Avatar estilizado',
+      );
   String get settingsSubtitle => _pick(
         en: 'Language, country, account, and premium preferences.',
         nl: 'Taal, land, account en premiumvoorkeuren.',

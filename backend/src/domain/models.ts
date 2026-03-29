@@ -6,6 +6,7 @@ export type FollowTarget = "fighter" | "event";
 export type ProviderKind = "streaming" | "tv" | "ppv" | "network";
 export type ProviderConfidence = "confirmed" | "likely" | "unknown";
 export type LeaderboardSourceType = "official" | "fightcue_trending";
+export type LeaderboardGender = "men" | "women";
 export type EventStatus =
   | "scheduled"
   | "estimated"
@@ -108,9 +109,13 @@ export type FollowRecord = {
 };
 
 export type LeaderboardEntry = {
+  id: string;
   rank: number;
+  fighterId: string;
   fighterName: string;
   organizationSlug: string;
+  recordLabel?: string;
+  isChampion?: boolean;
   pointsLabel?: string;
 };
 
@@ -118,7 +123,10 @@ export type LeaderboardSummary = {
   id: string;
   title: string;
   organizationSlug: string;
+  organizationName: string;
   sourceType: LeaderboardSourceType;
+  gender: LeaderboardGender;
+  weightClass: string;
   sourceLabel: string;
   entries: LeaderboardEntry[];
 };

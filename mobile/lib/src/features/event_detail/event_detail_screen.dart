@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/domain_models.dart';
+import '../../widgets/fighter_avatar.dart';
 
 class EventDetailScreen extends StatelessWidget {
   const EventDetailScreen({
@@ -510,6 +511,8 @@ class _FighterRow extends StatelessWidget {
 
     return Row(
       children: [
+        FighterAvatar(name: displayName, size: 52),
+        const SizedBox(width: 12),
         Expanded(
           child: InkWell(
             onTap: () => onOpenFighter(fighterId),

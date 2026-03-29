@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/domain_models.dart';
+import '../../widgets/fighter_avatar.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
@@ -58,7 +59,7 @@ class HomeScreen extends StatelessWidget {
             _SectionTitle(label: strings.followedFightersTitle),
             const SizedBox(height: 12),
             SizedBox(
-              height: 152,
+              height: 224,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: snapshot.followedFighters.length,
@@ -300,7 +301,7 @@ class _FollowedFighterCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
-        width: 200,
+        width: 216,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -317,6 +318,8 @@ class _FollowedFighterCard extends StatelessWidget {
                     color: AppColors.accent,
                   ),
             ),
+            const SizedBox(height: 12),
+            FighterAvatar(name: fighter.name, size: 56),
             const SizedBox(height: 10),
             Text(
               fighter.name,
@@ -335,14 +338,6 @@ class _FollowedFighterCard extends StatelessWidget {
               style: const TextStyle(color: AppColors.textSecondary),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              fighter.recordLabel,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w700,
-              ),
             ),
             const Spacer(),
             Container(

@@ -103,6 +103,8 @@ Not in the first release:
 - Added dedicated event-detail and fighter-profile screens with shared follow state
 - Added the first live UFC source adapter against the official UFC events page
 - Added backend endpoints for event detail, fighter detail, and UFC source preview
+- Added a dedicated rankings section with weight-class leaderboards for men and women
+- Added a stylized fighter-avatar system as a safe interim alternative to real fighter photos
 - Validated the new mobile flows with `flutter analyze` and `flutter test`
 - Validated the backend UFC parser with a successful live source check and TypeScript build
 
@@ -174,6 +176,7 @@ These are intentionally not part of the first cut, but should remain visible for
 - deterministic fighter avatars
 - personalized filtering by sport, organization, and favorites
 - organization-based leaderboards/rankings
+- licensed fighter portraits or commissioned original illustrations
 - results and fight history
 - cloud sync and optional accounts
 - multilingual support

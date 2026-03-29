@@ -4,6 +4,8 @@ enum PremiumState { free, premium }
 
 enum ProviderKind { streaming, tv, ppv, network }
 
+enum RankingGroup { men, women }
+
 class FighterSummary {
   const FighterSummary({
     required this.id,
@@ -189,6 +191,48 @@ class EventSummary {
       bouts: bouts ?? this.bouts,
     );
   }
+}
+
+class LeaderboardEntrySummary {
+  const LeaderboardEntrySummary({
+    required this.id,
+    required this.rank,
+    required this.fighterId,
+    required this.fighterName,
+    required this.recordLabel,
+    required this.organization,
+    required this.isChampion,
+    this.pointsLabel,
+  });
+
+  final String id;
+  final int rank;
+  final String fighterId;
+  final String fighterName;
+  final String recordLabel;
+  final String organization;
+  final bool isChampion;
+  final String? pointsLabel;
+}
+
+class LeaderboardSummary {
+  const LeaderboardSummary({
+    required this.id,
+    required this.title,
+    required this.organization,
+    required this.group,
+    required this.weightClass,
+    required this.sourceLabel,
+    required this.entries,
+  });
+
+  final String id;
+  final String title;
+  final String organization;
+  final RankingGroup group;
+  final String weightClass;
+  final String sourceLabel;
+  final List<LeaderboardEntrySummary> entries;
 }
 
 class HomeSnapshot {

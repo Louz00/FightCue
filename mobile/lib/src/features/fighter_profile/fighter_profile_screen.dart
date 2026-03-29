@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/domain_models.dart';
+import '../../widgets/fighter_avatar.dart';
 
 class FighterProfileScreen extends StatelessWidget {
   const FighterProfileScreen({
@@ -140,6 +141,8 @@ class _FighterHeroCard extends StatelessWidget {
               ),
             ),
           ),
+          const SizedBox(height: 18),
+          FighterAvatar(name: fighter.name, size: 104),
           const SizedBox(height: 18),
           Text(
             '${fighter.name}$nickname',

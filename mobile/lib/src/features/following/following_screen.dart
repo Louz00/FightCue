@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/domain_models.dart';
+import '../../widgets/fighter_avatar.dart';
 
 class FollowingScreen extends StatelessWidget {
   const FollowingScreen({
@@ -148,18 +149,7 @@ class _FollowedFighterTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(
-                Icons.person_outline,
-                color: Colors.white,
-              ),
-            ),
+            FighterAvatar(name: fighter.name, size: 56),
             const SizedBox(width: 14),
             Expanded(
               child: Column(

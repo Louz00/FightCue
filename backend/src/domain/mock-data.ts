@@ -257,26 +257,188 @@ export const sampleEvents: EventSummary[] = [
 ];
 
 export const sampleLeaderboards: LeaderboardSummary[] = [
-  {
-    id: "lb_ufc_official",
-    title: "UFC rankings",
-    organizationSlug: "ufc",
-    sourceType: "official",
-    sourceLabel: "Official UFC ranking direction",
-    entries: [
-      {
-        rank: 1,
-        fighterName: "Alex Pereira",
-        organizationSlug: "ufc",
-      },
-      {
-        rank: 2,
-        fighterName: "Islam Makhachev",
-        organizationSlug: "ufc",
-      },
+  createUfcLeaderboard(
+    "lb_ufc_men_flyweight",
+    "UFC men's flyweight",
+    "men",
+    "Flyweight",
+    [
+      createLeaderboardEntry(1, "ftr_alexandre_pantoja", "Alexandre Pantoja", "29-5-0", true),
+      createLeaderboardEntry(2, "ftr_brandon_royval", "Brandon Royval", "17-7-0"),
+      createLeaderboardEntry(3, "ftr_amir_albazi", "Amir Albazi", "17-1-0"),
+      createLeaderboardEntry(4, "ftr_kai_kara_france", "Kai Kara-France", "25-11-0"),
+      createLeaderboardEntry(5, "ftr_manuel_kape", "Manel Kape", "21-7-0"),
     ],
-  },
+  ),
+  createUfcLeaderboard(
+    "lb_ufc_men_bantamweight",
+    "UFC men's bantamweight",
+    "men",
+    "Bantamweight",
+    [
+      createLeaderboardEntry(1, "ftr_merab_dvalishvili", "Merab Dvalishvili", "20-4-0", true),
+      createLeaderboardEntry(2, "ftr_sean_omalley", "Sean O'Malley", "18-2-0"),
+      createLeaderboardEntry(3, "ftr_petr_yan", "Petr Yan", "18-5-0"),
+      createLeaderboardEntry(4, "ftr_umar_nurmagomedov", "Umar Nurmagomedov", "18-0-0"),
+      createLeaderboardEntry(5, "ftr_cory_sandhagen", "Cory Sandhagen", "18-5-0"),
+    ],
+  ),
+  createUfcLeaderboard(
+    "lb_ufc_men_featherweight",
+    "UFC men's featherweight",
+    "men",
+    "Featherweight",
+    [
+      createLeaderboardEntry(1, "ftr_alexander_volkanovski", "Alexander Volkanovski", "27-4-0", true),
+      createLeaderboardEntry(2, "ftr_max_holloway", "Max Holloway", "26-8-0"),
+      createLeaderboardEntry(3, "ftr_ilia_topuria", "Ilia Topuria", "16-0-0"),
+      createLeaderboardEntry(4, "ftr_brian_ortega", "Brian Ortega", "16-4-0"),
+      createLeaderboardEntry(5, "ftr_diego_lopes", "Diego Lopes", "26-6-0"),
+    ],
+  ),
+  createUfcLeaderboard(
+    "lb_ufc_men_lightweight",
+    "UFC men's lightweight",
+    "men",
+    "Lightweight",
+    [
+      createLeaderboardEntry(1, "ftr_islam_makhachev", "Islam Makhachev", "27-1-0", true),
+      createLeaderboardEntry(2, "ftr_charles_oliveira", "Charles Oliveira", "35-10-0"),
+      createLeaderboardEntry(3, "ftr_arman_tsarukyan", "Arman Tsarukyan", "22-3-0"),
+      createLeaderboardEntry(4, "ftr_dustin_poirier", "Dustin Poirier", "30-9-0"),
+      createLeaderboardEntry(5, "ftr_justin_gaethje", "Justin Gaethje", "26-5-0"),
+    ],
+  ),
+  createUfcLeaderboard(
+    "lb_ufc_men_welterweight",
+    "UFC men's welterweight",
+    "men",
+    "Welterweight",
+    [
+      createLeaderboardEntry(1, "ftr_belal_muhammad", "Belal Muhammad", "24-3-0", true),
+      createLeaderboardEntry(2, "ftr_shavkat_rakhmonov", "Shavkat Rakhmonov", "19-0-0"),
+      createLeaderboardEntry(3, "ftr_leon_edwards", "Leon Edwards", "22-4-0"),
+      createLeaderboardEntry(4, "ftr_kamaru_usman", "Kamaru Usman", "20-4-0"),
+      createLeaderboardEntry(5, "ftr_jack_della_maddalena", "Jack Della Maddalena", "18-2-0"),
+    ],
+  ),
+  createUfcLeaderboard(
+    "lb_ufc_men_middleweight",
+    "UFC men's middleweight",
+    "men",
+    "Middleweight",
+    [
+      createLeaderboardEntry(1, "ftr_dricus_du_plessis", "Dricus du Plessis", "23-2-0", true),
+      createLeaderboardEntry(2, "ftr_sean_strickland", "Sean Strickland", "29-6-0"),
+      createLeaderboardEntry(3, "ftr_israel_adesanya", "Israel Adesanya", "24-4-0"),
+      createLeaderboardEntry(4, "ftr_khamzat_chimaev", "Khamzat Chimaev", "14-0-0"),
+      createLeaderboardEntry(5, "ftr_nassourdine_imavov", "Nassourdine Imavov", "15-4-0"),
+    ],
+  ),
+  createUfcLeaderboard(
+    "lb_ufc_men_light_heavyweight",
+    "UFC men's light heavyweight",
+    "men",
+    "Light Heavyweight",
+    [
+      createLeaderboardEntry(1, "ftr_alex_pereira", "Alex Pereira", "11-3-0", true),
+      createLeaderboardEntry(2, "ftr_magomed_ankalaev", "Magomed Ankalaev", "21-1-1"),
+      createLeaderboardEntry(3, "ftr_jiri_prochazka", "Jiri Prochazka", "31-5-1"),
+      createLeaderboardEntry(4, "ftr_jan_blachowicz", "Jan Blachowicz", "29-10-1"),
+      createLeaderboardEntry(5, "ftr_carlos_ulberg", "Carlos Ulberg", "13-1-0"),
+    ],
+  ),
+  createUfcLeaderboard(
+    "lb_ufc_men_heavyweight",
+    "UFC men's heavyweight",
+    "men",
+    "Heavyweight",
+    [
+      createLeaderboardEntry(1, "ftr_jon_jones", "Jon Jones", "28-1-0", true),
+      createLeaderboardEntry(2, "ftr_tom_aspinall", "Tom Aspinall", "15-3-0"),
+      createLeaderboardEntry(3, "ftr_ciryl_gane", "Ciryl Gane", "12-2-0"),
+      createLeaderboardEntry(4, "ftr_sergei_pavlovich", "Sergei Pavlovich", "19-3-0"),
+      createLeaderboardEntry(5, "ftr_alexander_volkov", "Alexander Volkov", "38-10-0"),
+    ],
+  ),
+  createUfcLeaderboard(
+    "lb_ufc_women_strawweight",
+    "UFC women's strawweight",
+    "women",
+    "Strawweight",
+    [
+      createLeaderboardEntry(1, "ftr_zhang_weili", "Zhang Weili", "25-3-0", true),
+      createLeaderboardEntry(2, "ftr_virna_jandiroba", "Virna Jandiroba", "23-4-0"),
+      createLeaderboardEntry(3, "ftr_tatiana_suarez", "Tatiana Suarez", "10-0-0"),
+      createLeaderboardEntry(4, "ftr_tabatha_ricci", "Tabatha Ricci", "12-3-0"),
+      createLeaderboardEntry(5, "ftr_yan_xiaonan", "Yan Xiaonan", "19-4-0"),
+    ],
+  ),
+  createUfcLeaderboard(
+    "lb_ufc_women_flyweight",
+    "UFC women's flyweight",
+    "women",
+    "Flyweight",
+    [
+      createLeaderboardEntry(1, "ftr_valentina_shevchenko", "Valentina Shevchenko", "24-4-1", true),
+      createLeaderboardEntry(2, "ftr_alexa_grasso", "Alexa Grasso", "16-4-1"),
+      createLeaderboardEntry(3, "ftr_manon_fiorot", "Manon Fiorot", "12-1-0"),
+      createLeaderboardEntry(4, "ftr_erin_blanchfield", "Erin Blanchfield", "13-2-0"),
+      createLeaderboardEntry(5, "ftr_rose_namajunas", "Rose Namajunas", "13-7-0"),
+    ],
+  ),
+  createUfcLeaderboard(
+    "lb_ufc_women_bantamweight",
+    "UFC women's bantamweight",
+    "women",
+    "Bantamweight",
+    [
+      createLeaderboardEntry(1, "ftr_julianna_pena", "Julianna Pena", "13-5-0", true),
+      createLeaderboardEntry(2, "ftr_kayla_harrison", "Kayla Harrison", "18-1-0"),
+      createLeaderboardEntry(3, "ftr_raquel_pennington", "Raquel Pennington", "16-10-0"),
+      createLeaderboardEntry(4, "ftr_holly_holm", "Holly Holm", "15-7-0"),
+      createLeaderboardEntry(5, "ftr_iren_aldana", "Irene Aldana", "15-8-0"),
+    ],
+  ),
 ];
+
+function createUfcLeaderboard(
+  id: string,
+  title: string,
+  gender: "men" | "women",
+  weightClass: string,
+  entries: LeaderboardSummary["entries"],
+): LeaderboardSummary {
+  return {
+    id,
+    title,
+    organizationSlug: "ufc",
+    organizationName: "UFC",
+    sourceType: "official",
+    gender,
+    weightClass,
+    sourceLabel: "Official UFC ranking layout preview",
+    entries,
+  };
+}
+
+function createLeaderboardEntry(
+  rank: number,
+  fighterId: string,
+  fighterName: string,
+  recordLabel: string,
+  isChampion = false,
+): LeaderboardSummary["entries"][number] {
+  return {
+    id: `entry_${fighterId}`,
+    rank,
+    fighterId,
+    fighterName,
+    organizationSlug: "ufc",
+    recordLabel,
+    isChampion,
+  };
+}
 
 export function getEventById(eventId: string): EventSummary | undefined {
   return sampleEvents.find((event) => event.id === eventId);

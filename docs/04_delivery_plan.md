@@ -20,16 +20,22 @@ Exit criteria:
 - app and API both boot locally
 
 Current note:
-- Flutter SDK is not currently installed on this machine, so the codebase can be prepared now and the generated platform runners can be added once Flutter is available
+- Flutter SDK is installed
+- Android tooling is configured
+- Xcode still needs full installation and initialization
 
 ## Step 3: Mock-first mobile flows
 
 - home/upcoming
+- followed fighters on startup
 - event detail
+- expandable event cards
 - following
 - alerts
 - settings
 - paywall
+- watch by country
+- quiet free-tier ads
 
 Exit criteria:
 - mobile navigation and UI shell are stable with mock data
@@ -38,7 +44,11 @@ Exit criteria:
 
 - create database schema
 - wire organizations/events
+- add anonymous user profile model
+- add optional account-linking model
+- add fighter follows
 - add favorites and alerts
+- add watch availability storage
 - add subscription status shape
 
 Exit criteria:
@@ -59,7 +69,10 @@ Exit criteria:
 - notifications
 - ICS export
 - billing verification
+- free-tier ad integration
 - privacy/legal surfaces
+- country override for watch availability
+- consent management
 
 Exit criteria:
 - core release checklist is functionally complete
@@ -68,6 +81,7 @@ Exit criteria:
 
 - loading, empty, and error states
 - tests for time conversion and entitlements
+- tests for follow-state persistence and country-specific watch info
 - store metadata and policies
 
 Exit criteria:

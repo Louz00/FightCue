@@ -15,6 +15,7 @@ Last updated: 2026-03-29
 - Product promise: upcoming combat sports events in the user's local time
 - Languages from day one: English, Dutch, and Spanish
 - Store setup for now: store-ready only, no connected Apple or Google developer accounts yet
+- Temporary working developer/publisher name: `Solmeriq Labs`
 - Temporary working bundle/application ID base: `com.lou.fightcue`
 - Identity model: anonymous users by default with optional account creation
 - Monetization model: free tier with quiet ads, premium tier without ads
@@ -100,12 +101,14 @@ Not in the first release:
 - Chose email magic link as the first optional account method
 - Chose Google AdMob as the default quiet-ad direction for the free tier
 - Deferred boxing leaderboards until a defensible official source framing is selected
+- Set `Solmeriq Labs` as the temporary company and store-publisher name pending legal clearance
 
 ## Current constraints
 
 - Android is ready in Flutter tooling.
 - Xcode still needs to be fully installed and initialized for local iOS builds.
 - Apple and Google developer accounts are not connected yet, so bundle IDs cannot be truly reserved yet.
+- `Solmeriq Labs` is a working company/publisher name and can still be changed later after legal and trademark checks.
 
 ## Roadmap
 

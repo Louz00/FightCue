@@ -106,8 +106,9 @@ The product promise depends on this being correct.
 
 ## App identifiers
 
-- final public developer/publisher name is still open
+- temporary public developer/publisher name is `Solmeriq Labs`
 - temporary working ID base is `com.lou.fightcue`
+- developer/publisher naming can still change later after legal, domain, and trademark clearance
 - final reservation must happen later inside Apple Developer and Google Play Console
 
 ## Media policy

@@ -4,7 +4,7 @@ These are the inputs still needed from the owner to keep building without avoida
 
 ## Needed soon
 
-1. What public developer or company name should eventually appear in the App Store and Google Play listings?
+1. Do you want to keep the temporary working company/publisher name `Solmeriq Labs`, or replace it later after legal clearance?
 2. Do you want to keep the temporary working app ID `com.lou.fightcue`, or replace it with another reverse-domain identifier later?
 3. Which real source should be implemented first after the scaffold: `Matchroom`, `UFC`, or `GLORY`?
 4. Do you want optional account creation to be visible in v1 UI immediately, or only after sync/restore is ready?
@@ -20,6 +20,7 @@ These are the inputs still needed from the owner to keep building without avoida
 - payments will use native store billing
 - languages at launch are English, Dutch, and Spanish
 - store setup is prepared in code, but not connected to live Apple or Google accounts yet
+- `Solmeriq Labs` is the temporary working company and store-publisher name
 - source coverage will use official promoter/organization channels first
 - users are anonymous by default with optional account creation
 - email magic link is the first optional account method
@@ -28,6 +29,7 @@ These are the inputs still needed from the owner to keep building without avoida
 - users can follow fighters as well as events
 - watch availability is country-based with manual override
 - boxing leaderboards are deferred until official-source framing is chosen
+- company and publisher naming can still change later after legal and trademark checks
 
 ## Inputs needed later
 

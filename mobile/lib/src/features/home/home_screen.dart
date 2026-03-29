@@ -72,7 +72,7 @@ class HomeScreen extends StatelessWidget {
         ],
         _InfoPanel(
           title: strings.accountModelTitle,
-          body: snapshot.accountModeLabel,
+          body: strings.accountModelBody,
         ),
         const SizedBox(height: 12),
         _InfoPanel(

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/app_strings.dart';
+import '../alerts/alerts_screen.dart';
+import '../following/following_screen.dart';
 import '../home/home_screen.dart';
+import '../settings/settings_screen.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -18,9 +21,9 @@ class _AppShellState extends State<AppShell> {
     final strings = AppStrings.of(context);
     final tabs = [
       HomeScreen(strings: strings),
-      _PlaceholderTab(title: strings.following),
-      _PlaceholderTab(title: strings.alerts),
-      _PlaceholderTab(title: strings.settings),
+      FollowingScreen(strings: strings),
+      AlertsScreen(strings: strings),
+      SettingsScreen(strings: strings),
     ];
 
     return Scaffold(
@@ -31,7 +34,7 @@ class _AppShellState extends State<AppShell> {
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.sports_mma_outlined),
-            label: strings.homeTitle,
+            label: strings.homeNavLabel,
           ),
           NavigationDestination(
             icon: const Icon(Icons.star_border),
@@ -47,19 +50,6 @@ class _AppShellState extends State<AppShell> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Text(title, style: Theme.of(context).textTheme.titleLarge),
     );
   }
 }

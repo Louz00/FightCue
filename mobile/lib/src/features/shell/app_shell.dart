@@ -226,6 +226,7 @@ class _AppShellState extends State<AppShell> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => EventDetailScreen(
+          api: _api,
           snapshotListenable: _snapshotNotifier,
           eventId: eventId,
           onOpenFighter: _openFighter,
@@ -244,6 +245,7 @@ class _AppShellState extends State<AppShell> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => FighterProfileScreen(
+          api: _api,
           snapshotListenable: _snapshotNotifier,
           fighterId: fighterId,
           onOpenEvent: _openEvent,
@@ -286,6 +288,7 @@ class _AppShellState extends State<AppShell> {
         },
       ),
       AlertsScreen(
+        api: _api,
         snapshotListenable: _snapshotNotifier,
         strings: strings,
         onOpenEvent: _openEvent,

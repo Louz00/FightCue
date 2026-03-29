@@ -3,22 +3,44 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
 import '../../widgets/fighter_avatar.dart';
 
-class FighterProfileScreen extends StatelessWidget {
+class FighterProfileScreen extends StatefulWidget {
   const FighterProfileScreen({
     super.key,
+    required this.api,
     required this.snapshotListenable,
     required this.fighterId,
     required this.onOpenEvent,
     required this.onToggleFighterFollow,
   });
 
+  final FightCueApi api;
   final ValueListenable<HomeSnapshot> snapshotListenable;
   final String fighterId;
   final ValueChanged<String> onOpenEvent;
   final ValueChanged<String> onToggleFighterFollow;
+
+  @override
+  State<FighterProfileScreen> createState() => _FighterProfileScreenState();
+}
+
+class _FighterProfileScreenState extends State<FighterProfileScreen> {
+  late Future<FighterDetailSnapshot> _detailFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _detailFuture = widget.api.fetchFighterDetail(widget.fighterId);
+  }
+
+  Future<void> _refreshDetails() async {
+    setState(() {
+      _detailFuture = widget.api.fetchFighterDetail(widget.fighterId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,61 +61,77 @@ class FighterProfileScreen extends StatelessWidget {
         ),
       ),
       body: ValueListenableBuilder<HomeSnapshot>(
-        valueListenable: snapshotListenable,
+        valueListenable: widget.snapshotListenable,
         builder: (context, snapshot, _) {
-          final fighter = snapshot.fighterById(fighterId);
-          if (fighter == null) {
-            return Center(
-              child: Text(
-                strings.aboutFighterTitle,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            );
-          }
+          return FutureBuilder<FighterDetailSnapshot>(
+            future: _detailFuture,
+            builder: (context, detailSnapshot) {
+              final snapshotFighter = snapshot.fighterById(widget.fighterId);
+              final fetchedFighter = detailSnapshot.data?.fighter;
+              final baseFighter = fetchedFighter ?? snapshotFighter;
 
-          final relatedEvents = snapshot.relatedEventsForFighter(fighterId);
-
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-            children: [
-              _FighterHeroCard(
-                fighter: fighter,
-                strings: strings,
-                onToggleFollow: () => onToggleFighterFollow(fighter.id),
-              ),
-              const SizedBox(height: 16),
-              _SectionTitle(label: strings.aboutFighterTitle),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: AppShadows.card,
-                ),
-                child: Text(
-                  fighter.headline,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    height: 1.5,
+              if (baseFighter == null) {
+                return Center(
+                  child: Text(
+                    strings.aboutFighterTitle,
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _SectionTitle(label: strings.relatedEventsTitle),
-              const SizedBox(height: 12),
-              ...relatedEvents.map(
-                (event) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _RelatedEventCard(
-                    event: event,
-                    onTap: () => onOpenEvent(event.id),
+                );
+              }
+
+              final fighter = baseFighter.copyWith(
+                isFollowed: snapshotFighter?.isFollowed ?? baseFighter.isFollowed,
+              );
+              final relatedEvents =
+                  detailSnapshot.data?.relatedEvents ??
+                  snapshot.relatedEventsForFighter(widget.fighterId);
+
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                children: [
+                  _FighterHeroCard(
+                    fighter: fighter,
                     strings: strings,
+                    onToggleFollow: () {
+                      widget.onToggleFighterFollow(fighter.id);
+                      _refreshDetails();
+                    },
                   ),
-                ),
-              ),
-            ],
+                  const SizedBox(height: 16),
+                  _SectionTitle(label: strings.aboutFighterTitle),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppColors.border),
+                      boxShadow: AppShadows.card,
+                    ),
+                    child: Text(
+                      fighter.headline,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SectionTitle(label: strings.relatedEventsTitle),
+                  const SizedBox(height: 12),
+                  ...relatedEvents.map(
+                    (event) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _RelatedEventCard(
+                        event: event,
+                        onTap: () => widget.onOpenEvent(event.id),
+                        strings: strings,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),

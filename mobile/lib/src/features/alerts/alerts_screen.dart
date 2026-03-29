@@ -3,46 +3,171 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
 
-class AlertsScreen extends StatelessWidget {
+class AlertsScreen extends StatefulWidget {
   const AlertsScreen({
     super.key,
+    required this.api,
     required this.snapshotListenable,
     required this.strings,
     required this.onOpenEvent,
     required this.onOpenFighter,
   });
 
+  final FightCueApi api;
   final ValueListenable<HomeSnapshot> snapshotListenable;
   final AppStrings strings;
   final ValueChanged<String> onOpenEvent;
   final ValueChanged<String> onOpenFighter;
 
   @override
+  State<AlertsScreen> createState() => _AlertsScreenState();
+}
+
+class _AlertsScreenState extends State<AlertsScreen> {
+  AlertsSnapshot? _alerts;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAlerts();
+  }
+
+  Future<void> _loadAlerts() async {
+    try {
+      final alerts = await widget.api.fetchAlerts();
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _alerts = alerts;
+      });
+    } catch (_) {
+      // Keep the screen functional with local defaults if the backend is unavailable.
+    }
+  }
+
+  Future<void> _toggleFighterPreset(
+    String fighterId,
+    AlertPreset preset,
+  ) async {
+    final current = _alerts ?? const AlertsSnapshot(
+      fighterPresetsById: {},
+      eventPresetsById: {},
+    );
+    final nextSet = {...current.fighterPresetsFor(fighterId)};
+    if (nextSet.contains(preset)) {
+      nextSet.remove(preset);
+    } else {
+      nextSet.add(preset);
+    }
+
+    final optimistic = current.copyWith(
+      fighterPresetsById: {
+        ...current.fighterPresetsById,
+        fighterId: nextSet,
+      },
+    );
+
+    setState(() {
+      _alerts = optimistic;
+    });
+
+    try {
+      final saved = await widget.api.updateFighterAlerts(fighterId, nextSet);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _alerts = saved;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _alerts = current;
+      });
+    }
+  }
+
+  Future<void> _toggleEventPreset(
+    String eventId,
+    AlertPreset preset,
+  ) async {
+    final current = _alerts ?? const AlertsSnapshot(
+      fighterPresetsById: {},
+      eventPresetsById: {},
+    );
+    final nextSet = {...current.eventPresetsFor(eventId)};
+    if (nextSet.contains(preset)) {
+      nextSet.remove(preset);
+    } else {
+      nextSet.add(preset);
+    }
+
+    final optimistic = current.copyWith(
+      eventPresetsById: {
+        ...current.eventPresetsById,
+        eventId: nextSet,
+      },
+    );
+
+    setState(() {
+      _alerts = optimistic;
+    });
+
+    try {
+      final saved = await widget.api.updateEventAlerts(eventId, nextSet);
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _alerts = saved;
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _alerts = current;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<HomeSnapshot>(
-      valueListenable: snapshotListenable,
+      valueListenable: widget.snapshotListenable,
       builder: (context, snapshot, _) {
+        final alerts = _alerts;
+
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           children: [
             Text(
-              strings.alerts.toUpperCase(),
+              widget.strings.alerts.toUpperCase(),
               style: Theme.of(context).textTheme.labelSmall,
             ),
             const SizedBox(height: 10),
             Text(
-              strings.alerts,
+              widget.strings.alerts,
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 10),
             Text(
-              strings.alertsSubtitle,
+              widget.strings.alertsSubtitle,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 28),
-            _SectionHeader(label: strings.fighterReminderPresetsTitle),
+            _SectionHeader(label: widget.strings.fighterReminderPresetsTitle),
             const SizedBox(height: 12),
             ...snapshot.followedFighters.map(
               (fighter) => Padding(
@@ -50,18 +175,60 @@ class AlertsScreen extends StatelessWidget {
                 child: _ReminderCard(
                   title: fighter.name,
                   subtitle: fighter.nextAppearanceLabel,
-                  reminders: [
-                    strings.reminderPreset24h,
-                    strings.reminderPreset1h,
-                    strings.reminderPresetChanges,
+                  reminderChips: [
+                    _PresetChipData(
+                      label: widget.strings.reminderPreset24h,
+                      selected:
+                          (alerts?.fighterPresetsFor(fighter.id) ??
+                                  {
+                                    AlertPreset.before24h,
+                                    AlertPreset.before1h,
+                                    AlertPreset.timeChanges,
+                                  })
+                              .contains(AlertPreset.before24h),
+                      onTap: () => _toggleFighterPreset(
+                        fighter.id,
+                        AlertPreset.before24h,
+                      ),
+                    ),
+                    _PresetChipData(
+                      label: widget.strings.reminderPreset1h,
+                      selected:
+                          (alerts?.fighterPresetsFor(fighter.id) ??
+                                  {
+                                    AlertPreset.before24h,
+                                    AlertPreset.before1h,
+                                    AlertPreset.timeChanges,
+                                  })
+                              .contains(AlertPreset.before1h),
+                      onTap: () => _toggleFighterPreset(
+                        fighter.id,
+                        AlertPreset.before1h,
+                      ),
+                    ),
+                    _PresetChipData(
+                      label: widget.strings.reminderPresetChanges,
+                      selected:
+                          (alerts?.fighterPresetsFor(fighter.id) ??
+                                  {
+                                    AlertPreset.before24h,
+                                    AlertPreset.before1h,
+                                    AlertPreset.timeChanges,
+                                  })
+                              .contains(AlertPreset.timeChanges),
+                      onTap: () => _toggleFighterPreset(
+                        fighter.id,
+                        AlertPreset.timeChanges,
+                      ),
+                    ),
                   ],
-                  actionLabel: strings.aboutFighterTitle,
-                  onTap: () => onOpenFighter(fighter.id),
+                  actionLabel: widget.strings.aboutFighterTitle,
+                  onTap: () => widget.onOpenFighter(fighter.id),
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            _SectionHeader(label: strings.eventReminderPresetsTitle),
+            _SectionHeader(label: widget.strings.eventReminderPresetsTitle),
             const SizedBox(height: 12),
             ...snapshot.followedEvents.map(
               (event) => Padding(
@@ -69,20 +236,62 @@ class AlertsScreen extends StatelessWidget {
                 child: _ReminderCard(
                   title: event.title,
                   subtitle: '${event.localDateLabel}  •  ${event.localTimeLabel}',
-                  reminders: [
-                    strings.reminderPreset24h,
-                    strings.reminderPresetChanges,
-                    strings.reminderPresetWatch,
+                  reminderChips: [
+                    _PresetChipData(
+                      label: widget.strings.reminderPreset24h,
+                      selected:
+                          (alerts?.eventPresetsFor(event.id) ??
+                                  {
+                                    AlertPreset.before24h,
+                                    AlertPreset.timeChanges,
+                                    AlertPreset.watchUpdates,
+                                  })
+                              .contains(AlertPreset.before24h),
+                      onTap: () => _toggleEventPreset(
+                        event.id,
+                        AlertPreset.before24h,
+                      ),
+                    ),
+                    _PresetChipData(
+                      label: widget.strings.reminderPresetChanges,
+                      selected:
+                          (alerts?.eventPresetsFor(event.id) ??
+                                  {
+                                    AlertPreset.before24h,
+                                    AlertPreset.timeChanges,
+                                    AlertPreset.watchUpdates,
+                                  })
+                              .contains(AlertPreset.timeChanges),
+                      onTap: () => _toggleEventPreset(
+                        event.id,
+                        AlertPreset.timeChanges,
+                      ),
+                    ),
+                    _PresetChipData(
+                      label: widget.strings.reminderPresetWatch,
+                      selected:
+                          (alerts?.eventPresetsFor(event.id) ??
+                                  {
+                                    AlertPreset.before24h,
+                                    AlertPreset.timeChanges,
+                                    AlertPreset.watchUpdates,
+                                  })
+                              .contains(AlertPreset.watchUpdates),
+                      onTap: () => _toggleEventPreset(
+                        event.id,
+                        AlertPreset.watchUpdates,
+                      ),
+                    ),
                   ],
-                  actionLabel: strings.viewEventDetails,
-                  onTap: () => onOpenEvent(event.id),
+                  actionLabel: widget.strings.viewEventDetails,
+                  onTap: () => widget.onOpenEvent(event.id),
                 ),
               ),
             ),
             const SizedBox(height: 12),
             _PolicyCard(
-              title: strings.alertPolicyTitle,
-              body: strings.alertPolicyBody,
+              title: widget.strings.alertPolicyTitle,
+              body: widget.strings.alertPolicyBody,
             ),
           ],
         );
@@ -122,14 +331,14 @@ class _ReminderCard extends StatelessWidget {
   const _ReminderCard({
     required this.title,
     required this.subtitle,
-    required this.reminders,
+    required this.reminderChips,
     required this.actionLabel,
     required this.onTap,
   });
 
   final String title;
   final String subtitle;
-  final List<String> reminders;
+  final List<_PresetChipData> reminderChips;
   final String actionLabel;
   final VoidCallback onTap;
 
@@ -167,8 +376,14 @@ class _ReminderCard extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: reminders
-                  .map((reminder) => _ReminderPill(label: reminder))
+              children: reminderChips
+                  .map(
+                    (chip) => _ReminderPill(
+                      label: chip.label,
+                      selected: chip.selected,
+                      onTap: chip.onTap,
+                    ),
+                  )
                   .toList(),
             ),
             const SizedBox(height: 14),
@@ -203,25 +418,49 @@ class _ReminderCard extends StatelessWidget {
   }
 }
 
-class _ReminderPill extends StatelessWidget {
-  const _ReminderPill({required this.label});
+class _PresetChipData {
+  const _PresetChipData({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
+  final bool selected;
+  final VoidCallback onTap;
+}
+
+class _ReminderPill extends StatelessWidget {
+  const _ReminderPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w600,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.accent : AppColors.surfaceAlt,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? AppColors.accent : AppColors.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
@@ -260,7 +499,7 @@ class _PolicyCard extends StatelessWidget {
             body,
             style: const TextStyle(
               color: Color(0xFFFDE5E8),
-              height: 1.45,
+              height: 1.5,
             ),
           ),
         ],

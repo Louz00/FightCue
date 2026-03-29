@@ -1,4 +1,5 @@
 import type {
+  AlertPreferenceSummary,
   EventSummary,
   FighterSummary,
   ProviderConfidence,
@@ -18,6 +19,11 @@ export type HomeResponse = {
   profile: UserProfile;
   fighters: FighterSummary[];
   events: EventSummary[];
+};
+
+export type AlertsResponse = {
+  fighters: AlertPreferenceSummary[];
+  events: AlertPreferenceSummary[];
 };
 
 export function buildRuntimeHome(state: PersistedUserState): HomeResponse {
@@ -118,6 +124,59 @@ export function buildRuntimeEventsForFighter(
       (bout) => bout.fighterAId === fighterId || bout.fighterBId === fighterId,
     ),
   );
+}
+
+export function buildRuntimeAlerts(state: PersistedUserState): AlertsResponse {
+  const followedFighterIds = new Set(state.follows.fighterIds);
+  const followedEventIds = new Set(state.follows.eventIds);
+
+  return {
+    fighters: [...followedFighterIds].map((fighterId) => ({
+      targetId: fighterId,
+      presetKeys:
+        state.alerts.fighters[fighterId] ??
+        ["before_24h", "before_1h", "time_changes"],
+    })),
+    events: [...followedEventIds].map((eventId) => ({
+      targetId: eventId,
+      presetKeys:
+        state.alerts.events[eventId] ?? ["before_24h", "time_changes", "watch_updates"],
+    })),
+  };
+}
+
+export function buildEventCalendarIcs(event: EventSummary): string {
+  const start = toIcsDateTime(event.scheduledStartUtc);
+  const end = toIcsDateTime(
+    new Date(new Date(event.scheduledStartUtc).getTime() + 3 * 60 * 60 * 1000).toISOString(),
+  );
+  const location = escapeIcsText(`${event.venueLabel}, ${event.locationLabel}`);
+  const description = escapeIcsText(
+    `${event.tagline}\nSource: ${event.sourceLabel}\nWatch: ${event.watchProviders
+      .map((provider) => provider.label)
+      .join(", ")}`,
+  );
+  const urlLine = event.officialUrl ? `URL:${escapeIcsText(event.officialUrl)}\r\n` : "";
+
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//FightCue//EN",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `UID:${event.id}@fightcue.local`,
+    `DTSTAMP:${toIcsDateTime(new Date().toISOString())}`,
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
+    `SUMMARY:${escapeIcsText(`${event.organizationName}: ${event.title}`)}`,
+    `DESCRIPTION:${description}`,
+    `LOCATION:${location}`,
+    urlLine.trimEnd(),
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ]
+    .filter((line) => line.length > 0)
+    .join("\r\n");
 }
 
 function buildSyntheticRankingFighter(
@@ -257,4 +316,16 @@ function normalizeTimeZone(timezone: string): string {
   } catch {
     return sampleUserProfile.timezone;
   }
+}
+
+function toIcsDateTime(iso: string): string {
+  return iso.replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z").replace(/Z$/, "Z");
+}
+
+function escapeIcsText(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
 }

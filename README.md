@@ -26,15 +26,16 @@ Last updated: 2026-03-29
 
 ### In progress
 
-- Live-backed mobile shell for home, following, settings, and persisted follow actions
+- Live-backed mobile shell for home, following, settings, detail screens, and persisted follow actions
 - First live UFC source pilot against the official UFC events page
-- Backend persistence for anonymous profile state, follows, and country-specific watch info
+- Backend persistence for anonymous profile state, follows, alert presets, and country-specific watch info
 - Mobile settings controls for language and viewing-country preferences
+- First calendar-export endpoint for event-level `.ics` downloads
 
 ### Next build steps
 
-1. Connect event-detail and fighter-detail screens to dedicated backend detail endpoints
-2. Add alert persistence, calendar export, notifications, and subscription state
+1. Add event-level alert actions and calendar export entry points in more surfaces beyond the detail screen
+2. Add push notification delivery, reminder scheduling, and subscription state
 3. Add quiet ad placement wiring for the free tier
 4. Expand source coverage after UFC: Matchroom, GLORY, then more boxing organizations
 5. Add optional account linking on top of the anonymous default profile
@@ -109,6 +110,9 @@ Not in the first release:
 - Connected the mobile shell to a real backend home payload instead of relying only on local mock merges
 - Added language and viewing-country controls in Settings with backend-backed persistence
 - Validated real API roundtrips for home loading, preference updates, and fighter follow persistence
+- Connected event-detail and fighter-profile screens to dedicated backend detail endpoints with graceful fallback
+- Added persisted alert presets for followed fighters and followed events
+- Added a first `.ics` calendar export endpoint per event and surfaced it in the event detail screen
 - Validated the new mobile flows with `flutter analyze` and `flutter test`
 - Validated the backend UFC parser with a successful live source check and TypeScript build
 - Validated iOS simulator builds with `flutter build ios --simulator --no-codesign`

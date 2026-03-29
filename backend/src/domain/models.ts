@@ -14,6 +14,11 @@ export type EventStatus =
   | "cancelled"
   | "completed";
 export type SourceMode = "live" | "fallback";
+export type AlertPresetKey =
+  | "before_24h"
+  | "before_1h"
+  | "time_changes"
+  | "watch_updates";
 
 export type UserProfile = {
   id: string;
@@ -106,6 +111,11 @@ export type FollowRecord = {
   target: FollowTarget;
   targetId: string;
   createdAt: string;
+};
+
+export type AlertPreferenceSummary = {
+  targetId: string;
+  presetKeys: AlertPresetKey[];
 };
 
 export type LeaderboardEntry = {

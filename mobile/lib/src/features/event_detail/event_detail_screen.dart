@@ -1,14 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
 import '../../widgets/fighter_avatar.dart';
 
-class EventDetailScreen extends StatelessWidget {
+class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
     super.key,
+    required this.api,
     required this.snapshotListenable,
     required this.eventId,
     required this.onOpenFighter,
@@ -16,11 +19,49 @@ class EventDetailScreen extends StatelessWidget {
     required this.onToggleFighterFollow,
   });
 
+  final FightCueApi api;
   final ValueListenable<HomeSnapshot> snapshotListenable;
   final String eventId;
   final ValueChanged<String> onOpenFighter;
   final ValueChanged<String> onToggleEventFollow;
   final ValueChanged<String> onToggleFighterFollow;
+
+  @override
+  State<EventDetailScreen> createState() => _EventDetailScreenState();
+}
+
+class _EventDetailScreenState extends State<EventDetailScreen> {
+  late Future<EventDetailSnapshot> _detailFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _detailFuture = widget.api.fetchEventDetail(widget.eventId);
+  }
+
+  Future<void> _refreshDetails() async {
+    setState(() {
+      _detailFuture = widget.api.fetchEventDetail(widget.eventId);
+    });
+  }
+
+  Future<void> _copyCalendarLink(
+    BuildContext context,
+    String calendarExportPath,
+  ) async {
+    final url = widget.api.calendarUrlForEvent(
+      widget.eventId,
+      calendarExportPath: calendarExportPath,
+    );
+    await Clipboard.setData(ClipboardData(text: url));
+    if (!context.mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppStrings.of(context).calendarLinkCopied)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,68 +82,88 @@ class EventDetailScreen extends StatelessWidget {
         ),
       ),
       body: ValueListenableBuilder<HomeSnapshot>(
-        valueListenable: snapshotListenable,
+        valueListenable: widget.snapshotListenable,
         builder: (context, snapshot, _) {
-          final event = snapshot.eventById(eventId);
-          if (event == null) {
-            return Center(
-              child: Text(
-                strings.eventOverviewTitle,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            );
-          }
+          return FutureBuilder<EventDetailSnapshot>(
+            future: _detailFuture,
+            builder: (context, detailSnapshot) {
+              final snapshotEvent = snapshot.eventById(widget.eventId);
+              final fetchedDetail = detailSnapshot.data;
+              final fetchedEvent = fetchedDetail?.event;
+              final baseEvent = fetchedEvent ?? snapshotEvent;
 
-          final mainBout = event.bouts.firstWhere(
-            (bout) => bout.isMainEvent,
-            orElse: () => event.bouts.first,
-          );
+              if (baseEvent == null) {
+                return Center(
+                  child: Text(
+                    strings.eventOverviewTitle,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                );
+              }
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-            children: [
-              _EventHeroCard(
-                event: event,
-                mainBout: mainBout,
-                strings: strings,
-                onToggleFollow: () => onToggleEventFollow(event.id),
-              ),
-              const SizedBox(height: 16),
-              _PanelTitle(label: strings.eventOverviewTitle),
-              const SizedBox(height: 12),
-              _OverviewCard(
-                event: event,
-                strings: strings,
-              ),
-              const SizedBox(height: 16),
-              _PanelTitle(label: strings.watchProvidersTitle),
-              const SizedBox(height: 12),
-              ...event.watchProviders.map(
-                (provider) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _ProviderCard(
-                    provider: provider,
+              final event = baseEvent.copyWith(
+                isFollowed: snapshotEvent?.isFollowed ?? baseEvent.isFollowed,
+              );
+              final mainBout = event.bouts.firstWhere(
+                (bout) => bout.isMainEvent,
+                orElse: () => event.bouts.first,
+              );
+              final calendarExportPath =
+                  fetchedDetail?.calendarExportPath ??
+                  '/v1/events/${widget.eventId}/calendar.ics';
+
+              return ListView(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                children: [
+                  _EventHeroCard(
+                    event: event,
+                    mainBout: mainBout,
+                    strings: strings,
+                    onToggleFollow: () {
+                      widget.onToggleEventFollow(event.id);
+                      _refreshDetails();
+                    },
+                    onCalendarExport: () =>
+                        _copyCalendarLink(context, calendarExportPath),
+                  ),
+                  const SizedBox(height: 16),
+                  _PanelTitle(label: strings.eventOverviewTitle),
+                  const SizedBox(height: 12),
+                  _OverviewCard(
+                    event: event,
                     strings: strings,
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _PanelTitle(label: strings.fightCardTitle),
-              const SizedBox(height: 12),
-              ...event.bouts.map(
-                (bout) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _BoutCard(
-                    bout: bout,
-                    fighterA: snapshot.fighterById(bout.fighterAId),
-                    fighterB: snapshot.fighterById(bout.fighterBId),
-                    strings: strings,
-                    onOpenFighter: onOpenFighter,
-                    onToggleFighterFollow: onToggleFighterFollow,
+                  const SizedBox(height: 16),
+                  _PanelTitle(label: strings.watchProvidersTitle),
+                  const SizedBox(height: 12),
+                  ...event.watchProviders.map(
+                    (provider) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _ProviderCard(
+                        provider: provider,
+                        strings: strings,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ],
+                  const SizedBox(height: 16),
+                  _PanelTitle(label: strings.fightCardTitle),
+                  const SizedBox(height: 12),
+                  ...event.bouts.map(
+                    (bout) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _BoutCard(
+                        bout: bout,
+                        fighterA: snapshot.fighterById(bout.fighterAId),
+                        fighterB: snapshot.fighterById(bout.fighterBId),
+                        strings: strings,
+                        onOpenFighter: widget.onOpenFighter,
+                        onToggleFighterFollow: widget.onToggleFighterFollow,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
@@ -116,12 +177,14 @@ class _EventHeroCard extends StatelessWidget {
     required this.mainBout,
     required this.strings,
     required this.onToggleFollow,
+    required this.onCalendarExport,
   });
 
   final EventSummary event;
   final BoutSummary mainBout;
   final AppStrings strings;
   final VoidCallback onToggleFollow;
+  final VoidCallback onCalendarExport;
 
   @override
   Widget build(BuildContext context) {
@@ -197,24 +260,53 @@ class _EventHeroCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 14),
-          InkWell(
-            onTap: onToggleFollow,
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                event.isFollowed ? strings.unfollowAction : strings.followAction,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.accent,
-                  fontWeight: FontWeight.w800,
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: onToggleFollow,
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      event.isFollowed ? strings.unfollowAction : strings.followAction,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: InkWell(
+                  onTap: onCalendarExport,
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.ink,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: const Color(0x33FFFFFF)),
+                    ),
+                    child: Text(
+                      strings.calendarAction,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

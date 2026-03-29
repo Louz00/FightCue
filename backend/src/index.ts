@@ -12,6 +12,8 @@ import {
   sampleUserProfile,
 } from "./domain/mock-data.js";
 import {
+  buildEventCalendarIcs,
+  buildRuntimeAlerts,
   buildRuntimeEventById,
   buildRuntimeEvents,
   buildRuntimeEventsForFighter,
@@ -40,6 +42,10 @@ const stateStore = new UserStateStore(sampleUserProfile, {
     fighterIds: sampleFollowedFighters.map((fighter) => fighter.id),
     eventIds: sampleEvents.filter((event) => event.isFollowed).map((event) => event.id),
   },
+  alerts: {
+    fighters: {},
+    events: {},
+  },
 });
 
 const sourceQuerySchema = z.object({
@@ -66,6 +72,12 @@ const preferencesSchema = z.object({
 
 const followSchema = z.object({
   followed: z.boolean(),
+});
+
+const alertPresetSchema = z.object({
+  presetKeys: z
+    .array(z.enum(["before_24h", "before_1h", "time_changes", "watch_updates"]))
+    .max(4),
 });
 
 await app.register(cors, {
@@ -116,8 +128,34 @@ app.get<{ Params: { eventId: string } }>("/v1/events/:eventId", async (request, 
     });
   }
 
-  return { item };
+  return {
+    item,
+    calendarExportPath: `/v1/events/${request.params.eventId}/calendar.ics`,
+  };
 });
+
+app.get<{ Params: { eventId: string } }>(
+  "/v1/events/:eventId/calendar.ics",
+  async (request, reply) => {
+    const state = await stateStore.read();
+    const item = buildRuntimeEventById(state, request.params.eventId);
+
+    if (!item) {
+      return reply.code(404).send({
+        error: "not_found",
+        message: "Event not found",
+      });
+    }
+
+    return reply
+      .header("content-type", "text/calendar; charset=utf-8")
+      .header(
+        "content-disposition",
+        `attachment; filename="${request.params.eventId}.ics"`,
+      )
+      .send(buildEventCalendarIcs(item));
+  },
+);
 
 app.get("/v1/me/profile", async () => {
   const state = await stateStore.read();
@@ -155,6 +193,59 @@ app.get("/v1/me/fighters", async () => {
     items: buildRuntimeFighters(state).filter((fighter) => fighter.isFollowed),
   };
 });
+
+app.get("/v1/me/alerts", async () => {
+  const state = await stateStore.read();
+  return buildRuntimeAlerts(state);
+});
+
+app.put<{ Params: { fighterId: string }; Body: unknown }>(
+  "/v1/me/alerts/fighters/:fighterId",
+  async (request, reply) => {
+    const presetKeys = alertPresetSchema.parse(request.body).presetKeys;
+    const state = await stateStore.read();
+    const existing = buildRuntimeFighterById(state, request.params.fighterId);
+
+    if (!existing) {
+      return reply.code(404).send({
+        error: "not_found",
+        message: "Fighter not found",
+      });
+    }
+
+    const nextState = await stateStore.updateAlertPresets(
+      "fighter",
+      request.params.fighterId,
+      presetKeys,
+    );
+
+    return buildRuntimeAlerts(nextState);
+  },
+);
+
+app.put<{ Params: { eventId: string }; Body: unknown }>(
+  "/v1/me/alerts/events/:eventId",
+  async (request, reply) => {
+    const presetKeys = alertPresetSchema.parse(request.body).presetKeys;
+    const state = await stateStore.read();
+    const existing = buildRuntimeEventById(state, request.params.eventId);
+
+    if (!existing) {
+      return reply.code(404).send({
+        error: "not_found",
+        message: "Event not found",
+      });
+    }
+
+    const nextState = await stateStore.updateAlertPresets(
+      "event",
+      request.params.eventId,
+      presetKeys,
+    );
+
+    return buildRuntimeAlerts(nextState);
+  },
+);
 
 app.put<{ Params: { fighterId: string }; Body: unknown }>(
   "/v1/me/follows/fighters/:fighterId",

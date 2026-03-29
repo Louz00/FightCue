@@ -305,6 +305,11 @@ class AppStrings {
         nl: 'Kalender',
         es: 'Calendario',
       );
+  String get calendarLinkCopied => _pick(
+        en: 'Calendar link copied',
+        nl: 'Kalenderlink gekopieerd',
+        es: 'Enlace de calendario copiado',
+      );
   String get quietAdsTitle => _pick(
         en: 'Quiet ads',
         nl: 'Rustige advertenties',

@@ -6,6 +6,8 @@ enum ProviderKind { streaming, tv, ppv, network }
 
 enum RankingGroup { men, women }
 
+enum AlertPreset { before24h, before1h, timeChanges, watchUpdates }
+
 class FighterSummary {
   const FighterSummary({
     required this.id,
@@ -233,6 +235,54 @@ class LeaderboardSummary {
   final String weightClass;
   final String sourceLabel;
   final List<LeaderboardEntrySummary> entries;
+}
+
+class EventDetailSnapshot {
+  const EventDetailSnapshot({
+    required this.event,
+    required this.calendarExportPath,
+  });
+
+  final EventSummary event;
+  final String calendarExportPath;
+}
+
+class FighterDetailSnapshot {
+  const FighterDetailSnapshot({
+    required this.fighter,
+    required this.relatedEvents,
+  });
+
+  final FighterSummary fighter;
+  final List<EventSummary> relatedEvents;
+}
+
+class AlertsSnapshot {
+  const AlertsSnapshot({
+    required this.fighterPresetsById,
+    required this.eventPresetsById,
+  });
+
+  final Map<String, Set<AlertPreset>> fighterPresetsById;
+  final Map<String, Set<AlertPreset>> eventPresetsById;
+
+  Set<AlertPreset> fighterPresetsFor(String fighterId) {
+    return fighterPresetsById[fighterId] ?? const {};
+  }
+
+  Set<AlertPreset> eventPresetsFor(String eventId) {
+    return eventPresetsById[eventId] ?? const {};
+  }
+
+  AlertsSnapshot copyWith({
+    Map<String, Set<AlertPreset>>? fighterPresetsById,
+    Map<String, Set<AlertPreset>>? eventPresetsById,
+  }) {
+    return AlertsSnapshot(
+      fighterPresetsById: fighterPresetsById ?? this.fighterPresetsById,
+      eventPresetsById: eventPresetsById ?? this.eventPresetsById,
+    );
+  }
 }
 
 class HomeSnapshot {

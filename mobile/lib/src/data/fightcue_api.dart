@@ -34,6 +34,39 @@ class FightCueApi {
     return HomeSnapshotJson.fromJson(json).toMobile();
   }
 
+  Future<EventDetailSnapshot> fetchEventDetail(String eventId) async {
+    final response = await _client.get(Uri.parse('$_baseUrl/v1/events/$eventId'));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Event detail request failed: ${response.statusCode}');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return EventDetailSnapshotJson.fromJson(json).toMobile();
+  }
+
+  Future<FighterDetailSnapshot> fetchFighterDetail(String fighterId) async {
+    final response = await _client.get(Uri.parse('$_baseUrl/v1/fighters/$fighterId'));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Fighter detail request failed: ${response.statusCode}');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return FighterDetailSnapshotJson.fromJson(json).toMobile();
+  }
+
+  Future<AlertsSnapshot> fetchAlerts() async {
+    final response = await _client.get(Uri.parse('$_baseUrl/v1/me/alerts'));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Alerts request failed: ${response.statusCode}');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return AlertsSnapshotJson.fromJson(json).toMobile();
+  }
+
   Future<UfcSourcePreview> fetchUfcEventsPreview({
     String timezone = 'Europe/Amsterdam',
     String countryCode = 'NL',
@@ -135,6 +168,144 @@ class FightCueApi {
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     return FighterSummaryJson.fromJson(json['item'] as Map<String, dynamic>).toMobile();
+  }
+
+  Future<AlertsSnapshot> updateFighterAlerts(
+    String fighterId,
+    Set<AlertPreset> presets,
+  ) async {
+    final response = await _client.put(
+      Uri.parse('$_baseUrl/v1/me/alerts/fighters/$fighterId'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({
+        'presetKeys': presets.map(_alertPresetToApi).toList(),
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Fighter alerts request failed: ${response.statusCode}');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return AlertsSnapshotJson.fromJson(json).toMobile();
+  }
+
+  Future<AlertsSnapshot> updateEventAlerts(
+    String eventId,
+    Set<AlertPreset> presets,
+  ) async {
+    final response = await _client.put(
+      Uri.parse('$_baseUrl/v1/me/alerts/events/$eventId'),
+      headers: {'content-type': 'application/json'},
+      body: jsonEncode({
+        'presetKeys': presets.map(_alertPresetToApi).toList(),
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Event alerts request failed: ${response.statusCode}');
+    }
+
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return AlertsSnapshotJson.fromJson(json).toMobile();
+  }
+
+  String calendarUrlForEvent(String eventId, {String? calendarExportPath}) {
+    final path = calendarExportPath ?? '/v1/events/$eventId/calendar.ics';
+    return '$_baseUrl$path';
+  }
+}
+
+class EventDetailSnapshotJson {
+  const EventDetailSnapshotJson({
+    required this.event,
+    required this.calendarExportPath,
+  });
+
+  final EventSummary event;
+  final String calendarExportPath;
+
+  factory EventDetailSnapshotJson.fromJson(Map<String, dynamic> json) {
+    return EventDetailSnapshotJson(
+      event: EventSummaryJson.fromJson(
+        json['item'] as Map<String, dynamic>? ?? const {},
+      ).toMobile(),
+      calendarExportPath:
+          json['calendarExportPath'] as String? ?? '/v1/events/unknown/calendar.ics',
+    );
+  }
+
+  EventDetailSnapshot toMobile() {
+    return EventDetailSnapshot(
+      event: event,
+      calendarExportPath: calendarExportPath,
+    );
+  }
+}
+
+class FighterDetailSnapshotJson {
+  const FighterDetailSnapshotJson({
+    required this.fighter,
+    required this.relatedEvents,
+  });
+
+  final FighterSummary fighter;
+  final List<EventSummary> relatedEvents;
+
+  factory FighterDetailSnapshotJson.fromJson(Map<String, dynamic> json) {
+    return FighterDetailSnapshotJson(
+      fighter: FighterSummaryJson.fromJson(
+        json['item'] as Map<String, dynamic>? ?? const {},
+      ).toMobile(),
+      relatedEvents: (json['relatedEvents'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(EventSummaryJson.fromJson)
+          .map((entry) => entry.toMobile())
+          .toList(),
+    );
+  }
+
+  FighterDetailSnapshot toMobile() {
+    return FighterDetailSnapshot(
+      fighter: fighter,
+      relatedEvents: relatedEvents,
+    );
+  }
+}
+
+class AlertsSnapshotJson {
+  const AlertsSnapshotJson({
+    required this.fighterPresetsById,
+    required this.eventPresetsById,
+  });
+
+  final Map<String, Set<AlertPreset>> fighterPresetsById;
+  final Map<String, Set<AlertPreset>> eventPresetsById;
+
+  factory AlertsSnapshotJson.fromJson(Map<String, dynamic> json) {
+    Map<String, Set<AlertPreset>> parseTargetPresets(String key) {
+      final items = (json[key] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>();
+
+      return {
+        for (final item in items)
+          (item['targetId'] as String? ?? ''): ((item['presetKeys'] as List<dynamic>? ?? const [])
+              .map((value) => _parseAlertPreset(value as String?))
+              .toSet()),
+      };
+    }
+
+    return AlertsSnapshotJson(
+      fighterPresetsById: parseTargetPresets('fighters'),
+      eventPresetsById: parseTargetPresets('events'),
+    );
+  }
+
+  AlertsSnapshot toMobile() {
+    return AlertsSnapshot(
+      fighterPresetsById: fighterPresetsById,
+      eventPresetsById: eventPresetsById,
+    );
   }
 }
 
@@ -271,6 +442,7 @@ class EventSummaryJson {
   const EventSummaryJson({
     required this.id,
     required this.organizationName,
+    required this.sport,
     required this.title,
     required this.tagline,
     required this.locationLabel,
@@ -287,6 +459,7 @@ class EventSummaryJson {
 
   final String id;
   final String organizationName;
+  final Sport sport;
   final String title;
   final String tagline;
   final String locationLabel;
@@ -304,6 +477,7 @@ class EventSummaryJson {
     return EventSummaryJson(
       id: json['id'] as String? ?? '',
       organizationName: json['organizationName'] as String? ?? 'UFC',
+      sport: _parseSport(json['sport'] as String?),
       title: json['title'] as String? ?? '',
       tagline: json['tagline'] as String? ?? '',
       locationLabel: json['locationLabel'] as String? ?? '',
@@ -350,7 +524,7 @@ class EventSummaryJson {
     return EventSummary(
       id: id,
       organization: organizationName,
-      sport: Sport.mma,
+      sport: sport,
       title: title,
       tagline: tagline,
       locationLabel: locationLabel,
@@ -497,5 +671,32 @@ String _organizationLabelFromHints(List<String> organizationHints) {
       return primary.isEmpty
           ? 'FightCue'
           : '${primary[0].toUpperCase()}${primary.substring(1)}';
+  }
+}
+
+AlertPreset _parseAlertPreset(String? rawPreset) {
+  switch (rawPreset) {
+    case 'before_1h':
+      return AlertPreset.before1h;
+    case 'time_changes':
+      return AlertPreset.timeChanges;
+    case 'watch_updates':
+      return AlertPreset.watchUpdates;
+    case 'before_24h':
+    default:
+      return AlertPreset.before24h;
+  }
+}
+
+String _alertPresetToApi(AlertPreset preset) {
+  switch (preset) {
+    case AlertPreset.before24h:
+      return 'before_24h';
+    case AlertPreset.before1h:
+      return 'before_1h';
+    case AlertPreset.timeChanges:
+      return 'time_changes';
+    case AlertPreset.watchUpdates:
+      return 'watch_updates';
   }
 }

@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type {
+  AlertPresetKey,
   PremiumState,
   SupportedLanguage,
   UserProfile,
@@ -19,6 +20,10 @@ export type PersistedUserState = {
   follows: {
     fighterIds: string[];
     eventIds: string[];
+  };
+  alerts: {
+    fighters: Record<string, AlertPresetKey[]>;
+    events: Record<string, AlertPresetKey[]>;
   };
 };
 
@@ -58,6 +63,10 @@ export class UserStateStore {
         follows: {
           fighterIds: parsed.follows?.fighterIds ?? this.initialState.follows.fighterIds,
           eventIds: parsed.follows?.eventIds ?? this.initialState.follows.eventIds,
+        },
+        alerts: {
+          fighters: parsed.alerts?.fighters ?? this.initialState.alerts.fighters,
+          events: parsed.alerts?.events ?? this.initialState.alerts.events,
         },
       };
     } catch {
@@ -104,6 +113,30 @@ export class UserStateStore {
         follows: {
           ...current.follows,
           [key]: [...set],
+        },
+      };
+
+      await this.write(next);
+      return next;
+    });
+  }
+
+  async updateAlertPresets(
+    target: "fighter" | "event",
+    targetId: string,
+    presetKeys: AlertPresetKey[],
+  ): Promise<PersistedUserState> {
+    return this.enqueue(async () => {
+      const current = await this.read();
+      const key = target === "fighter" ? "fighters" : "events";
+      const next: PersistedUserState = {
+        ...current,
+        alerts: {
+          ...current.alerts,
+          [key]: {
+            ...current.alerts[key],
+            [targetId]: [...new Set(presetKeys)],
+          },
         },
       };
 

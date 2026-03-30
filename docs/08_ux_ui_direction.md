@@ -2,7 +2,7 @@
 
 ## Design goal
 
-FightCue should feel clean, premium, and fast. The app should reduce friction, not add noise.
+FightCue should feel clean, premium, and fast. The app should reduce friction, not add noise, and should present fight information with the confidence of an editorial sports product.
 
 ## Core UX principles
 
@@ -44,8 +44,9 @@ Each card should also support an expandable section or accordion:
 
 The event detail view should provide:
 
-- event header with local time first
+- event header with a strong branded red band and local time first
 - event-local timezone as secondary metadata
+- clear separation between main card and preliminary card
 - country-specific watch information
 - full fight card
 - follow and alert actions
@@ -80,8 +81,10 @@ The event detail view should provide:
 
 ## Visual direction
 
-- dark-first
-- strong hierarchy for time and status
-- limited accent color usage
+- white-first with red as the primary accent
+- UFC-inspired editorial rhythm without copying licensed imagery
+- strong hierarchy for time, card section, and main-event status
+- mirrored fighter layouts for bout rows, so each matchup reads immediately
+- original cartoon portrait avatars instead of real photos until licensed imagery exists
 - compact cards with generous spacing
 - no overcrowded dashboards

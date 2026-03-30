@@ -8,6 +8,8 @@ import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
 import '../../widgets/fighter_avatar.dart';
 
+enum _FightCardSection { main, prelims }
+
 class EventDetailScreen extends StatefulWidget {
   const EventDetailScreen({
     super.key,
@@ -32,6 +34,7 @@ class EventDetailScreen extends StatefulWidget {
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   late Future<EventDetailSnapshot> _detailFuture;
+  _FightCardSection _selectedSection = _FightCardSection.main;
 
   @override
   void initState() {
@@ -70,7 +73,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
@@ -104,20 +107,39 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               final event = baseEvent.copyWith(
                 isFollowed: snapshotEvent?.isFollowed ?? baseEvent.isFollowed,
               );
-              final mainBout = event.bouts.firstWhere(
-                (bout) => bout.isMainEvent,
-                orElse: () => event.bouts.first,
+              final mainBout = _headlineBoutFor(event);
+              final mainCardBouts = _boutsForSection(
+                event,
+                section: _FightCardSection.main,
               );
+              final prelimBouts = _boutsForSection(
+                event,
+                section: _FightCardSection.prelims,
+              );
+              final hasPrelims = prelimBouts.isNotEmpty;
+              final effectiveSection =
+                  _selectedSection == _FightCardSection.prelims && !hasPrelims
+                  ? _FightCardSection.main
+                  : _selectedSection;
+              final visibleBouts = effectiveSection == _FightCardSection.prelims
+                  ? prelimBouts
+                  : mainCardBouts;
               final calendarExportPath =
                   fetchedDetail?.calendarExportPath ??
                   '/v1/events/${widget.eventId}/calendar.ics';
 
               return ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                padding: const EdgeInsets.only(bottom: 28),
                 children: [
-                  _EventHeroCard(
+                  _EventScoreboardHeader(
                     event: event,
                     mainBout: mainBout,
+                    fighterA: mainBout == null
+                        ? null
+                        : snapshot.fighterById(mainBout.fighterAId),
+                    fighterB: mainBout == null
+                        ? null
+                        : snapshot.fighterById(mainBout.fighterBId),
                     strings: strings,
                     onToggleFollow: () {
                       widget.onToggleEventFollow(event.id);
@@ -126,39 +148,68 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     onCalendarExport: () =>
                         _copyCalendarLink(context, calendarExportPath),
                   ),
-                  const SizedBox(height: 16),
-                  _PanelTitle(label: strings.eventOverviewTitle),
-                  const SizedBox(height: 12),
-                  _OverviewCard(
-                    event: event,
-                    strings: strings,
-                  ),
-                  const SizedBox(height: 16),
-                  _PanelTitle(label: strings.watchProvidersTitle),
-                  const SizedBox(height: 12),
-                  ...event.watchProviders.map(
-                    (provider) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _ProviderCard(
-                        provider: provider,
-                        strings: strings,
-                      ),
+                  const SizedBox(height: 18),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _FightCardSectionBar(
+                      strings: strings,
+                      hasPrelims: hasPrelims,
+                      selectedSection: effectiveSection,
+                      onSelect: (section) {
+                        setState(() {
+                          _selectedSection = section;
+                        });
+                      },
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _PanelTitle(label: strings.fightCardTitle),
-                  const SizedBox(height: 12),
-                  ...event.bouts.map(
-                    (bout) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _BoutCard(
-                        bout: bout,
-                        fighterA: snapshot.fighterById(bout.fighterAId),
-                        fighterB: snapshot.fighterById(bout.fighterBId),
-                        strings: strings,
-                        onOpenFighter: widget.onOpenFighter,
-                        onToggleFighterFollow: widget.onToggleFighterFollow,
+                  const SizedBox(height: 14),
+                  if (visibleBouts.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _EmptyFightCardCard(strings: strings),
+                    )
+                  else
+                    ...visibleBouts.map(
+                      (bout) => Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                        child: _EditorialBoutTile(
+                          event: event,
+                          bout: bout,
+                          fighterA: snapshot.fighterById(bout.fighterAId),
+                          fighterB: snapshot.fighterById(bout.fighterBId),
+                          onOpenFighter: widget.onOpenFighter,
+                          onToggleFighterFollow: widget.onToggleFighterFollow,
+                        ),
                       ),
+                    ),
+                  const SizedBox(height: 12),
+                  if (event.watchProviders.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _PanelTitle(label: strings.watchProvidersTitle),
+                    ),
+                    const SizedBox(height: 12),
+                    ...event.watchProviders.map(
+                      (provider) => Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                        child: _ProviderCard(
+                          provider: provider,
+                          strings: strings,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _PanelTitle(label: strings.eventOverviewTitle),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _OverviewCard(
+                      event: event,
+                      strings: strings,
                     ),
                   ),
                 ],
@@ -171,139 +222,571 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 }
 
-class _EventHeroCard extends StatelessWidget {
-  const _EventHeroCard({
+class _EventScoreboardHeader extends StatelessWidget {
+  const _EventScoreboardHeader({
     required this.event,
     required this.mainBout,
+    required this.fighterA,
+    required this.fighterB,
     required this.strings,
     required this.onToggleFollow,
     required this.onCalendarExport,
   });
 
   final EventSummary event;
-  final BoutSummary mainBout;
+  final BoutSummary? mainBout;
+  final FighterSummary? fighterA;
+  final FighterSummary? fighterB;
   final AppStrings strings;
   final VoidCallback onToggleFollow;
   final VoidCallback onCalendarExport;
 
   @override
   Widget build(BuildContext context) {
+    final watchLabel = event.watchProviders.isEmpty
+        ? null
+        : '${strings.whereToWatch}: ${event.watchProviders.first.label}';
+
     return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.accent,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: AppShadows.card,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(34),
+          bottomRight: Radius.circular(34),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+            child: Row(
+              children: [
+                _HeaderBrandPill(label: event.organization),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    strings.officialCardLabel,
+                    style: const TextStyle(
+                      color: Color(0xFFFFE4E8),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+            color: const Color(0x26000000),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  event.title.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 22,
+                    height: 1.06,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  event.tagline,
+                  style: const TextStyle(
+                    color: Color(0xFFFFE4E8),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+            child: Column(
+              children: [
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    _HeaderMetaChip(
+                      icon: Icons.schedule_rounded,
+                      label: '${event.localDateLabel}  •  ${event.localTimeLabel}',
+                    ),
+                    _HeaderMetaChip(
+                      icon: Icons.location_on_outlined,
+                      label: event.locationLabel,
+                    ),
+                    if (watchLabel != null)
+                      _HeaderMetaChip(
+                        icon: Icons.play_circle_outline_rounded,
+                        label: watchLabel,
+                      ),
+                  ],
+                ),
+                if (mainBout != null) ...[
+                  const SizedBox(height: 18),
+                  _HeadlineFightRow(
+                    bout: mainBout!,
+                    fighterA: fighterA,
+                    fighterB: fighterB,
+                  ),
+                ],
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _HeaderActionButton(
+                        label: event.isFollowed
+                            ? strings.unfollowAction
+                            : strings.followAction,
+                        filled: true,
+                        onTap: onToggleFollow,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _HeaderActionButton(
+                        label: strings.calendarAction,
+                        filled: false,
+                        onTap: onCalendarExport,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderBrandPill extends StatelessWidget {
+  const _HeaderBrandPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.ink,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderMetaChip extends StatelessWidget {
+  const _HeaderMetaChip({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0x16FFFFFF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x36FFFFFF)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeadlineFightRow extends StatelessWidget {
+  const _HeadlineFightRow({
+    required this.bout,
+    required this.fighterA,
+    required this.fighterB,
+  });
+
+  final BoutSummary bout;
+  final FighterSummary? fighterA;
+  final FighterSummary? fighterB;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _HeadlineFighterBlock(
+            name: bout.fighterAName,
+            recordLabel: fighterA?.recordLabel,
+            avatarOnLeadingEdge: true,
+          ),
+        ),
+        Container(
+          width: 62,
+          height: 62,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0x22FFFFFF),
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0x34FFFFFF)),
+          ),
+          child: Text(
+            bout.slotLabel.toUpperCase(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 10,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        Expanded(
+          child: _HeadlineFighterBlock(
+            name: bout.fighterBName,
+            recordLabel: fighterB?.recordLabel,
+            avatarOnLeadingEdge: false,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeadlineFighterBlock extends StatelessWidget {
+  const _HeadlineFighterBlock({
+    required this.name,
+    required this.recordLabel,
+    required this.avatarOnLeadingEdge,
+  });
+
+  final String name;
+  final String? recordLabel;
+  final bool avatarOnLeadingEdge;
+
+  @override
+  Widget build(BuildContext context) {
+    final textColumn = Expanded(
+      child: Column(
+        crossAxisAlignment: avatarOnLeadingEdge
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.end,
+        children: [
+          Text(
+            name,
+            textAlign: avatarOnLeadingEdge ? TextAlign.left : TextAlign.right,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (recordLabel != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              recordLabel!,
+              textAlign: avatarOnLeadingEdge ? TextAlign.left : TextAlign.right,
+              style: const TextStyle(
+                color: Color(0xFFFFD8DE),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    final avatar = FighterAvatar(
+      name: name,
+      size: 72,
+      showInitialsChip: false,
+      framed: true,
+    );
+
+    return Row(
+      mainAxisAlignment: avatarOnLeadingEdge
+          ? MainAxisAlignment.start
+          : MainAxisAlignment.end,
+      children: avatarOnLeadingEdge
+          ? [
+              avatar,
+              const SizedBox(width: 12),
+              textColumn,
+            ]
+          : [
+              textColumn,
+              const SizedBox(width: 12),
+              avatar,
+            ],
+    );
+  }
+}
+
+class _HeaderActionButton extends StatelessWidget {
+  const _HeaderActionButton({
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool filled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: filled ? Colors.white : AppColors.ink,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: filled ? Colors.white : const Color(0x33FFFFFF),
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: filled ? AppColors.accent : Colors.white,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FightCardSectionBar extends StatelessWidget {
+  const _FightCardSectionBar({
+    required this.strings,
+    required this.hasPrelims,
+    required this.selectedSection,
+    required this.onSelect,
+  });
+
+  final AppStrings strings;
+  final bool hasPrelims;
+  final _FightCardSection selectedSection;
+  final ValueChanged<_FightCardSection> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _SectionToggleButton(
+              label: strings.mainCardTabLabel,
+              selected: selectedSection == _FightCardSection.main,
+              onTap: () => onSelect(_FightCardSection.main),
+            ),
+          ),
+          if (hasPrelims)
+            Expanded(
+              child: _SectionToggleButton(
+                label: strings.preliminaryCardTabLabel,
+                selected: selectedSection == _FightCardSection.prelims,
+                onTap: () => onSelect(_FightCardSection.prelims),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionToggleButton extends StatelessWidget {
+  const _SectionToggleButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+        decoration: BoxDecoration(
+          border: selected
+              ? const Border(
+                  bottom: BorderSide(
+                    color: AppColors.textPrimary,
+                    width: 2.5,
+                  ),
+                )
+              : null,
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: selected ? AppColors.textPrimary : AppColors.textSecondary,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EditorialBoutTile extends StatelessWidget {
+  const _EditorialBoutTile({
+    required this.event,
+    required this.bout,
+    required this.fighterA,
+    required this.fighterB,
+    required this.onOpenFighter,
+    required this.onToggleFighterFollow,
+  });
+
+  final EventSummary event;
+  final BoutSummary bout;
+  final FighterSummary? fighterA;
+  final FighterSummary? fighterB;
+  final ValueChanged<String> onOpenFighter;
+  final ValueChanged<String> onToggleFighterFollow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              _DarkPill(label: event.organization),
-              const Spacer(),
-              Text(
-                strings.mainEventBannerLabel.toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                  letterSpacing: 1.1,
+              Expanded(
+                child: Text(
+                  '${event.localDateLabel}, ${event.localTimeLabel}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
+              if (bout.includesFollowedFighter)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFDE7EB),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: const Color(0x1AD30F2F)),
+                  ),
+                  child: const Text(
+                    'FOLLOWING',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 10,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 6),
           Text(
-            event.title,
+            _boutHeadline(bout),
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,
-              fontSize: 30,
-              height: 0.98,
-              letterSpacing: -1.0,
+              fontSize: 21,
+              letterSpacing: -0.4,
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            event.tagline,
-            style: const TextStyle(
-              color: Color(0xFFFDE5E8),
-              height: 1.45,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            '${mainBout.fighterAName} vs ${mainBout.fighterBName}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _HeroMetric(
-                  label: strings.yourTimeLabel,
-                  value: event.localTimeLabel,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _HeroMetric(
-                  label: strings.eventLocalStartLabel,
-                  value: event.eventLocalTimeLabel,
-                ),
-              ),
-            ],
           ),
           const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
-                child: InkWell(
-                  onTap: onToggleFollow,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      event.isFollowed ? strings.unfollowAction : strings.followAction,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: AppColors.accent,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                child: _BoutFighterSide(
+                  fighterId: bout.fighterAId,
+                  displayName: bout.fighterAName,
+                  fighter: fighterA,
+                  alignEnd: false,
+                  onOpenFighter: onOpenFighter,
+                  onToggleFighterFollow: onToggleFighterFollow,
+                ),
+              ),
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceAlt,
+                  shape: BoxShape.circle,
+                ),
+                child: const Text(
+                  'VS',
+                  style: TextStyle(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    letterSpacing: 0.4,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
               Expanded(
-                child: InkWell(
-                  onTap: onCalendarExport,
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.ink,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: const Color(0x33FFFFFF)),
-                    ),
-                    child: Text(
-                      strings.calendarAction,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
+                child: _BoutFighterSide(
+                  fighterId: bout.fighterBId,
+                  displayName: bout.fighterBName,
+                  fighter: fighterB,
+                  alignEnd: true,
+                  onOpenFighter: onOpenFighter,
+                  onToggleFighterFollow: onToggleFighterFollow,
                 ),
               ),
             ],
@@ -314,42 +797,138 @@ class _EventHeroCard extends StatelessWidget {
   }
 }
 
-class _HeroMetric extends StatelessWidget {
-  const _HeroMetric({required this.label, required this.value});
+class _BoutFighterSide extends StatelessWidget {
+  const _BoutFighterSide({
+    required this.fighterId,
+    required this.displayName,
+    required this.fighter,
+    required this.alignEnd,
+    required this.onOpenFighter,
+    required this.onToggleFighterFollow,
+  });
 
-  final String label;
-  final String value;
+  final String fighterId;
+  final String displayName;
+  final FighterSummary? fighter;
+  final bool alignEnd;
+  final ValueChanged<String> onOpenFighter;
+  final ValueChanged<String> onToggleFighterFollow;
+
+  @override
+  Widget build(BuildContext context) {
+    final isFollowed = fighter?.isFollowed ?? false;
+    final avatar = FighterAvatar(
+      name: displayName,
+      size: 60,
+      showInitialsChip: false,
+      framed: true,
+    );
+    final info = Expanded(
+      child: InkWell(
+        onTap: () => onOpenFighter(fighterId),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Column(
+            crossAxisAlignment: alignEnd
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
+            children: [
+              Text(
+                displayName,
+                textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+                style: TextStyle(
+                  color: isFollowed ? AppColors.accent : AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  letterSpacing: -0.2,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (fighter?.recordLabel != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  fighter!.recordLabel,
+                  textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              if (fighter?.organizationHint != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  fighter!.organizationHint,
+                  textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final followButton = InkWell(
+      onTap: () => onToggleFighterFollow(fighterId),
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: isFollowed ? AppColors.accent : Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.accent),
+        ),
+        child: Icon(
+          isFollowed ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          size: 16,
+          color: isFollowed ? Colors.white : AppColors.accent,
+        ),
+      ),
+    );
+
+    return Row(
+      mainAxisAlignment: alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: alignEnd
+          ? [
+              followButton,
+              info,
+              avatar,
+            ]
+          : [
+              avatar,
+              info,
+              followButton,
+            ],
+    );
+  }
+}
+
+class _EmptyFightCardCard extends StatelessWidget {
+  const _EmptyFightCardCard({required this.strings});
+
+  final AppStrings strings;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0x1AFFFFFF),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x40FFFFFF)),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Color(0xFFFDE5E8),
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
+      child: Text(
+        strings.noFilteredEventsBody,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          height: 1.45,
+        ),
       ),
     );
   }
@@ -369,7 +948,6 @@ class _OverviewCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
       ),
       child: Column(
         children: [
@@ -455,11 +1033,11 @@ class _ProviderCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
               color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
               Icons.play_circle_outline,
@@ -496,172 +1074,6 @@ class _ProviderCard extends StatelessWidget {
   }
 }
 
-class _BoutCard extends StatelessWidget {
-  const _BoutCard({
-    required this.bout,
-    required this.fighterA,
-    required this.fighterB,
-    required this.strings,
-    required this.onOpenFighter,
-    required this.onToggleFighterFollow,
-  });
-
-  final BoutSummary bout;
-  final FighterSummary? fighterA;
-  final FighterSummary? fighterB;
-  final AppStrings strings;
-  final ValueChanged<String> onOpenFighter;
-  final ValueChanged<String> onToggleFighterFollow;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                bout.slotLabel,
-                style: const TextStyle(
-                  color: AppColors.accent,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Spacer(),
-              if (bout.weightClass != null)
-                Text(
-                  bout.weightClass!,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          _FighterRow(
-            fighterId: bout.fighterAId,
-            displayName: bout.fighterAName,
-            fighter: fighterA,
-            strings: strings,
-            onOpenFighter: onOpenFighter,
-            onToggleFighterFollow: onToggleFighterFollow,
-          ),
-          const SizedBox(height: 10),
-          const Center(
-            child: Text(
-              'vs',
-              style: TextStyle(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _FighterRow(
-            fighterId: bout.fighterBId,
-            displayName: bout.fighterBName,
-            fighter: fighterB,
-            strings: strings,
-            onOpenFighter: onOpenFighter,
-            onToggleFighterFollow: onToggleFighterFollow,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FighterRow extends StatelessWidget {
-  const _FighterRow({
-    required this.fighterId,
-    required this.displayName,
-    required this.fighter,
-    required this.strings,
-    required this.onOpenFighter,
-    required this.onToggleFighterFollow,
-  });
-
-  final String fighterId;
-  final String displayName;
-  final FighterSummary? fighter;
-  final AppStrings strings;
-  final ValueChanged<String> onOpenFighter;
-  final ValueChanged<String> onToggleFighterFollow;
-
-  @override
-  Widget build(BuildContext context) {
-    final isFollowed = fighter?.isFollowed ?? false;
-
-    return Row(
-      children: [
-        FighterAvatar(name: displayName, size: 52),
-        const SizedBox(width: 12),
-        Expanded(
-          child: InkWell(
-            onTap: () => onOpenFighter(fighterId),
-            borderRadius: BorderRadius.circular(14),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    displayName,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                    ),
-                  ),
-                  if (fighter != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      '${fighter!.organizationHint}  •  ${fighter!.recordLabel}',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        InkWell(
-          onTap: () => onToggleFighterFollow(fighterId),
-          borderRadius: BorderRadius.circular(999),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: isFollowed ? AppColors.accent : Colors.white,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: AppColors.accent),
-            ),
-            child: Text(
-              isFollowed ? strings.unfollowAction : strings.favoriteFighterAction,
-              style: TextStyle(
-                color: isFollowed ? Colors.white : AppColors.accent,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _PanelTitle extends StatelessWidget {
   const _PanelTitle({required this.label});
 
@@ -689,27 +1101,44 @@ class _PanelTitle extends StatelessWidget {
   }
 }
 
-class _DarkPill extends StatelessWidget {
-  const _DarkPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
-        ),
-      ),
-    );
+BoutSummary? _headlineBoutFor(EventSummary event) {
+  if (event.bouts.isEmpty) {
+    return null;
   }
+
+  return event.bouts.firstWhere(
+    (bout) => bout.isMainEvent,
+    orElse: () => event.bouts.first,
+  );
+}
+
+List<BoutSummary> _boutsForSection(
+  EventSummary event, {
+  required _FightCardSection section,
+}) {
+  if (event.bouts.isEmpty) {
+    return const [];
+  }
+
+  final prelims = event.bouts.where(_isPrelimBout).toList();
+  final mains = event.bouts.where((bout) => !_isPrelimBout(bout)).toList();
+
+  if (section == _FightCardSection.prelims) {
+    return prelims;
+  }
+
+  return mains.isEmpty ? event.bouts : mains;
+}
+
+bool _isPrelimBout(BoutSummary bout) {
+  final slot = bout.slotLabel.toLowerCase();
+  return slot.contains('prelim') || slot.contains('early');
+}
+
+String _boutHeadline(BoutSummary bout) {
+  final hasWeight = bout.weightClass != null && bout.weightClass!.isNotEmpty;
+  if (!hasWeight) {
+    return bout.slotLabel;
+  }
+  return '${bout.weightClass} · ${bout.slotLabel}';
 }

@@ -4,7 +4,7 @@ FightCue is a cross-platform mobile app for Android and iOS that helps combat sp
 
 ## Current status
 
-Last updated: 2026-03-29
+Last updated: 2026-03-30
 
 ### Confirmed decisions
 
@@ -28,19 +28,21 @@ Last updated: 2026-03-29
 
 - Live-backed mobile shell for home, following, settings, detail screens, and persisted follow actions
 - First live UFC source pilot now merged into the main home feed with cached fallback behavior
+- UFC coverage hardening through load-more parsing, with source-health checks next
 - Backend persistence for anonymous profile state, follows, alert presets, and country-specific watch info
 - Mobile settings controls for language and viewing-country preferences
 - First calendar-export endpoint for event-level `.ics` downloads
 - Home feed filtering for key combat-sports slices such as boxing, UFC, GLORY, and followed cards
+- UFC-inspired event presentation refactor with white/red editorial cards and cartoon portrait avatars
 
 ### Next build steps
 
 1. Add event-level alert actions and calendar export entry points in more surfaces beyond the detail screen
-2. Add push notification delivery, reminder scheduling, and subscription state
-3. Add quiet ad placement wiring for the free tier
-4. Add real GLORY and Matchroom source adapters so the new home filters have live coverage beyond UFC
-5. Add optional account linking on top of the anonymous default profile
-6. Begin device-level Android and iOS build testing
+2. Add source-health checks so UFC coverage gaps are detected automatically
+3. Add push notification delivery, reminder scheduling, and subscription state
+4. Add quiet ad placement wiring for the free tier
+5. Add real GLORY and Matchroom source adapters so the new home filters have live coverage beyond UFC
+6. Add optional account linking on top of the anonymous default profile
 
 ## Project structure
 
@@ -80,6 +82,14 @@ Not in the first release:
 - noisy ad formats such as disruptive interstitials
 
 ## Progress log
+
+### 2026-03-30
+
+- Extended the UFC parser to follow official load-more pages and validated live coverage against the official UFC events page
+- Refined the visual system toward a sharper white/red editorial look inspired by UFC event cards
+- Rebuilt event detail with a fight-card-first layout, main/preliminary card tabs, and mirrored fighter rows
+- Reworked home event cards to match the new event-detail language more closely
+- Switched event and fight surfaces to original cartoon portrait avatars instead of real fighter photos
 
 ### 2026-03-29
 

@@ -225,6 +225,21 @@ class AppStrings {
         nl: 'Fight card',
         es: 'Cartelera',
       );
+  String get mainCardTabLabel => _pick(
+        en: 'Main card',
+        nl: 'Main card',
+        es: 'Cartelera principal',
+      );
+  String get preliminaryCardTabLabel => _pick(
+        en: 'Preliminary card',
+        nl: 'Preliminary card',
+        es: 'Cartelera preliminar',
+      );
+  String get officialCardLabel => _pick(
+        en: 'Official card',
+        nl: 'Officiele kaart',
+        es: 'Cartelera oficial',
+      );
   String get eventOverviewTitle => _pick(
         en: 'Event overview',
         nl: 'Eventoverzicht',

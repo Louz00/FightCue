@@ -5,6 +5,7 @@ import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
+import '../../widgets/editorial_ui.dart';
 import '../../widgets/fighter_avatar.dart';
 
 class FighterProfileScreen extends StatefulWidget {
@@ -49,7 +50,7 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
@@ -87,7 +88,7 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
                   snapshot.relatedEventsForFighter(widget.fighterId);
 
               return ListView(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
                 children: [
                   _FighterHeroCard(
                     fighter: fighter,
@@ -97,17 +98,10 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
                       _refreshDetails();
                     },
                   ),
-                  const SizedBox(height: 16),
-                  _SectionTitle(label: strings.aboutFighterTitle),
+                  const SizedBox(height: 24),
+                  EditorialSectionTitle(label: strings.aboutFighterTitle),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppColors.border),
-                      boxShadow: AppShadows.card,
-                    ),
+                  EditorialSurfaceCard(
                     child: Text(
                       fighter.headline,
                       style: const TextStyle(
@@ -116,19 +110,30 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _SectionTitle(label: strings.relatedEventsTitle),
+                  const SizedBox(height: 20),
+                  EditorialSectionTitle(label: strings.relatedEventsTitle),
                   const SizedBox(height: 12),
-                  ...relatedEvents.map(
-                    (event) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _RelatedEventCard(
-                        event: event,
-                        onTap: () => widget.onOpenEvent(event.id),
-                        strings: strings,
+                  if (relatedEvents.isEmpty)
+                    EditorialSurfaceCard(
+                      child: Text(
+                        strings.noFilteredEventsBody,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          height: 1.45,
+                        ),
+                      ),
+                    )
+                  else
+                    ...relatedEvents.map(
+                      (event) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _RelatedEventCard(
+                          event: event,
+                          onTap: () => widget.onOpenEvent(event.id),
+                          strings: strings,
+                        ),
                       ),
                     ),
-                  ),
                 ],
               );
             },
@@ -155,7 +160,6 @@ class _FighterHeroCard extends StatelessWidget {
     final nickname = fighter.nickname == null ? '' : ' "${fighter.nickname}"';
 
     return Container(
-      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: AppColors.accent,
         borderRadius: BorderRadius.circular(28),
@@ -164,77 +168,86 @@ class _FighterHeroCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.ink,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              fighter.organizationHint,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 11,
-              ),
-            ),
+          EditorialCardHeaderBand(
+            pillLabel: fighter.organizationHint,
+            title: fighter.name,
+            trailingLabel: fighter.nationalityLabel,
           ),
-          const SizedBox(height: 18),
-          FighterAvatar(name: fighter.name, size: 104),
-          const SizedBox(height: 18),
-          Text(
-            '${fighter.name}$nickname',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 30,
-              height: 0.98,
-              letterSpacing: -1.0,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _HeroMetric(
-                  label: strings.recordLabel,
-                  value: fighter.recordLabel,
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    FighterAvatar(
+                      name: fighter.name,
+                      size: 96,
+                      showInitialsChip: false,
+                      framed: true,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${fighter.name}$nickname',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 26,
+                              height: 1.02,
+                              letterSpacing: -0.7,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            fighter.headline,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Color(0xFFFFE4E8),
+                              height: 1.45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _HeroMetric(
-                  label: strings.nationalityLabel,
-                  value: fighter.nationalityLabel,
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _HeroMetric(
+                        label: strings.recordLabel,
+                        value: fighter.recordLabel,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _HeroMetric(
+                        label: strings.nationalityLabel,
+                        value: fighter.nationalityLabel,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _HeroMetric(
-            label: strings.nextAppearanceTitle,
-            value: fighter.nextAppearanceLabel,
-          ),
-          const SizedBox(height: 14),
-          InkWell(
-            onTap: onToggleFollow,
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Text(
-                fighter.isFollowed
-                    ? strings.unfollowAction
-                    : strings.favoriteFighterAction,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.accent,
-                  fontWeight: FontWeight.w800,
+                const SizedBox(height: 10),
+                _HeroMetric(
+                  label: strings.nextAppearanceTitle,
+                  value: fighter.nextAppearanceLabel,
                 ),
-              ),
+                const SizedBox(height: 14),
+                EditorialActionPill(
+                  label: fighter.isFollowed
+                      ? strings.unfollowAction
+                      : strings.favoriteFighterAction,
+                  emphasized: true,
+                  onTap: onToggleFollow,
+                ),
+              ],
             ),
           ),
         ],
@@ -255,9 +268,9 @@ class _HeroMetric extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0x1AFFFFFF),
+        color: const Color(0x16FFFFFF),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x40FFFFFF)),
+        border: Border.all(color: const Color(0x36FFFFFF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,7 +278,7 @@ class _HeroMetric extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: Color(0xFFFDE5E8),
+              color: Color(0xFFFFE4E8),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -302,12 +315,14 @@ class _RelatedEventCard extends StatelessWidget {
       (bout) => bout.isMainEvent,
       orElse: () => event.bouts.first,
     );
+    final watchLabel = event.watchProviders.isEmpty
+        ? event.sourceLabel
+        : '${strings.whereToWatch}: ${event.watchProviders.first.label}';
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
@@ -317,65 +332,59 @@ class _RelatedEventCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAlt,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    event.organization,
+            EditorialCardHeaderBand(
+              pillLabel: event.organization,
+              title: event.title,
+              trailingLabel: event.localDateLabel,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${event.localTimeLabel}  •  ${event.locationLabel}',
                     style: const TextStyle(
-                      color: AppColors.textPrimary,
+                      color: AppColors.textSecondary,
                       fontWeight: FontWeight.w700,
-                      fontSize: 11,
                     ),
                   ),
-                ),
-                const Spacer(),
-                Text(
-                  event.localDateLabel,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _CompactPortraitName(
+                          name: mainBout.fighterAName,
+                          alignEnd: false,
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'VS',
+                          style: TextStyle(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: _CompactPortraitName(
+                          name: mainBout.fighterBName,
+                          alignEnd: true,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text(
-              '${mainBout.fighterAName} vs ${mainBout.fighterBName}',
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
-                fontSize: 22,
-                letterSpacing: -0.6,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${event.localTimeLabel}  •  ${event.locationLabel}',
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 14),
-            InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(999),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: AppColors.accent),
-                ),
-                child: Text(
-                  strings.viewEventDetails,
-                  style: const TextStyle(
-                    color: AppColors.accent,
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: 14),
+                  EditorialMetaBand(label: watchLabel),
+                  const SizedBox(height: 14),
+                  EditorialActionPill(
+                    label: strings.viewEventDetails,
+                    emphasized: true,
+                    onTap: onTap,
                   ),
-                ),
+                ],
               ),
             ),
           ],
@@ -385,29 +394,41 @@ class _RelatedEventCard extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.label});
+class _CompactPortraitName extends StatelessWidget {
+  const _CompactPortraitName({
+    required this.name,
+    required this.alignEnd,
+  });
 
-  final String label;
+  final String name;
+  final bool alignEnd;
 
   @override
   Widget build(BuildContext context) {
+    final avatar = FighterAvatar(
+      name: name,
+      size: 48,
+      showInitialsChip: false,
+      framed: true,
+    );
+    final text = Expanded(
+      child: Text(
+        name,
+        textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w800,
+        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+
     return Row(
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.textPrimary,
-              ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            height: 2,
-            color: AppColors.accent,
-          ),
-        ),
-      ],
+      mainAxisAlignment: alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: alignEnd
+          ? [text, const SizedBox(width: 8), avatar]
+          : [avatar, const SizedBox(width: 8), text],
     );
   }
 }

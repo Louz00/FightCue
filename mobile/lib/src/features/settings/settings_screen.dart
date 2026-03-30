@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/domain_models.dart';
+import '../../widgets/editorial_ui.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
@@ -31,33 +32,21 @@ class SettingsScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           children: [
-            Text(
-              strings.settings.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall,
+            EditorialPageHero(
+              eyebrow: strings.settings.toUpperCase(),
+              title: strings.settings,
+              body: strings.settingsSubtitle,
+              trailingLabel: snapshot.viewingCountryCode,
             ),
-            const SizedBox(height: 10),
-            Text(
-              strings.settings,
-              style: Theme.of(context).textTheme.headlineMedium,
+            const SizedBox(height: 24),
+            _HighlightSettingsCard(
+              accountModeLabel: snapshot.accountModeLabel,
+              planLabel: planLabel,
+              timezone: snapshot.timezone,
+              strings: strings,
             ),
-            const SizedBox(height: 10),
-            Text(
-              strings.settingsSubtitle,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 28),
-            _SettingCard(
-              title: strings.accountModelTitle,
-              body: snapshot.accountModeLabel,
-              icon: Icons.person_outline,
-            ),
-            const SizedBox(height: 12),
-            _SettingCard(
-              title: strings.currentPlanTitle,
-              body: planLabel,
-              icon: Icons.workspace_premium_outlined,
-              accent: true,
-            ),
+            const SizedBox(height: 20),
+            EditorialSectionTitle(label: strings.languagePreferencesTitle),
             const SizedBox(height: 12),
             _SettingCard(
               title: strings.languagePreferencesTitle,
@@ -85,6 +74,8 @@ class SettingsScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 20),
+            EditorialSectionTitle(label: strings.watchInfoTitle),
             const SizedBox(height: 12),
             _SettingCard(
               title: strings.watchInfoTitle,
@@ -117,6 +108,8 @@ class SettingsScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 20),
+            EditorialSectionTitle(label: strings.runtimeSectionTitle),
             const SizedBox(height: 12),
             _SettingCard(
               title: strings.currentTimezoneTitle,
@@ -135,16 +128,121 @@ class SettingsScreen extends StatelessWidget {
               body: strings.sourcePilotBody,
               icon: Icons.sports_mma_outlined,
             ),
-            const SizedBox(height: 12),
-            if (snapshot.premiumState == PremiumState.free)
+            if (snapshot.premiumState == PremiumState.free) ...[
+              const SizedBox(height: 12),
               _SettingCard(
                 title: strings.quietAdsTitle,
                 body: strings.quietAdsBody,
                 icon: Icons.campaign_outlined,
               ),
+            ],
           ],
         );
       },
+    );
+  }
+}
+
+class _HighlightSettingsCard extends StatelessWidget {
+  const _HighlightSettingsCard({
+    required this.accountModeLabel,
+    required this.planLabel,
+    required this.timezone,
+    required this.strings,
+  });
+
+  final String accountModeLabel;
+  final String planLabel;
+  final String timezone;
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        children: [
+          EditorialCardHeaderBand(
+            pillLabel: strings.accountModelTitle,
+            title: planLabel,
+            trailingLabel: timezone,
+          ),
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _QuickStat(
+                    label: strings.accountModelTitle,
+                    value: accountModeLabel,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _QuickStat(
+                    label: strings.currentPlanTitle,
+                    value: planLabel,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _QuickStat(
+                    label: strings.currentTimezoneTitle,
+                    value: timezone,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickStat extends StatelessWidget {
+  const _QuickStat({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -154,32 +252,17 @@ class _SettingCard extends StatelessWidget {
     required this.title,
     required this.body,
     required this.icon,
-    this.accent = false,
     this.child,
   });
 
   final String title;
   final String body;
   final IconData icon;
-  final bool accent;
   final Widget? child;
 
   @override
   Widget build(BuildContext context) {
-    final background = accent ? AppColors.accent : AppColors.surface;
-    final iconBackground = accent ? Colors.white : AppColors.surfaceAlt;
-    final iconColor = accent ? AppColors.accent : AppColors.textPrimary;
-    final titleColor = accent ? Colors.white : AppColors.textPrimary;
-    final bodyColor = accent ? const Color(0xFFFDE5E8) : AppColors.textSecondary;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: accent ? AppColors.accent : AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
+    return EditorialSurfaceCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -187,10 +270,10 @@ class _SettingCard extends StatelessWidget {
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: iconBackground,
+              color: AppColors.surfaceAlt,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: iconColor),
+            child: Icon(icon, color: AppColors.textPrimary),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -199,8 +282,8 @@ class _SettingCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    color: titleColor,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
                     letterSpacing: -0.3,
@@ -209,8 +292,8 @@ class _SettingCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   body,
-                  style: TextStyle(
-                    color: bodyColor,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
                     height: 1.45,
                   ),
                 ),

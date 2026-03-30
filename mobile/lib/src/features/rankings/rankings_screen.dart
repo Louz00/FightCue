@@ -4,6 +4,7 @@ import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
+import '../../widgets/editorial_ui.dart';
 import '../../widgets/fighter_avatar.dart';
 
 class RankingsScreen extends StatefulWidget {
@@ -57,37 +58,32 @@ class _RankingsScreenState extends State<RankingsScreen> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           children: [
-            Text(
-              widget.strings.rankingsNavLabel.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              widget.strings.rankingsTitle,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              widget.strings.rankingsSubtitle,
-              style: Theme.of(context).textTheme.bodyMedium,
+            EditorialPageHero(
+              eyebrow: widget.strings.rankingsNavLabel.toUpperCase(),
+              title: widget.strings.rankingsTitle,
+              body: widget.strings.rankingsSubtitle,
+              trailingLabel: _selectedGroup == RankingGroup.men
+                  ? widget.strings.menLabel
+                  : widget.strings.womenLabel,
+              footer: _GroupToggle(
+                strings: widget.strings,
+                selectedGroup: _selectedGroup,
+                onChanged: (group) {
+                  setState(() {
+                    _selectedGroup = group;
+                    _selectedWeightClass = null;
+                  });
+                },
+              ),
             ),
             const SizedBox(height: 24),
-            _GroupToggle(
-              strings: widget.strings,
-              selectedGroup: _selectedGroup,
-              onChanged: (group) {
-                setState(() {
-                  _selectedGroup = group;
-                  _selectedWeightClass = null;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
             if (snapshot.connectionState == ConnectionState.waiting)
               const _LoadingCard()
             else if (snapshot.hasError || selectedDivision == null)
               _EmptyCard(strings: widget.strings)
             else ...[
+              EditorialSectionTitle(label: selectedDivision.title),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -105,8 +101,9 @@ class _RankingsScreenState extends State<RankingsScreen> {
               ),
               const SizedBox(height: 16),
               _SourceCard(
-                sourceLabel: selectedDivision.sourceLabel,
+                division: selectedDivision,
                 body: widget.strings.rankingsSourceBody,
+                sourceLabel: widget.strings.sourceLabel,
               ),
               const SizedBox(height: 16),
               ...selectedDivision.entries.map(
@@ -145,9 +142,9 @@ class _GroupToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: const Color(0x16FFFFFF),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: const Color(0x32FFFFFF)),
       ),
       child: Row(
         children: [
@@ -190,15 +187,15 @@ class _TogglePill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accent : Colors.transparent,
+          color: selected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(999),
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: selected ? Colors.white : AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
+            color: selected ? AppColors.accent : Colors.white,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),
@@ -245,40 +242,47 @@ class _WeightChip extends StatelessWidget {
 
 class _SourceCard extends StatelessWidget {
   const _SourceCard({
-    required this.sourceLabel,
+    required this.division,
     required this.body,
+    required this.sourceLabel,
   });
 
-  final String sourceLabel;
+  final LeaderboardSummary division;
   final String body;
+  final String sourceLabel;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
         boxShadow: AppShadows.card,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            sourceLabel,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 17,
-            ),
+          EditorialCardHeaderBand(
+            pillLabel: division.organization,
+            title: division.weightClass,
+            trailingLabel: sourceLabel,
           ),
-          const SizedBox(height: 8),
-          Text(
-            body,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              height: 1.45,
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                EditorialMetaBand(label: division.sourceLabel),
+                const SizedBox(height: 12),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -302,92 +306,118 @@ class _RankingEntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AppColors.border),
           boxShadow: AppShadows.card,
         ),
-        child: Row(
+        child: Column(
           children: [
             Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: entry.isChampion ? AppColors.accent : AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                entry.rank.toString(),
-                style: TextStyle(
-                  color: entry.isChampion ? Colors.white : AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+              decoration: const BoxDecoration(
+                color: AppColors.accent,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
                 ),
               ),
-            ),
-            const SizedBox(width: 14),
-            FighterAvatar(name: entry.fighterName, size: 56),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
+                  Container(
+                    width: 42,
+                    height: 42,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      entry.rank.toString(),
+                      style: const TextStyle(
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      entry.organization.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ),
+                  if (entry.isChampion)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0x22FFFFFF),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(color: const Color(0x33FFFFFF)),
+                      ),
+                      child: Text(
+                        strings.championLabel.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                children: [
+                  FighterAvatar(
+                    name: entry.fighterName,
+                    size: 64,
+                    showInitialsChip: false,
+                    framed: true,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
                           entry.fighterName,
                           style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontWeight: FontWeight.w800,
-                            fontSize: 18,
-                            letterSpacing: -0.2,
+                            fontSize: 20,
+                            letterSpacing: -0.3,
                           ),
                         ),
-                      ),
-                      if (entry.isChampion)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.accent,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            strings.championLabel.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 10,
-                            ),
+                        const SizedBox(height: 6),
+                        Text(
+                          entry.recordLabel,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    entry.recordLabel,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
+                        if (entry.pointsLabel != null) ...[
+                          const SizedBox(height: 10),
+                          EditorialMetaBand(label: entry.pointsLabel!),
+                        ],
+                      ],
                     ),
                   ),
-                  if (entry.pointsLabel != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      entry.pointsLabel!,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -403,14 +433,9 @@ class _LoadingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(26),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Center(child: CircularProgressIndicator()),
+    return const EditorialSurfaceCard(
+      padding: EdgeInsets.all(26),
+      child: Center(child: CircularProgressIndicator()),
     );
   }
 }
@@ -422,13 +447,7 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-      ),
+    return EditorialSurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/domain_models.dart';
+import '../../widgets/editorial_ui.dart';
 import '../../widgets/fighter_avatar.dart';
 
 class FollowingScreen extends StatelessWidget {
@@ -32,22 +33,15 @@ class FollowingScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           children: [
-            Text(
-              strings.following.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall,
+            EditorialPageHero(
+              eyebrow: strings.following.toUpperCase(),
+              title: strings.followingTitle,
+              body: strings.followingSubtitle,
+              trailingLabel:
+                  '${snapshot.followedFighters.length + snapshot.followedEvents.length}',
             ),
-            const SizedBox(height: 10),
-            Text(
-              strings.followingTitle,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              strings.followingSubtitle,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 28),
-            _SectionHeader(label: strings.followedFightersTitle),
+            const SizedBox(height: 24),
+            EditorialSectionTitle(label: strings.followedFightersTitle),
             const SizedBox(height: 12),
             if (snapshot.followedFighters.isEmpty)
               _EmptyStateCard(
@@ -66,8 +60,8 @@ class FollowingScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            const SizedBox(height: 12),
-            _SectionHeader(label: strings.followedEventsTitle),
+            const SizedBox(height: 20),
+            EditorialSectionTitle(label: strings.followedEventsTitle),
             const SizedBox(height: 12),
             if (snapshot.followedEvents.isEmpty)
               _EmptyStateCard(
@@ -93,33 +87,6 @@ class FollowingScreen extends StatelessWidget {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.textPrimary,
-              ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            height: 2,
-            color: AppColors.accent,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _FollowedFighterTile extends StatelessWidget {
   const _FollowedFighterTile({
     required this.fighter,
@@ -137,74 +104,69 @@ class _FollowedFighterTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onOpenFighter,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AppColors.border),
           boxShadow: AppShadows.card,
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
           children: [
-            FighterAvatar(name: fighter.name, size: 56),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
+            EditorialCardHeaderBand(
+              pillLabel: fighter.organizationHint,
+              title: fighter.name,
+              trailingLabel: strings.trackedTagLabel.toUpperCase(),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    fighter.name,
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                      letterSpacing: -0.4,
-                    ),
+                  FighterAvatar(
+                    name: fighter.name,
+                    size: 72,
+                    showInitialsChip: false,
+                    framed: true,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    fighter.organizationHint,
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    fighter.headline,
-                    style: const TextStyle(color: AppColors.textSecondary),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fighter.headline,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            height: 1.45,
                           ),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceAlt,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Text(
-                            fighter.nextAppearanceLabel,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      _TinyActionPill(
-                        label: strings.unfollowAction,
-                        emphasized: true,
-                        onTap: onToggleFollow,
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+                        EditorialMetaBand(label: fighter.nextAppearanceLabel),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: EditorialActionPill(
+                                label: strings.aboutFighterTitle,
+                                emphasized: true,
+                                onTap: onOpenFighter,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: EditorialActionPill(
+                                label: strings.unfollowAction,
+                                onTap: onToggleFollow,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -231,15 +193,20 @@ class _FollowedEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mainBout = event.bouts.firstWhere((bout) => bout.isMainEvent);
+    final mainBout = event.bouts.firstWhere(
+      (bout) => bout.isMainEvent,
+      orElse: () => event.bouts.first,
+    );
     final followedBouts =
         event.bouts.where((bout) => bout.includesFollowedFighter).length;
+    final watchLabel = event.watchProviders.isEmpty
+        ? event.sourceLabel
+        : '${strings.whereToWatch}: ${event.watchProviders.first.label}';
 
     return InkWell(
       onTap: onOpenEvent,
       borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(24),
@@ -249,85 +216,91 @@ class _FollowedEventCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                _Pill(label: event.organization),
-                const Spacer(),
-                Text(
-                  event.localDateLabel,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            EditorialCardHeaderBand(
+              pillLabel: event.organization,
+              title: event.title,
+              trailingLabel: event.localDateLabel,
             ),
-            const SizedBox(height: 16),
-            Text(
-              '${mainBout.fighterAName} vs ${mainBout.fighterBName}',
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
-                fontSize: 22,
-                letterSpacing: -0.6,
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${event.localTimeLabel}  •  ${event.locationLabel}',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _CompactFighterPreview(
+                          label: mainBout.fighterAName,
+                          alignEnd: false,
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'VS',
+                          style: TextStyle(
+                            color: AppColors.accent,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: _CompactFighterPreview(
+                          label: mainBout.fighterBName,
+                          alignEnd: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  EditorialMetaBand(label: watchLabel),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _Metric(
+                          label: strings.followedFightersTitle,
+                          value: followedBouts.toString(),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _Metric(
+                          label: strings.selectedCountryLabel,
+                          value: event.selectedCountryCode,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: EditorialActionPill(
+                          label: strings.viewEventDetails,
+                          emphasized: true,
+                          onTap: onOpenEvent,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: EditorialActionPill(
+                          label: strings.unfollowAction,
+                          onTap: onToggleFollow,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${event.localTimeLabel}  •  ${event.locationLabel}',
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceAlt,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Text(
-                '${strings.whereToWatch}: ${event.watchProviders.first.label}',
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _Metric(
-                    label: strings.followedFightersTitle,
-                    value: followedBouts.toString(),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _Metric(
-                    label: strings.selectedCountryLabel,
-                    value: event.selectedCountryCode,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: _TinyActionPill(
-                    label: strings.viewEventDetails,
-                    emphasized: true,
-                    onTap: onOpenEvent,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _TinyActionPill(
-                    label: strings.unfollowAction,
-                    onTap: onToggleFollow,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -355,7 +328,10 @@ class _Metric extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -372,66 +348,41 @@ class _Metric extends StatelessWidget {
   }
 }
 
-class _Pill extends StatelessWidget {
-  const _Pill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.accent,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
-        ),
-      ),
-    );
-  }
-}
-
-class _TinyActionPill extends StatelessWidget {
-  const _TinyActionPill({
+class _CompactFighterPreview extends StatelessWidget {
+  const _CompactFighterPreview({
     required this.label,
-    required this.onTap,
-    this.emphasized = false,
+    required this.alignEnd,
   });
 
   final String label;
-  final VoidCallback onTap;
-  final bool emphasized;
+  final bool alignEnd;
 
   @override
   Widget build(BuildContext context) {
-    final background = emphasized ? AppColors.accent : Colors.white;
-    final textColor = emphasized ? Colors.white : AppColors.accent;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: AppColors.accent),
+    final avatar = FighterAvatar(
+      name: label,
+      size: 48,
+      showInitialsChip: false,
+      framed: true,
+    );
+    final name = Expanded(
+      child: Text(
+        label,
+        textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w800,
         ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: textColor,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       ),
+    );
+
+    return Row(
+      mainAxisAlignment: alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: alignEnd
+          ? [name, const SizedBox(width: 8), avatar]
+          : [avatar, const SizedBox(width: 8), name],
     );
   }
 }
@@ -444,14 +395,7 @@ class _EmptyStateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
+    return EditorialSurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

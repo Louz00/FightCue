@@ -5,6 +5,8 @@ import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
+import '../../widgets/editorial_ui.dart';
+import '../../widgets/fighter_avatar.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({
@@ -54,10 +56,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
     String fighterId,
     AlertPreset preset,
   ) async {
-    final current = _alerts ?? const AlertsSnapshot(
-      fighterPresetsById: {},
-      eventPresetsById: {},
-    );
+    final current = _alerts ??
+        const AlertsSnapshot(
+          fighterPresetsById: {},
+          eventPresetsById: {},
+        );
     final nextSet = {...current.fighterPresetsFor(fighterId)};
     if (nextSet.contains(preset)) {
       nextSet.remove(preset);
@@ -100,10 +103,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
     String eventId,
     AlertPreset preset,
   ) async {
-    final current = _alerts ?? const AlertsSnapshot(
-      fighterPresetsById: {},
-      eventPresetsById: {},
-    );
+    final current = _alerts ??
+        const AlertsSnapshot(
+          fighterPresetsById: {},
+          eventPresetsById: {},
+        );
     final nextSet = {...current.eventPresetsFor(eventId)};
     if (nextSet.contains(preset)) {
       nextSet.remove(preset);
@@ -152,144 +156,148 @@ class _AlertsScreenState extends State<AlertsScreen> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
           children: [
-            Text(
-              widget.strings.alerts.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall,
+            EditorialPageHero(
+              eyebrow: widget.strings.alerts.toUpperCase(),
+              title: widget.strings.alerts,
+              body: widget.strings.alertsSubtitle,
+              trailingLabel:
+                  '${snapshot.followedFighters.length + snapshot.followedEvents.length}',
             ),
-            const SizedBox(height: 10),
-            Text(
-              widget.strings.alerts,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              widget.strings.alertsSubtitle,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 28),
-            _SectionHeader(label: widget.strings.fighterReminderPresetsTitle),
+            const SizedBox(height: 24),
+            EditorialSectionTitle(label: widget.strings.fighterReminderPresetsTitle),
             const SizedBox(height: 12),
-            ...snapshot.followedFighters.map(
-              (fighter) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ReminderCard(
-                  title: fighter.name,
-                  subtitle: fighter.nextAppearanceLabel,
-                  reminderChips: [
-                    _PresetChipData(
-                      label: widget.strings.reminderPreset24h,
-                      selected:
-                          (alerts?.fighterPresetsFor(fighter.id) ??
-                                  {
-                                    AlertPreset.before24h,
-                                    AlertPreset.before1h,
-                                    AlertPreset.timeChanges,
-                                  })
-                              .contains(AlertPreset.before24h),
-                      onTap: () => _toggleFighterPreset(
-                        fighter.id,
-                        AlertPreset.before24h,
+            if (snapshot.followedFighters.isEmpty)
+              _EmptyReminderCard(
+                title: widget.strings.followedFightersEmptyTitle,
+                body: widget.strings.followedFightersEmptyBody,
+              )
+            else
+              ...snapshot.followedFighters.map(
+                (fighter) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _FighterReminderCard(
+                    fighter: fighter,
+                    presets: [
+                      _PresetChipData(
+                        label: widget.strings.reminderPreset24h,
+                        selected:
+                            (alerts?.fighterPresetsFor(fighter.id) ??
+                                    {
+                                      AlertPreset.before24h,
+                                      AlertPreset.before1h,
+                                      AlertPreset.timeChanges,
+                                    })
+                                .contains(AlertPreset.before24h),
+                        onTap: () => _toggleFighterPreset(
+                          fighter.id,
+                          AlertPreset.before24h,
+                        ),
                       ),
-                    ),
-                    _PresetChipData(
-                      label: widget.strings.reminderPreset1h,
-                      selected:
-                          (alerts?.fighterPresetsFor(fighter.id) ??
-                                  {
-                                    AlertPreset.before24h,
-                                    AlertPreset.before1h,
-                                    AlertPreset.timeChanges,
-                                  })
-                              .contains(AlertPreset.before1h),
-                      onTap: () => _toggleFighterPreset(
-                        fighter.id,
-                        AlertPreset.before1h,
+                      _PresetChipData(
+                        label: widget.strings.reminderPreset1h,
+                        selected:
+                            (alerts?.fighterPresetsFor(fighter.id) ??
+                                    {
+                                      AlertPreset.before24h,
+                                      AlertPreset.before1h,
+                                      AlertPreset.timeChanges,
+                                    })
+                                .contains(AlertPreset.before1h),
+                        onTap: () => _toggleFighterPreset(
+                          fighter.id,
+                          AlertPreset.before1h,
+                        ),
                       ),
-                    ),
-                    _PresetChipData(
-                      label: widget.strings.reminderPresetChanges,
-                      selected:
-                          (alerts?.fighterPresetsFor(fighter.id) ??
-                                  {
-                                    AlertPreset.before24h,
-                                    AlertPreset.before1h,
-                                    AlertPreset.timeChanges,
-                                  })
-                              .contains(AlertPreset.timeChanges),
-                      onTap: () => _toggleFighterPreset(
-                        fighter.id,
-                        AlertPreset.timeChanges,
+                      _PresetChipData(
+                        label: widget.strings.reminderPresetChanges,
+                        selected:
+                            (alerts?.fighterPresetsFor(fighter.id) ??
+                                    {
+                                      AlertPreset.before24h,
+                                      AlertPreset.before1h,
+                                      AlertPreset.timeChanges,
+                                    })
+                                .contains(AlertPreset.timeChanges),
+                        onTap: () => _toggleFighterPreset(
+                          fighter.id,
+                          AlertPreset.timeChanges,
+                        ),
                       ),
-                    ),
-                  ],
-                  actionLabel: widget.strings.aboutFighterTitle,
-                  onTap: () => widget.onOpenFighter(fighter.id),
+                    ],
+                    strings: widget.strings,
+                    onTap: () => widget.onOpenFighter(fighter.id),
+                  ),
                 ),
               ),
-            ),
+            const SizedBox(height: 20),
+            EditorialSectionTitle(label: widget.strings.eventReminderPresetsTitle),
             const SizedBox(height: 12),
-            _SectionHeader(label: widget.strings.eventReminderPresetsTitle),
-            const SizedBox(height: 12),
-            ...snapshot.followedEvents.map(
-              (event) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _ReminderCard(
-                  title: event.title,
-                  subtitle: '${event.localDateLabel}  •  ${event.localTimeLabel}',
-                  reminderChips: [
-                    _PresetChipData(
-                      label: widget.strings.reminderPreset24h,
-                      selected:
-                          (alerts?.eventPresetsFor(event.id) ??
-                                  {
-                                    AlertPreset.before24h,
-                                    AlertPreset.timeChanges,
-                                    AlertPreset.watchUpdates,
-                                  })
-                              .contains(AlertPreset.before24h),
-                      onTap: () => _toggleEventPreset(
-                        event.id,
-                        AlertPreset.before24h,
+            if (snapshot.followedEvents.isEmpty)
+              _EmptyReminderCard(
+                title: widget.strings.followedEventsEmptyTitle,
+                body: widget.strings.followedEventsEmptyBody,
+              )
+            else
+              ...snapshot.followedEvents.map(
+                (event) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _EventReminderCard(
+                    event: event,
+                    presets: [
+                      _PresetChipData(
+                        label: widget.strings.reminderPreset24h,
+                        selected:
+                            (alerts?.eventPresetsFor(event.id) ??
+                                    {
+                                      AlertPreset.before24h,
+                                      AlertPreset.timeChanges,
+                                      AlertPreset.watchUpdates,
+                                    })
+                                .contains(AlertPreset.before24h),
+                        onTap: () => _toggleEventPreset(
+                          event.id,
+                          AlertPreset.before24h,
+                        ),
                       ),
-                    ),
-                    _PresetChipData(
-                      label: widget.strings.reminderPresetChanges,
-                      selected:
-                          (alerts?.eventPresetsFor(event.id) ??
-                                  {
-                                    AlertPreset.before24h,
-                                    AlertPreset.timeChanges,
-                                    AlertPreset.watchUpdates,
-                                  })
-                              .contains(AlertPreset.timeChanges),
-                      onTap: () => _toggleEventPreset(
-                        event.id,
-                        AlertPreset.timeChanges,
+                      _PresetChipData(
+                        label: widget.strings.reminderPresetChanges,
+                        selected:
+                            (alerts?.eventPresetsFor(event.id) ??
+                                    {
+                                      AlertPreset.before24h,
+                                      AlertPreset.timeChanges,
+                                      AlertPreset.watchUpdates,
+                                    })
+                                .contains(AlertPreset.timeChanges),
+                        onTap: () => _toggleEventPreset(
+                          event.id,
+                          AlertPreset.timeChanges,
+                        ),
                       ),
-                    ),
-                    _PresetChipData(
-                      label: widget.strings.reminderPresetWatch,
-                      selected:
-                          (alerts?.eventPresetsFor(event.id) ??
-                                  {
-                                    AlertPreset.before24h,
-                                    AlertPreset.timeChanges,
-                                    AlertPreset.watchUpdates,
-                                  })
-                              .contains(AlertPreset.watchUpdates),
-                      onTap: () => _toggleEventPreset(
-                        event.id,
-                        AlertPreset.watchUpdates,
+                      _PresetChipData(
+                        label: widget.strings.reminderPresetWatch,
+                        selected:
+                            (alerts?.eventPresetsFor(event.id) ??
+                                    {
+                                      AlertPreset.before24h,
+                                      AlertPreset.timeChanges,
+                                      AlertPreset.watchUpdates,
+                                    })
+                                .contains(AlertPreset.watchUpdates),
+                        onTap: () => _toggleEventPreset(
+                          event.id,
+                          AlertPreset.watchUpdates,
+                        ),
                       ),
-                    ),
-                  ],
-                  actionLabel: widget.strings.viewEventDetails,
-                  onTap: () => widget.onOpenEvent(event.id),
+                    ],
+                    strings: widget.strings,
+                    onTap: () => widget.onOpenEvent(event.id),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             _PolicyCard(
+              eyebrow: widget.strings.policyLabel.toUpperCase(),
               title: widget.strings.alertPolicyTitle,
               body: widget.strings.alertPolicyBody,
             ),
@@ -300,115 +308,172 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.textPrimary,
-              ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            height: 2,
-            color: AppColors.accent,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ReminderCard extends StatelessWidget {
-  const _ReminderCard({
-    required this.title,
-    required this.subtitle,
-    required this.reminderChips,
-    required this.actionLabel,
+class _FighterReminderCard extends StatelessWidget {
+  const _FighterReminderCard({
+    required this.fighter,
+    required this.presets,
+    required this.strings,
     required this.onTap,
   });
 
-  final String title;
-  final String subtitle;
-  final List<_PresetChipData> reminderChips;
-  final String actionLabel;
+  final FighterSummary fighter;
+  final List<_PresetChipData> presets;
+  final AppStrings strings;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: AppColors.border),
           boxShadow: AppShadows.card,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontWeight: FontWeight.w800,
-                fontSize: 21,
-                letterSpacing: -0.4,
+            EditorialCardHeaderBand(
+              pillLabel: fighter.organizationHint,
+              title: fighter.name,
+              trailingLabel: strings.aboutFighterTitle,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FighterAvatar(
+                    name: fighter.name,
+                    size: 68,
+                    showInitialsChip: false,
+                    framed: true,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fighter.nextAppearanceLabel,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: presets
+                              .map(
+                                (chip) => _ReminderPill(
+                                  label: chip.label,
+                                  selected: chip.selected,
+                                  onTap: chip.onTap,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                        const SizedBox(height: 14),
+                        EditorialActionPill(
+                          label: strings.aboutFighterTitle,
+                          emphasized: true,
+                          onTap: onTap,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              style: const TextStyle(color: AppColors.textSecondary),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EventReminderCard extends StatelessWidget {
+  const _EventReminderCard({
+    required this.event,
+    required this.presets,
+    required this.strings,
+    required this.onTap,
+  });
+
+  final EventSummary event;
+  final List<_PresetChipData> presets;
+  final AppStrings strings;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final mainBout = event.bouts.firstWhere(
+      (bout) => bout.isMainEvent,
+      orElse: () => event.bouts.first,
+    );
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppShadows.card,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            EditorialCardHeaderBand(
+              pillLabel: event.organization,
+              title: event.title,
+              trailingLabel: event.localDateLabel,
             ),
-            const SizedBox(height: 14),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: reminderChips
-                  .map(
-                    (chip) => _ReminderPill(
-                      label: chip.label,
-                      selected: chip.selected,
-                      onTap: chip.onTap,
-                    ),
-                  )
-                  .toList(),
-            ),
-            const SizedBox(height: 14),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(999),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 9,
-                  ),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppColors.accent),
-                  ),
-                  child: Text(
-                    actionLabel,
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${mainBout.fighterAName} vs ${mainBout.fighterBName}',
                     style: const TextStyle(
-                      color: AppColors.accent,
-                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
+                      letterSpacing: -0.3,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 6),
+                  EditorialMetaBand(
+                    label: '${event.localTimeLabel}  •  ${event.locationLabel}',
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: presets
+                        .map(
+                          (chip) => _ReminderPill(
+                            label: chip.label,
+                            selected: chip.selected,
+                            onTap: chip.onTap,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 14),
+                  EditorialActionPill(
+                    label: strings.viewEventDetails,
+                    emphasized: true,
+                    onTap: onTap,
+                  ),
+                ],
               ),
             ),
           ],
@@ -468,38 +533,55 @@ class _ReminderPill extends StatelessWidget {
 }
 
 class _PolicyCard extends StatelessWidget {
-  const _PolicyCard({required this.title, required this.body});
+  const _PolicyCard({
+    required this.title,
+    required this.body,
+    required this.eyebrow,
+  });
+
+  final String title;
+  final String body;
+  final String eyebrow;
+
+  @override
+  Widget build(BuildContext context) {
+    return EditorialPageHero(
+      eyebrow: eyebrow,
+      title: title,
+      body: body,
+    );
+  }
+}
+
+class _EmptyReminderCard extends StatelessWidget {
+  const _EmptyReminderCard({
+    required this.title,
+    required this.body,
+  });
 
   final String title;
   final String body;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.accent,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: AppShadows.card,
-      ),
+    return EditorialSurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontWeight: FontWeight.w800,
-              fontSize: 22,
-              letterSpacing: -0.5,
+              fontSize: 18,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             body,
             style: const TextStyle(
-              color: Color(0xFFFDE5E8),
-              height: 1.5,
+              color: AppColors.textSecondary,
+              height: 1.45,
             ),
           ),
         ],

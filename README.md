@@ -34,6 +34,7 @@ Last updated: 2026-03-30
 - First calendar-export endpoint for event-level `.ics` downloads
 - Home feed filtering for key combat-sports slices such as boxing, UFC, GLORY, and followed cards
 - UFC-inspired event presentation refactor with white/red editorial cards and cartoon portrait avatars
+- Editorial white/red design system now extended across rankings, following, alerts, fighter profile, and settings
 
 ### Next build steps
 
@@ -90,6 +91,7 @@ Not in the first release:
 - Rebuilt event detail with a fight-card-first layout, main/preliminary card tabs, and mirrored fighter rows
 - Reworked home event cards to match the new event-detail language more closely
 - Switched event and fight surfaces to original cartoon portrait avatars instead of real fighter photos
+- Extended the same editorial event language to the rest of the app so secondary screens now match the main fight experience
 
 ### 2026-03-29
 

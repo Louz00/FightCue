@@ -260,6 +260,11 @@ class AppStrings {
         nl: 'Bron',
         es: 'Fuente',
       );
+  String get runtimeSectionTitle => _pick(
+        en: 'Runtime',
+        nl: 'Runtime',
+        es: 'Runtime',
+      );
   String get yourTimeLabel => _pick(
         en: 'Your time',
         nl: 'Jouw tijd',
@@ -434,6 +439,11 @@ class AppStrings {
         en: 'Alert style',
         nl: 'Meldingsstijl',
         es: 'Estilo de alertas',
+      );
+  String get policyLabel => _pick(
+        en: 'Policy',
+        nl: 'Beleid',
+        es: 'Politica',
       );
   String get alertPolicyBody => _pick(
         en: 'FightCue should stay useful, not noisy. Alerts focus on tracked cards, followed fighters, and confirmed timing changes.',

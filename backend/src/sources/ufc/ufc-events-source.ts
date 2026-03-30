@@ -11,6 +11,7 @@ import type { EventSourcePreview, EventSourceQuery } from "../types.js";
 const OFFICIAL_UFC_EVENTS_URL = "https://www.ufc.com/events";
 const UPCOMING_MARKER = 'id="events-list-upcoming"';
 const ROW_MARKER = '<div class="l-listing__item views-row">';
+const MAX_UPCOMING_PAGES = 4;
 
 export async function loadUfcEventsPreview(
   query: EventSourceQuery,
@@ -18,18 +19,7 @@ export async function loadUfcEventsPreview(
   const fetchedAt = new Date().toISOString();
 
   try {
-    const response = await fetch(OFFICIAL_UFC_EVENTS_URL, {
-      headers: {
-        "user-agent": "FightCue/0.1 (+https://github.com/Louz00/FightCue)",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`UFC source returned ${response.status}`);
-    }
-
-    const html = await response.text();
-    const items = parseUfcEventsHtml(html, query, fetchedAt);
+    const items = await loadAllUpcomingEvents(query, fetchedAt);
 
     if (items.length == 0) {
       throw new Error("No UFC upcoming events were parsed");
@@ -69,27 +59,103 @@ export async function loadUfcEventsPreview(
   }
 }
 
-function parseUfcEventsHtml(
-  html: string,
+async function loadAllUpcomingEvents(
   query: EventSourceQuery,
   fetchedAt: string,
-): EventSummary[] {
+): Promise<EventSummary[]> {
+  const collectedEvents: EventSummary[] = [];
+  const seenEventUrls = new Set<string>();
+  const visitedPages = new Set<string>();
+  let nextPageUrl: string | undefined = OFFICIAL_UFC_EVENTS_URL;
+  let pageCount = 0;
+
+  while (nextPageUrl && pageCount < MAX_UPCOMING_PAGES) {
+    if (visitedPages.has(nextPageUrl)) {
+      break;
+    }
+
+    visitedPages.add(nextPageUrl);
+    pageCount += 1;
+
+    const html = await fetchUfcPageHtml(nextPageUrl);
+    const upcomingSection = extractUpcomingSectionHtml(html);
+
+    if (!upcomingSection) {
+      break;
+    }
+
+    const pageItems = parseUfcUpcomingSection(upcomingSection, query, fetchedAt);
+
+    if (pageItems.length === 0) {
+      break;
+    }
+
+    for (const item of pageItems) {
+      const eventKey = item.officialUrl ?? item.title;
+      if (seenEventUrls.has(eventKey)) {
+        continue;
+      }
+
+      seenEventUrls.add(eventKey);
+      collectedEvents.push(item);
+    }
+
+    nextPageUrl = findNextPageUrl(upcomingSection);
+  }
+
+  return collectedEvents;
+}
+
+async function fetchUfcPageHtml(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: {
+      "user-agent": "FightCue/0.1 (+https://github.com/Louz00/FightCue)",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`UFC source returned ${response.status}`);
+  }
+
+  return response.text();
+}
+
+function extractUpcomingSectionHtml(
+  html: string,
+): string | undefined {
   const upcomingIndex = html.indexOf(UPCOMING_MARKER);
   if (upcomingIndex < 0) {
-    throw new Error("Upcoming UFC events section not found");
+    return undefined;
   }
 
   const nextDetailsIndex = html.indexOf("<details", upcomingIndex + UPCOMING_MARKER.length);
-  const upcomingSection =
-    nextDetailsIndex >= 0
-      ? html.slice(upcomingIndex, nextDetailsIndex)
-      : html.slice(upcomingIndex);
+  return nextDetailsIndex >= 0
+    ? html.slice(upcomingIndex, nextDetailsIndex)
+    : html.slice(upcomingIndex);
+}
 
+function parseUfcUpcomingSection(
+  upcomingSection: string,
+  query: EventSourceQuery,
+  fetchedAt: string,
+): EventSummary[] {
   return upcomingSection
     .split(ROW_MARKER)
     .slice(1)
     .map((rowHtml, index) => parseUfcEventRow(rowHtml, query, fetchedAt, index))
     .filter((event): event is EventSummary => event != null);
+}
+
+function findNextPageUrl(upcomingSection: string): string | undefined {
+  const nextPageMatch = upcomingSection.match(
+    /<a class="button" href="([^"]+)" title="Load more items" rel="next">Load More<\/a>/,
+  );
+
+  if (!nextPageMatch) {
+    return undefined;
+  }
+
+  return absoluteUrl(nextPageMatch[1]);
 }
 
 function parseUfcEventRow(
@@ -319,7 +385,7 @@ function absoluteUrl(pathOrUrl: string): string {
     return pathOrUrl;
   }
 
-  return `https://www.ufc.com${pathOrUrl}`;
+  return new URL(pathOrUrl, OFFICIAL_UFC_EVENTS_URL).toString();
 }
 
 function sanitizeText(input: string): string {

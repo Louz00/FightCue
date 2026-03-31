@@ -23,7 +23,7 @@ Current note:
 - Flutter SDK is installed
 - Android tooling is configured
 - Xcode is installed
-- The iOS simulator runtime still needs to be installed in Xcode for local simulator builds
+- local iOS simulator builds are working via `flutter build ios --simulator --no-codesign`
 
 ## Step 3: Mock-first mobile flows
 
@@ -59,6 +59,13 @@ Current note:
 Exit criteria:
 - mobile app can read and persist core MVP state
 
+Current note:
+- current persistence uses anonymous device IDs and supports PostgreSQL-backed state when `DATABASE_URL` is configured
+- per-device JSON storage remains as a safe fallback for local runs without a database
+- route modularization is now in place with extracted runtime service and focused route files
+- strict database-only mode is now available through `FIGHTCUE_REQUIRE_DATABASE=true`
+- route-level integration tests now validate PostgreSQL-backed metadata, preferences, follows, and alerts
+
 ## Step 5: Source ingestion
 
 - adapter contract
@@ -72,6 +79,18 @@ Exit criteria:
 Current note:
 - the first UFC source pilot is implemented against the official UFC events page
 - backend now exposes a UFC source-preview endpoint alongside mock detail endpoints
+- source-health checking now compares parsed UFC coverage against the official upcoming count
+- the first GLORY source is now implemented against the official GLORY event API
+- the first Matchroom boxing source is now implemented against the official Matchroom events page
+- Matchroom coverage checks are now in place against the official on-page card count
+- the first Queensberry boxing source is now implemented against the official Queensberry events page
+- the first Top Rank boxing source is now implemented against the official Top Rank site API used by the public events page
+- ESPN boxing schedule is now available as a deduped secondary boxing layer for validation and broader coverage
+- PBC and Golden Boy are now live boxing sources, with deduplication handling overlapping co-promoted cards
+- BOXXER is now live through the official BOXXER WordPress events API
+- ESPN boxing rankings and Ring boxing ratings are now available as editorial source layers for future boxing leaderboard work
+- runtime resolution now keeps a short-lived cached home snapshot and coalesces in-flight source requests for faster repeated home loads
+- next priority is adding the next official promoter adapters beyond Matchroom, Queensberry, Top Rank, PBC, Golden Boy, and BOXXER
 
 ## Step 6: Release features
 
@@ -95,3 +114,29 @@ Exit criteria:
 
 Exit criteria:
 - internal beta candidate is ready
+
+Current note:
+- loading, retry, and fallback states are now visible across the main mobile flows
+- backend tests now cover timezone conversion, ICS generation, event merging, source-health logic, and PostgreSQL-backed user-state persistence
+
+## Near-term execution order
+
+### Week 1
+
+- fix sparse-data crash paths and defensive rendering gaps
+- add tests for timezone conversion, ICS generation, and runtime event merging
+- extract duplicated formatting logic into shared backend utilities
+- add UFC parser/source-health checks
+- add loading/error/retry states in the mobile app
+
+### Week 2
+
+- introduce PostgreSQL-backed persistence for anonymous users and preferences
+- migrate follows and alerts away from the local JSON state file
+- split backend route modules out of `index.ts`
+- add GLORY as the next live source
+- begin boxing ingestion with Matchroom after GLORY is stable
+
+Current note:
+- PostgreSQL-backed state, route splitting, anonymous device identity, GLORY live ingestion, route-level API tests, and Matchroom live ingestion are now implemented
+- the remaining follow-through is to run local development with PostgreSQL required outside sandboxed environments and then harden boxing coverage

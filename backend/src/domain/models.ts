@@ -5,7 +5,10 @@ export type AccountProvider = "email_magic_link";
 export type FollowTarget = "fighter" | "event";
 export type ProviderKind = "streaming" | "tv" | "ppv" | "network";
 export type ProviderConfidence = "confirmed" | "likely" | "unknown";
-export type LeaderboardSourceType = "official" | "fightcue_trending";
+export type LeaderboardSourceType =
+  | "official"
+  | "editorial"
+  | "fightcue_trending";
 export type LeaderboardGender = "men" | "women";
 export type EventStatus =
   | "scheduled"
@@ -14,6 +17,7 @@ export type EventStatus =
   | "cancelled"
   | "completed";
 export type SourceMode = "live" | "fallback";
+export type SourceHealthStatus = "healthy" | "degraded" | "fallback";
 export type AlertPresetKey =
   | "before_24h"
   | "before_1h"
@@ -149,8 +153,18 @@ export type SourcePreview<T> = {
   selectedCountryCode: string;
   fetchedAt: string;
   itemCount: number;
+  health: SourceHealth;
   warnings: string[];
   items: T[];
+};
+
+export type SourceHealth = {
+  status: SourceHealthStatus;
+  parsedItemCount: number;
+  reportedItemCount?: number;
+  checkedPageCount: number;
+  coverageGap: number;
+  coverageRatio?: number;
 };
 
 export const fightCueRuntimeProfile = {

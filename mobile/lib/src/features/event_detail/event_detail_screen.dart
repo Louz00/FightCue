@@ -6,6 +6,8 @@ import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
+import '../../models/event_summary_utils.dart';
+import '../../widgets/editorial_ui.dart';
 import '../../widgets/fighter_avatar.dart';
 
 enum _FightCardSection { main, prelims }
@@ -95,19 +97,34 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               final fetchedEvent = fetchedDetail?.event;
               final baseEvent = fetchedEvent ?? snapshotEvent;
 
+              if (detailSnapshot.connectionState == ConnectionState.waiting &&
+                  baseEvent == null) {
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                  children: [
+                    EditorialLoadingCard(label: strings.liveSyncingLabel),
+                  ],
+                );
+              }
+
               if (baseEvent == null) {
-                return Center(
-                  child: Text(
-                    strings.eventOverviewTitle,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+                  children: [
+                    EditorialNoticeCard(
+                      title: strings.detailFallbackTitle,
+                      body: strings.detailFallbackBody,
+                      actionLabel: strings.retryAction,
+                      onAction: _refreshDetails,
+                    ),
+                  ],
                 );
               }
 
               final event = baseEvent.copyWith(
                 isFollowed: snapshotEvent?.isFollowed ?? baseEvent.isFollowed,
               );
-              final mainBout = _headlineBoutFor(event);
+              final mainBout = headlineBoutForEvent(event);
               final mainCardBouts = _boutsForSection(
                 event,
                 section: _FightCardSection.main,
@@ -148,6 +165,18 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     onCalendarExport: () =>
                         _copyCalendarLink(context, calendarExportPath),
                   ),
+                  if (detailSnapshot.hasError) ...[
+                    const SizedBox(height: 18),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: EditorialNoticeCard(
+                        title: strings.detailFallbackTitle,
+                        body: strings.detailFallbackBody,
+                        actionLabel: strings.retryAction,
+                        onAction: _refreshDetails,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 18),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -243,9 +272,10 @@ class _EventScoreboardHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final watchLabel = event.watchProviders.isEmpty
+    final primaryWatchProvider = primaryWatchProviderLabel(event);
+    final watchLabel = primaryWatchProvider == null
         ? null
-        : '${strings.whereToWatch}: ${event.watchProviders.first.label}';
+        : '${strings.whereToWatch}: $primaryWatchProvider';
 
     return Container(
       decoration: const BoxDecoration(
@@ -335,6 +365,12 @@ class _EventScoreboardHeader extends StatelessWidget {
                     bout: mainBout!,
                     fighterA: fighterA,
                     fighterB: fighterB,
+                  ),
+                ] else ...[
+                  const SizedBox(height: 18),
+                  _HeaderMetaChip(
+                    icon: Icons.pending_actions_outlined,
+                    label: strings.pendingCardTitle,
                   ),
                 ],
                 const SizedBox(height: 18),
@@ -1099,17 +1135,6 @@ class _PanelTitle extends StatelessWidget {
       ],
     );
   }
-}
-
-BoutSummary? _headlineBoutFor(EventSummary event) {
-  if (event.bouts.isEmpty) {
-    return null;
-  }
-
-  return event.bouts.firstWhere(
-    (bout) => bout.isMainEvent,
-    orElse: () => event.bouts.first,
-  );
 }
 
 List<BoutSummary> _boutsForSection(

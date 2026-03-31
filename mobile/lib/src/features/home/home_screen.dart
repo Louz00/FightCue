@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/domain_models.dart';
+import '../../models/event_summary_utils.dart';
+import '../../widgets/editorial_ui.dart';
 import '../../widgets/fighter_avatar.dart';
 
 enum _HomeFeedFilter { all, boxing, ufc, glory, following }
@@ -12,17 +14,23 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.snapshotListenable,
+    required this.syncingListenable,
+    required this.syncErrorListenable,
     required this.strings,
     required this.onOpenEvent,
     required this.onOpenFighter,
     required this.onToggleEventFollow,
+    required this.onRetrySync,
   });
 
   final ValueListenable<HomeSnapshot> snapshotListenable;
+  final ValueListenable<bool> syncingListenable;
+  final ValueListenable<bool> syncErrorListenable;
   final AppStrings strings;
   final ValueChanged<String> onOpenEvent;
   final ValueChanged<String> onOpenFighter;
   final ValueChanged<String> onToggleEventFollow;
+  final Future<void> Function() onRetrySync;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -36,161 +44,198 @@ class _HomeScreenState extends State<HomeScreen> {
     return ValueListenableBuilder<HomeSnapshot>(
       valueListenable: widget.snapshotListenable,
       builder: (context, snapshot, _) {
-        final filteredEvents = _filterEvents(snapshot);
-        final heroEvent = filteredEvents.isEmpty ? null : filteredEvents.first;
-        final remainingEvents = heroEvent == null
-            ? filteredEvents
-            : filteredEvents.where((event) => event.id != heroEvent.id).toList();
-        final filteredFollowedEvents = snapshot.followedEvents
-            .where((event) => _matchesFilter(event))
-            .where((event) => event.id != heroEvent?.id)
-            .toList();
+        return ValueListenableBuilder<bool>(
+          valueListenable: widget.syncingListenable,
+          builder: (context, isSyncing, __) {
+            return ValueListenableBuilder<bool>(
+              valueListenable: widget.syncErrorListenable,
+              builder: (context, hasSyncError, ___) {
+                final filteredEvents = _filterEvents(snapshot);
+                final heroEvent = filteredEvents.isEmpty ? null : filteredEvents.first;
+                final remainingEvents = heroEvent == null
+                    ? filteredEvents
+                    : filteredEvents
+                        .where((event) => event.id != heroEvent.id)
+                        .toList();
+                final filteredFollowedEvents = snapshot.followedEvents
+                    .where((event) => _matchesFilter(event))
+                    .where((event) => event.id != heroEvent?.id)
+                    .toList();
 
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-          children: [
-            Text(
-              widget.strings.appName.toUpperCase(),
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              widget.strings.homeTitle,
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: 280,
-              child: Text(
-                widget.strings.homeSubtitle,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-            const SizedBox(height: 24),
-            _SectionTitle(label: widget.strings.filteredFeedTitle),
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _FilterChip(
-                    label: widget.strings.filterAllLabel,
-                    selected: _selectedFilter == _HomeFeedFilter.all,
-                    onTap: () => setState(() => _selectedFilter = _HomeFeedFilter.all),
-                  ),
-                  _FilterChip(
-                    label: widget.strings.filterBoxingLabel,
-                    selected: _selectedFilter == _HomeFeedFilter.boxing,
-                    onTap: () => setState(() => _selectedFilter = _HomeFeedFilter.boxing),
-                  ),
-                  _FilterChip(
-                    label: widget.strings.filterUfcLabel,
-                    selected: _selectedFilter == _HomeFeedFilter.ufc,
-                    onTap: () => setState(() => _selectedFilter = _HomeFeedFilter.ufc),
-                  ),
-                  _FilterChip(
-                    label: widget.strings.filterGloryLabel,
-                    selected: _selectedFilter == _HomeFeedFilter.glory,
-                    onTap: () => setState(() => _selectedFilter = _HomeFeedFilter.glory),
-                  ),
-                  _FilterChip(
-                    label: widget.strings.filterFollowingLabel,
-                    selected: _selectedFilter == _HomeFeedFilter.following,
-                    onTap: () =>
-                        setState(() => _selectedFilter = _HomeFeedFilter.following),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            if (heroEvent != null) ...[
-              _SectionTitle(label: widget.strings.nextFight),
-              const SizedBox(height: 12),
-              _HeroEventCard(
-                event: heroEvent,
-                strings: widget.strings,
-                onOpenEvent: () => widget.onOpenEvent(heroEvent.id),
-                onToggleFollow: () => widget.onToggleEventFollow(heroEvent.id),
-              ),
-              const SizedBox(height: 24),
-            ] else ...[
-              _EmptyFilterState(strings: widget.strings),
-              const SizedBox(height: 24),
-            ],
-            _SectionTitle(label: widget.strings.followedFightersTitle),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 224,
-              child: snapshot.followedFighters.isEmpty
-                  ? _EmptyFollowedFightersCard(strings: widget.strings)
-                  : ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: snapshot.followedFighters.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        final fighter = snapshot.followedFighters[index];
-                        return _FollowedFighterCard(
-                          fighter: fighter,
-                          strings: widget.strings,
-                          onTap: () => widget.onOpenFighter(fighter.id),
-                        );
-                      },
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                  children: [
+                    Text(
+                      widget.strings.appName.toUpperCase(),
+                      style: Theme.of(context).textTheme.labelSmall,
                     ),
-            ),
-            const SizedBox(height: 24),
-            if (filteredFollowedEvents.isNotEmpty) ...[
-              _SectionTitle(label: widget.strings.followedEventsTitle),
-              const SizedBox(height: 12),
-              ...filteredFollowedEvents.map(
-                (event) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _ExpandableEventCard(
-                    event: event,
-                    strings: widget.strings,
-                    onOpenEvent: () => widget.onOpenEvent(event.id),
-                    onOpenFighter: widget.onOpenFighter,
-                    onToggleFollow: () => widget.onToggleEventFollow(event.id),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            if (remainingEvents.isNotEmpty) ...[
-              _SectionTitle(label: widget.strings.upcomingEventsTitle),
-              const SizedBox(height: 12),
-              ...remainingEvents.map(
-                (event) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _ExpandableEventCard(
-                    event: event,
-                    strings: widget.strings,
-                    onOpenEvent: () => widget.onOpenEvent(event.id),
-                    onOpenFighter: widget.onOpenFighter,
-                    onToggleFollow: () => widget.onToggleEventFollow(event.id),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-            if (snapshot.premiumState == PremiumState.free) ...[
-              _SectionTitle(label: widget.strings.quietAdsTitle),
-              const SizedBox(height: 12),
-              _InfoPanel(
-                title: widget.strings.quietAdsTitle,
-                body: widget.strings.quietAdsBody,
-              ),
-              const SizedBox(height: 12),
-            ],
-            _InfoPanel(
-              title: widget.strings.accountModelTitle,
-              body: widget.strings.accountModelBody,
-            ),
-            const SizedBox(height: 12),
-            _InfoPanel(
-              title: widget.strings.watchInfoTitle,
-              body: widget.strings.watchInfoBody,
-            ),
-          ],
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.strings.homeTitle,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: 280,
+                      child: Text(
+                        widget.strings.homeSubtitle,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (hasSyncError) ...[
+                      EditorialNoticeCard(
+                        title: widget.strings.liveSyncErrorTitle,
+                        body: widget.strings.liveSyncErrorBody,
+                        actionLabel: widget.strings.retryAction,
+                        onAction: () {
+                          widget.onRetrySync();
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                    ] else if (isSyncing) ...[
+                      EditorialLoadingCard(label: widget.strings.liveSyncingLabel),
+                      const SizedBox(height: 16),
+                    ],
+                    _SectionTitle(label: widget.strings.filteredFeedTitle),
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _FilterChip(
+                            label: widget.strings.filterAllLabel,
+                            selected: _selectedFilter == _HomeFeedFilter.all,
+                            onTap: () =>
+                                setState(() => _selectedFilter = _HomeFeedFilter.all),
+                          ),
+                          _FilterChip(
+                            label: widget.strings.filterBoxingLabel,
+                            selected: _selectedFilter == _HomeFeedFilter.boxing,
+                            onTap: () => setState(
+                              () => _selectedFilter = _HomeFeedFilter.boxing,
+                            ),
+                          ),
+                          _FilterChip(
+                            label: widget.strings.filterUfcLabel,
+                            selected: _selectedFilter == _HomeFeedFilter.ufc,
+                            onTap: () =>
+                                setState(() => _selectedFilter = _HomeFeedFilter.ufc),
+                          ),
+                          _FilterChip(
+                            label: widget.strings.filterGloryLabel,
+                            selected: _selectedFilter == _HomeFeedFilter.glory,
+                            onTap: () => setState(
+                              () => _selectedFilter = _HomeFeedFilter.glory,
+                            ),
+                          ),
+                          _FilterChip(
+                            label: widget.strings.filterFollowingLabel,
+                            selected: _selectedFilter == _HomeFeedFilter.following,
+                            onTap: () => setState(
+                              () => _selectedFilter = _HomeFeedFilter.following,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (heroEvent != null) ...[
+                      _SectionTitle(label: widget.strings.nextFight),
+                      const SizedBox(height: 12),
+                      _HeroEventCard(
+                        event: heroEvent,
+                        strings: widget.strings,
+                        onOpenEvent: () => widget.onOpenEvent(heroEvent.id),
+                        onToggleFollow: () =>
+                            widget.onToggleEventFollow(heroEvent.id),
+                      ),
+                      const SizedBox(height: 24),
+                    ] else ...[
+                      _EmptyFilterState(strings: widget.strings),
+                      const SizedBox(height: 24),
+                    ],
+                    _SectionTitle(label: widget.strings.followedFightersTitle),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 224,
+                      child: snapshot.followedFighters.isEmpty
+                          ? _EmptyFollowedFightersCard(strings: widget.strings)
+                          : ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: snapshot.followedFighters.length,
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(width: 12),
+                              itemBuilder: (context, index) {
+                                final fighter = snapshot.followedFighters[index];
+                                return _FollowedFighterCard(
+                                  fighter: fighter,
+                                  strings: widget.strings,
+                                  onTap: () => widget.onOpenFighter(fighter.id),
+                                );
+                              },
+                            ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (filteredFollowedEvents.isNotEmpty) ...[
+                      _SectionTitle(label: widget.strings.followedEventsTitle),
+                      const SizedBox(height: 12),
+                      ...filteredFollowedEvents.map(
+                        (event) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _ExpandableEventCard(
+                            event: event,
+                            strings: widget.strings,
+                            onOpenEvent: () => widget.onOpenEvent(event.id),
+                            onOpenFighter: widget.onOpenFighter,
+                            onToggleFollow: () =>
+                                widget.onToggleEventFollow(event.id),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    if (remainingEvents.isNotEmpty) ...[
+                      _SectionTitle(label: widget.strings.upcomingEventsTitle),
+                      const SizedBox(height: 12),
+                      ...remainingEvents.map(
+                        (event) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _ExpandableEventCard(
+                            event: event,
+                            strings: widget.strings,
+                            onOpenEvent: () => widget.onOpenEvent(event.id),
+                            onOpenFighter: widget.onOpenFighter,
+                            onToggleFollow: () =>
+                                widget.onToggleEventFollow(event.id),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    if (snapshot.premiumState == PremiumState.free) ...[
+                      _SectionTitle(label: widget.strings.quietAdsTitle),
+                      const SizedBox(height: 12),
+                      _InfoPanel(
+                        title: widget.strings.quietAdsTitle,
+                        body: widget.strings.quietAdsBody,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    _InfoPanel(
+                      title: widget.strings.accountModelTitle,
+                      body: widget.strings.accountModelBody,
+                    ),
+                    const SizedBox(height: 12),
+                    _InfoPanel(
+                      title: widget.strings.watchInfoTitle,
+                      body: widget.strings.watchInfoBody,
+                    ),
+                  ],
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -381,13 +426,11 @@ class _HeroEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mainBout = event.bouts.firstWhere(
-      (bout) => bout.isMainEvent,
-      orElse: () => event.bouts.first,
-    );
-    final watchLabel = event.watchProviders.isEmpty
+    final mainBout = headlineBoutForEvent(event);
+    final primaryWatchProvider = primaryWatchProviderLabel(event);
+    final watchLabel = primaryWatchProvider == null
         ? event.sourceLabel
-        : '${strings.whereToWatch}: ${event.watchProviders.first.label}';
+        : '${strings.whereToWatch}: $primaryWatchProvider';
 
     return InkWell(
       onTap: onOpenEvent,
@@ -416,10 +459,13 @@ class _HeroEventCard extends StatelessWidget {
                     secondary: event.locationLabel,
                   ),
                   const SizedBox(height: 16),
-                  _EventFaceoffPreview(
-                    bout: mainBout,
-                    prominent: true,
-                  ),
+                  if (mainBout == null)
+                    _PendingFightCard(strings: strings)
+                  else
+                    _EventFaceoffPreview(
+                      bout: mainBout,
+                      prominent: true,
+                    ),
                   const SizedBox(height: 14),
                   _WatchInfoBand(
                     label: watchLabel,
@@ -556,13 +602,11 @@ class _ExpandableEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mainBout = event.bouts.firstWhere(
-      (bout) => bout.isMainEvent,
-      orElse: () => event.bouts.first,
-    );
-    final watchLabel = event.watchProviders.isEmpty
+    final mainBout = headlineBoutForEvent(event);
+    final primaryWatchProvider = primaryWatchProviderLabel(event);
+    final watchLabel = primaryWatchProvider == null
         ? event.sourceLabel
-        : '${strings.whereToWatch}: ${event.watchProviders.first.label}';
+        : '${strings.whereToWatch}: $primaryWatchProvider';
 
     return Container(
       decoration: BoxDecoration(
@@ -593,9 +637,12 @@ class _ExpandableEventCard extends StatelessWidget {
                       secondary: event.locationLabel,
                     ),
                     const SizedBox(height: 14),
-                    _EventFaceoffPreview(
-                      bout: mainBout,
-                    ),
+                    if (mainBout == null)
+                      _PendingFightCard(strings: strings)
+                    else
+                      _EventFaceoffPreview(
+                        bout: mainBout,
+                      ),
                     const SizedBox(height: 12),
                     _WatchInfoBand(label: watchLabel),
                   ],
@@ -643,18 +690,60 @@ class _ExpandableEventCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            ...event.bouts.map(
-              (bout) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _BoutPreviewTile(
-                  bout: bout,
-                  strings: strings,
-                  onOpenFighter: onOpenFighter,
+            if (event.bouts.isEmpty)
+              _PendingFightCard(strings: strings)
+            else
+              ...event.bouts.map(
+                (bout) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _BoutPreviewTile(
+                    bout: bout,
+                    strings: strings,
+                    onOpenFighter: onOpenFighter,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PendingFightCard extends StatelessWidget {
+  const _PendingFightCard({required this.strings});
+
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            strings.pendingCardTitle,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            strings.pendingCardBody,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              height: 1.45,
+            ),
+          ),
+        ],
       ),
     );
   }

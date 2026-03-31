@@ -6,7 +6,11 @@ import type {
   EventSummary,
   WatchProviderSummary,
 } from "../../domain/models.js";
+import { formatForTimezone, normalizeTimeZone } from "../../domain/time.js";
+import { buildSourceHealth } from "../source-health.js";
 import type { EventSourcePreview, EventSourceQuery } from "../types.js";
+import { loadEspnUfcUpcomingSchedule } from "./espn-ufc-schedule-source.js";
+import { buildEspnValidationWarnings } from "./ufc-secondary-validation.js";
 
 const OFFICIAL_UFC_EVENTS_URL = "https://www.ufc.com/events";
 const UPCOMING_MARKER = 'id="events-list-upcoming"';
@@ -17,40 +21,70 @@ export async function loadUfcEventsPreview(
   query: EventSourceQuery,
 ): Promise<EventSourcePreview> {
   const fetchedAt = new Date().toISOString();
+  const timezone = normalizeTimeZone(query.timezone);
 
   try {
-    const items = await loadAllUpcomingEvents(query, fetchedAt);
+    const preview = await loadAllUpcomingEvents(query, fetchedAt);
+    const items = preview.items;
 
     if (items.length == 0) {
       throw new Error("No UFC upcoming events were parsed");
+    }
+
+    const health = buildSourceHealth({
+      mode: "live",
+      parsedItemCount: items.length,
+      reportedItemCount: preview.reportedUpcomingCount,
+      checkedPageCount: preview.checkedPageCount,
+    });
+    const warnings = [
+      "Watch provider coverage is using the official UFC page and may still vary by country in this pilot.",
+    ];
+    if (health.status == "degraded" && preview.reportedUpcomingCount != null) {
+      warnings.push(
+        `UFC source coverage is below the official upcoming count (${items.length}/${preview.reportedUpcomingCount}).`,
+      );
+    }
+    try {
+      const espnUpcomingEvents = await loadEspnUfcUpcomingSchedule();
+      warnings.push(...buildEspnValidationWarnings(items, espnUpcomingEvents));
+    } catch {
+      warnings.push(
+        "Secondary UFC validation via ESPN schedule was unavailable for this refresh.",
+      );
     }
 
     return {
       source: "ufc",
       mode: "live",
       officialUrl: OFFICIAL_UFC_EVENTS_URL,
-      timezone: normalizeTimeZone(query.timezone),
+      timezone,
       selectedCountryCode: query.selectedCountryCode,
       fetchedAt,
       itemCount: items.length,
-      warnings: [
-        "Watch provider coverage is using the official UFC page and may still vary by country in this pilot.",
-      ],
+      health,
+      warnings,
       items,
     };
   } catch (error) {
     const fallbackItems = getUfcFallbackEvents().map((event) =>
       reformatEventForQuery(event, query),
     );
+    const health = buildSourceHealth({
+      mode: "fallback",
+      parsedItemCount: fallbackItems.length,
+      checkedPageCount: 0,
+    });
 
     return {
       source: "ufc",
       mode: "fallback",
       officialUrl: OFFICIAL_UFC_EVENTS_URL,
-      timezone: normalizeTimeZone(query.timezone),
+      timezone,
       selectedCountryCode: query.selectedCountryCode,
       fetchedAt,
       itemCount: fallbackItems.length,
+      health,
       warnings: [
         `Live UFC source unavailable, using curated fallback data: ${getErrorMessage(error)}`,
       ],
@@ -62,12 +96,17 @@ export async function loadUfcEventsPreview(
 async function loadAllUpcomingEvents(
   query: EventSourceQuery,
   fetchedAt: string,
-): Promise<EventSummary[]> {
+): Promise<{
+  items: EventSummary[];
+  checkedPageCount: number;
+  reportedUpcomingCount?: number;
+}> {
   const collectedEvents: EventSummary[] = [];
   const seenEventUrls = new Set<string>();
   const visitedPages = new Set<string>();
   let nextPageUrl: string | undefined = OFFICIAL_UFC_EVENTS_URL;
   let pageCount = 0;
+  let reportedUpcomingCount: number | undefined;
 
   while (nextPageUrl && pageCount < MAX_UPCOMING_PAGES) {
     if (visitedPages.has(nextPageUrl)) {
@@ -83,6 +122,7 @@ async function loadAllUpcomingEvents(
     if (!upcomingSection) {
       break;
     }
+    reportedUpcomingCount ??= extractReportedUpcomingCount(upcomingSection);
 
     const pageItems = parseUfcUpcomingSection(upcomingSection, query, fetchedAt);
 
@@ -103,7 +143,11 @@ async function loadAllUpcomingEvents(
     nextPageUrl = findNextPageUrl(upcomingSection);
   }
 
-  return collectedEvents;
+  return {
+    items: collectedEvents,
+    checkedPageCount: pageCount,
+    reportedUpcomingCount,
+  };
 }
 
 async function fetchUfcPageHtml(url: string): Promise<string> {
@@ -144,6 +188,12 @@ function parseUfcUpcomingSection(
     .slice(1)
     .map((rowHtml, index) => parseUfcEventRow(rowHtml, query, fetchedAt, index))
     .filter((event): event is EventSummary => event != null);
+}
+
+function extractReportedUpcomingCount(upcomingSection: string): number | undefined {
+  const match = upcomingSection.match(/<div class="althelete-total">(\d+)\s+Events<\/div>/i);
+  const parsed = Number(match?.[1]);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function findNextPageUrl(upcomingSection: string): string | undefined {
@@ -322,34 +372,6 @@ function parseAddressLabel(addressHtml: string): string {
   );
 }
 
-function formatForTimezone(
-  date: Date,
-  timezone: string,
-): { localDateLabel: string; localTimeLabel: string } {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    timeZone: timezone,
-  }).formatToParts(date);
-
-  const weekday = parts.find((part) => part.type === "weekday")?.value ?? "";
-  const day = parts.find((part) => part.type === "day")?.value ?? "";
-  const month = parts.find((part) => part.type === "month")?.value ?? "";
-  const localDateLabel = `${weekday} ${day} ${month}`.trim();
-  const localTimeLabel = new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: timezone,
-  }).format(date);
-
-  return {
-    localDateLabel,
-    localTimeLabel,
-  };
-}
-
 function normalizeCardLabel(cardName: string): string {
   if (cardName.toLowerCase() === "prelims") {
     return "Prelims";
@@ -364,15 +386,6 @@ function normalizeCardLabel(cardName: string): string {
   }
 
   return cardName;
-}
-
-function normalizeTimeZone(timezone: string): string {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(new Date());
-    return timezone;
-  } catch {
-    return "Europe/Amsterdam";
-  }
 }
 
 function extractSourceTimezone(sourceLocalLabel: string): string {

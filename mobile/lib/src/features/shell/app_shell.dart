@@ -31,17 +31,23 @@ class _AppShellState extends State<AppShell> {
   int index = 0;
   final FightCueApi _api = FightCueApi();
   late final ValueNotifier<HomeSnapshot> _snapshotNotifier;
+  late final ValueNotifier<bool> _homeSyncingNotifier;
+  late final ValueNotifier<bool> _homeSyncErrorNotifier;
 
   @override
   void initState() {
     super.initState();
     _snapshotNotifier = ValueNotifier(sampleHomeSnapshot);
+    _homeSyncingNotifier = ValueNotifier(false);
+    _homeSyncErrorNotifier = ValueNotifier(false);
     unawaited(_bootstrap());
   }
 
   @override
   void dispose() {
     _snapshotNotifier.dispose();
+    _homeSyncingNotifier.dispose();
+    _homeSyncErrorNotifier.dispose();
     super.dispose();
   }
 
@@ -50,13 +56,18 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _syncHome() async {
+    _homeSyncingNotifier.value = true;
+    _homeSyncErrorNotifier.value = false;
+
     try {
       final snapshot = await _api.fetchHome();
       _snapshotNotifier.value = snapshot;
       widget.onLanguageChanged?.call(snapshot.languageCode);
       await _mergeLeaderboardFighters();
     } catch (_) {
-      // Keep the curated fallback snapshot if the local backend is unavailable.
+      _homeSyncErrorNotifier.value = true;
+    } finally {
+      _homeSyncingNotifier.value = false;
     }
   }
 
@@ -263,12 +274,15 @@ class _AppShellState extends State<AppShell> {
     final tabs = [
       HomeScreen(
         snapshotListenable: _snapshotNotifier,
+        syncingListenable: _homeSyncingNotifier,
+        syncErrorListenable: _homeSyncErrorNotifier,
         strings: strings,
         onOpenEvent: _openEvent,
         onOpenFighter: _openFighter,
         onToggleEventFollow: (eventId) {
           unawaited(_toggleEventFollow(eventId));
         },
+        onRetrySync: _syncHome,
       ),
       RankingsScreen(
         api: _api,

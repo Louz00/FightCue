@@ -31,7 +31,17 @@ class _RankingsScreenState extends State<RankingsScreen> {
   @override
   void initState() {
     super.initState();
-    _future = widget.api.fetchLeaderboards();
+    _future = _loadRankings();
+  }
+
+  Future<List<LeaderboardSummary>> _loadRankings() {
+    return widget.api.fetchLeaderboards();
+  }
+
+  void _retry() {
+    setState(() {
+      _future = _loadRankings();
+    });
   }
 
   @override
@@ -78,8 +88,15 @@ class _RankingsScreenState extends State<RankingsScreen> {
             ),
             const SizedBox(height: 24),
             if (snapshot.connectionState == ConnectionState.waiting)
-              const _LoadingCard()
-            else if (snapshot.hasError || selectedDivision == null)
+              EditorialLoadingCard(label: widget.strings.liveSyncingLabel)
+            else if (snapshot.hasError)
+              EditorialNoticeCard(
+                title: widget.strings.noRankingsTitle,
+                body: widget.strings.rankingsErrorBody,
+                actionLabel: widget.strings.retryAction,
+                onAction: _retry,
+              )
+            else if (selectedDivision == null)
               _EmptyCard(strings: widget.strings)
             else ...[
               EditorialSectionTitle(label: selectedDivision.title),
@@ -424,18 +441,6 @@ class _RankingEntryCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _LoadingCard extends StatelessWidget {
-  const _LoadingCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return const EditorialSurfaceCard(
-      padding: EdgeInsets.all(26),
-      child: Center(child: CircularProgressIndicator()),
     );
   }
 }

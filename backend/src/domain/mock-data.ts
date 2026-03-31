@@ -159,6 +159,51 @@ export const sampleEvents: EventSummary[] = [
     ],
   },
   {
+    id: "evt_glory_107",
+    organizationSlug: "glory",
+    organizationName: "GLORY",
+    sport: "kickboxing",
+    title: "GLORY 107",
+    tagline: "A Rotterdam fight card anchored by a middleweight title clash.",
+    locationLabel: "Rotterdam, Netherlands",
+    venueLabel: "Rotterdam Ahoy",
+    scheduledStartUtc: "2026-04-25T18:00:00Z",
+    scheduledTimezone: "Europe/Amsterdam",
+    localDateLabel: "Sat 25 Apr",
+    localTimeLabel: "20:00",
+    eventLocalTimeLabel: "Sat 25 Apr • 8:00 PM CEST",
+    selectedCountryCode: "NL",
+    status: "scheduled",
+    isFollowed: false,
+    sourceLabel: "Official GLORY schedule",
+    officialUrl: "https://glorykickboxing.com/events/glory-107",
+    watchProviders: [],
+    bouts: [
+      {
+        id: "bout_wisse_kwasi",
+        slotLabel: "Main event",
+        fighterAId: "ftr_donovan_wisse",
+        fighterAName: "Donovan Wisse",
+        fighterBId: "ftr_michael_kwasi",
+        fighterBName: "Michael Kwasi",
+        weightClass: "Middleweight",
+        isMainEvent: true,
+        includesFollowedFighter: false,
+      },
+      {
+        id: "bout_diaz_ouaadar",
+        slotLabel: "Co-main",
+        fighterAId: "ftr_sergio_diaz",
+        fighterAName: "Sergio Diaz",
+        fighterBId: "ftr_youssef_ouaadar",
+        fighterBName: "Youssef Ouaadar",
+        weightClass: "Featherweight",
+        isMainEvent: false,
+        includesFollowedFighter: false,
+      },
+    ],
+  },
+  {
     id: "evt_ufc_327",
     organizationSlug: "ufc",
     organizationName: "UFC",
@@ -458,4 +503,28 @@ export function getEventsForFighter(fighterId: string): EventSummary[] {
 
 export function getUfcFallbackEvents(): EventSummary[] {
   return sampleEvents.filter((event) => event.organizationSlug === "ufc");
+}
+
+export function getGloryFallbackEvents(): EventSummary[] {
+  return sampleEvents.filter((event) => event.organizationSlug === "glory");
+}
+
+export function getMatchroomFallbackEvents(): EventSummary[] {
+  return sampleEvents.filter((event) => event.organizationSlug === "matchroom");
+}
+
+export function getQueensberryFallbackEvents(): EventSummary[] {
+  return sampleEvents.filter((event) => event.organizationSlug === "queensberry");
+}
+
+export function getTopRankFallbackEvents(): EventSummary[] {
+  return sampleEvents.filter((event) => event.organizationSlug === "top_rank");
+}
+
+export function getPbcFallbackEvents(): EventSummary[] {
+  return sampleEvents.filter((event) => event.organizationSlug === "pbc");
+}
+
+export function getGoldenBoyFallbackEvents(): EventSummary[] {
+  return sampleEvents.filter((event) => event.organizationSlug === "golden_boy");
 }

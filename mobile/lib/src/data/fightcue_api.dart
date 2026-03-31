@@ -3,12 +3,18 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'device_identity.dart';
 import '../models/domain_models.dart';
 
 class FightCueApi {
-  FightCueApi({http.Client? client}) : _client = client ?? http.Client();
+  FightCueApi({
+    http.Client? client,
+    DeviceIdentityStore? deviceIdentityStore,
+  })  : _client = client ?? http.Client(),
+        _deviceIdentityStore = deviceIdentityStore ?? DeviceIdentityStore();
 
   final http.Client _client;
+  final DeviceIdentityStore _deviceIdentityStore;
 
   String get _baseUrl {
     const configuredBaseUrl = String.fromEnvironment('FIGHTCUE_API_BASE_URL');
@@ -23,8 +29,21 @@ class FightCueApi {
     return 'http://127.0.0.1:3000';
   }
 
+  Future<Map<String, String>> _defaultHeaders({
+    Map<String, String>? extraHeaders,
+  }) async {
+    final deviceId = await _deviceIdentityStore.getOrCreateDeviceId();
+    return {
+      'x-fightcue-device-id': deviceId,
+      ...?extraHeaders,
+    };
+  }
+
   Future<HomeSnapshot> fetchHome() async {
-    final response = await _client.get(Uri.parse('$_baseUrl/v1/home'));
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/v1/home'),
+      headers: await _defaultHeaders(),
+    );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Home request failed: ${response.statusCode}');
@@ -35,7 +54,10 @@ class FightCueApi {
   }
 
   Future<EventDetailSnapshot> fetchEventDetail(String eventId) async {
-    final response = await _client.get(Uri.parse('$_baseUrl/v1/events/$eventId'));
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/v1/events/$eventId'),
+      headers: await _defaultHeaders(),
+    );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Event detail request failed: ${response.statusCode}');
@@ -46,7 +68,10 @@ class FightCueApi {
   }
 
   Future<FighterDetailSnapshot> fetchFighterDetail(String fighterId) async {
-    final response = await _client.get(Uri.parse('$_baseUrl/v1/fighters/$fighterId'));
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/v1/fighters/$fighterId'),
+      headers: await _defaultHeaders(),
+    );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Fighter detail request failed: ${response.statusCode}');
@@ -57,7 +82,10 @@ class FightCueApi {
   }
 
   Future<AlertsSnapshot> fetchAlerts() async {
-    final response = await _client.get(Uri.parse('$_baseUrl/v1/me/alerts'));
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/v1/me/alerts'),
+      headers: await _defaultHeaders(),
+    );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Alerts request failed: ${response.statusCode}');
@@ -74,7 +102,10 @@ class FightCueApi {
     final uri = Uri.parse(
       '$_baseUrl/v1/sources/ufc/events?timezone=$timezone&country=$countryCode',
     );
-    final response = await _client.get(uri);
+    final response = await _client.get(
+      uri,
+      headers: await _defaultHeaders(),
+    );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('UFC preview request failed: ${response.statusCode}');
@@ -97,7 +128,10 @@ class FightCueApi {
   }
 
   Future<List<LeaderboardSummary>> fetchLeaderboards() async {
-    final response = await _client.get(Uri.parse('$_baseUrl/v1/leaderboards'));
+    final response = await _client.get(
+      Uri.parse('$_baseUrl/v1/leaderboards'),
+      headers: await _defaultHeaders(),
+    );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Leaderboard request failed: ${response.statusCode}');
@@ -129,7 +163,9 @@ class FightCueApi {
 
     final response = await _client.put(
       Uri.parse('$_baseUrl/v1/me/preferences'),
-      headers: {'content-type': 'application/json'},
+      headers: await _defaultHeaders(
+        extraHeaders: {'content-type': 'application/json'},
+      ),
       body: jsonEncode(body),
     );
 
@@ -143,7 +179,9 @@ class FightCueApi {
   Future<EventSummary> setEventFollow(String eventId, bool followed) async {
     final response = await _client.put(
       Uri.parse('$_baseUrl/v1/me/follows/events/$eventId'),
-      headers: {'content-type': 'application/json'},
+      headers: await _defaultHeaders(
+        extraHeaders: {'content-type': 'application/json'},
+      ),
       body: jsonEncode({'followed': followed}),
     );
 
@@ -158,7 +196,9 @@ class FightCueApi {
   Future<FighterSummary> setFighterFollow(String fighterId, bool followed) async {
     final response = await _client.put(
       Uri.parse('$_baseUrl/v1/me/follows/fighters/$fighterId'),
-      headers: {'content-type': 'application/json'},
+      headers: await _defaultHeaders(
+        extraHeaders: {'content-type': 'application/json'},
+      ),
       body: jsonEncode({'followed': followed}),
     );
 
@@ -176,7 +216,9 @@ class FightCueApi {
   ) async {
     final response = await _client.put(
       Uri.parse('$_baseUrl/v1/me/alerts/fighters/$fighterId'),
-      headers: {'content-type': 'application/json'},
+      headers: await _defaultHeaders(
+        extraHeaders: {'content-type': 'application/json'},
+      ),
       body: jsonEncode({
         'presetKeys': presets.map(_alertPresetToApi).toList(),
       }),
@@ -196,7 +238,9 @@ class FightCueApi {
   ) async {
     final response = await _client.put(
       Uri.parse('$_baseUrl/v1/me/alerts/events/$eventId'),
-      headers: {'content-type': 'application/json'},
+      headers: await _defaultHeaders(
+        extraHeaders: {'content-type': 'application/json'},
+      ),
       body: jsonEncode({
         'presetKeys': presets.map(_alertPresetToApi).toList(),
       }),

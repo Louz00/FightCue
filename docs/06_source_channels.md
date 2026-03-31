@@ -19,6 +19,18 @@ Boxing has no single official master source. To cover the most important fights,
 3. Top Rank
 4. Premier Boxing Champions
 5. Golden Boy
+6. BOXXER
+
+Current implementation status:
+- Matchroom: live
+- Queensberry: live
+- Top Rank: live
+- Premier Boxing Champions: live
+- Golden Boy: live
+- BOXXER: live
+- ESPN boxing schedule: live secondary validation/enrichment layer
+- ESPN boxing rankings: live editorial leaderboard source layer
+- Ring boxing ratings: live editorial leaderboard source layer
 
 ### MMA
 
@@ -52,6 +64,17 @@ If the goal shifts to boxing-heavy coverage first, then the boxing promoter clus
 - UFC and GLORY have clearer centralized event structures
 - boxing needs multiple promoters because major fights are fragmented across organizations
 
+## Secondary editorial sources
+
+These are useful, but should not replace the official promoter cluster as the main source of truth.
+
+- ESPN boxing schedule: useful as a broad editorial schedule layer and validation source, especially for major headline cards and broadcast labels
+- ESPN divisional rankings: useful as a possible later source-labeled boxing leaderboard input
+- ESPN divisional rankings source preview is now implemented for both men's and women's boxing divisions
+- Ring Magazine events: useful as a broad editorial signal, but currently less structured than promoter pages and better treated as a secondary layer
+- Ring Magazine rankings: valuable candidate input for later boxing leaderboard features, but they should always be labeled as Ring editorial ratings rather than official governing-body rankings
+- Ring ratings source preview now uses a curated set of `The Ring Ratings Reviewed` division pages discovered from the Ring sitemap
+
 ## Official channels to use
 
 ### Boxing
@@ -59,8 +82,9 @@ If the goal shifts to boxing-heavy coverage first, then the boxing promoter clus
 - Matchroom: https://www.matchroomboxing.com/events/
 - Queensberry: https://queensberry.co.uk/pages/events
 - Premier Boxing Champions: https://www.premierboxingchampions.com/boxing-schedule
-- Golden Boy: https://www.goldenboy.com/en/events
+- Golden Boy: https://www.goldenboy.com/events/
 - Top Rank: https://www.toprank.com/
+- BOXXER: https://www.boxxer.com/tickets/
 
 ### MMA
 

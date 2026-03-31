@@ -210,6 +210,66 @@ class AppStrings {
         nl: 'Kijkland',
         es: 'Pais de visualizacion',
       );
+  String get retryAction => _pick(
+        en: 'Retry',
+        nl: 'Opnieuw proberen',
+        es: 'Reintentar',
+      );
+  String get liveSyncErrorTitle => _pick(
+        en: 'Live sync unavailable',
+        nl: 'Live sync niet beschikbaar',
+        es: 'Sincronizacion en vivo no disponible',
+      );
+  String get liveSyncErrorBody => _pick(
+        en: 'FightCue is showing the saved preview while the backend reconnects.',
+        nl: 'FightCue toont tijdelijk de opgeslagen preview terwijl de backend opnieuw verbindt.',
+        es: 'FightCue muestra la vista guardada mientras el backend vuelve a conectarse.',
+      );
+  String get liveSyncingLabel => _pick(
+        en: 'Syncing live events...',
+        nl: 'Live events worden gesynchroniseerd...',
+        es: 'Sincronizando eventos en vivo...',
+      );
+  String get pendingCardTitle => _pick(
+        en: 'Fight card pending',
+        nl: 'Fight card volgt nog',
+        es: 'Cartelera pendiente',
+      );
+  String get pendingCardBody => _pick(
+        en: 'The event is live in the schedule, but the bout lineup is not fully confirmed yet.',
+        nl: 'Het event staat al in de agenda, maar de volledige bout-line-up is nog niet bevestigd.',
+        es: 'El evento ya figura en el calendario, pero la cartelera todavia no esta totalmente confirmada.',
+      );
+  String get detailFallbackTitle => _pick(
+        en: 'Live details unavailable',
+        nl: 'Live details niet beschikbaar',
+        es: 'Detalles en vivo no disponibles',
+      );
+  String get detailFallbackBody => _pick(
+        en: 'FightCue is showing the last known event data until live details load again.',
+        nl: 'FightCue toont de laatst bekende eventdata totdat live details weer laden.',
+        es: 'FightCue muestra los ultimos datos conocidos del evento hasta que vuelvan a cargar los detalles en vivo.',
+      );
+  String get fighterFallbackBody => _pick(
+        en: 'FightCue is showing the last known fighter data until the live profile responds again.',
+        nl: 'FightCue toont de laatst bekende vechtersdata totdat het live profiel weer reageert.',
+        es: 'FightCue muestra los ultimos datos conocidos del peleador hasta que el perfil en vivo vuelva a responder.',
+      );
+  String get alertsFallbackTitle => _pick(
+        en: 'Saved alerts unavailable',
+        nl: 'Opgeslagen meldingen niet beschikbaar',
+        es: 'Alertas guardadas no disponibles',
+      );
+  String get alertsFallbackBody => _pick(
+        en: 'FightCue is using the default quiet presets until your saved alert settings load again.',
+        nl: 'FightCue gebruikt tijdelijk de standaard rustige presets totdat je opgeslagen meldingen weer laden.',
+        es: 'FightCue usa temporalmente los ajustes discretos por defecto hasta que vuelvan a cargar tus alertas guardadas.',
+      );
+  String get rankingsErrorBody => _pick(
+        en: 'The rankings feed could not be loaded right now. You can retry without affecting the event flow.',
+        nl: 'De rankingsfeed kon nu niet worden geladen. Je kunt opnieuw proberen zonder de eventflow te verstoren.',
+        es: 'No se pudo cargar el feed de rankings ahora mismo. Puedes reintentar sin afectar el flujo de eventos.',
+      );
   String get expandCardHint => _pick(
         en: 'Tap to see the full fight card',
         nl: 'Tik om de volledige fight card te zien',

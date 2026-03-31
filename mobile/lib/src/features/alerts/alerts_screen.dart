@@ -5,6 +5,7 @@ import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
+import '../../models/event_summary_utils.dart';
 import '../../widgets/editorial_ui.dart';
 import '../../widgets/fighter_avatar.dart';
 
@@ -30,6 +31,8 @@ class AlertsScreen extends StatefulWidget {
 
 class _AlertsScreenState extends State<AlertsScreen> {
   AlertsSnapshot? _alerts;
+  bool _isLoading = false;
+  bool _loadFailed = false;
 
   @override
   void initState() {
@@ -38,6 +41,15 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   Future<void> _loadAlerts() async {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _loadFailed = false;
+    });
+
     try {
       final alerts = await widget.api.fetchAlerts();
       if (!mounted) {
@@ -46,9 +58,22 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
       setState(() {
         _alerts = alerts;
+        _loadFailed = false;
       });
     } catch (_) {
-      // Keep the screen functional with local defaults if the backend is unavailable.
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _loadFailed = true;
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -164,6 +189,18 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   '${snapshot.followedFighters.length + snapshot.followedEvents.length}',
             ),
             const SizedBox(height: 24),
+            if (_loadFailed) ...[
+              EditorialNoticeCard(
+                title: widget.strings.alertsFallbackTitle,
+                body: widget.strings.alertsFallbackBody,
+                actionLabel: widget.strings.retryAction,
+                onAction: _loadAlerts,
+              ),
+              const SizedBox(height: 16),
+            ] else if (_isLoading && alerts == null) ...[
+              EditorialLoadingCard(label: widget.strings.liveSyncingLabel),
+              const SizedBox(height: 16),
+            ],
             EditorialSectionTitle(label: widget.strings.fighterReminderPresetsTitle),
             const SizedBox(height: 12),
             if (snapshot.followedFighters.isEmpty)
@@ -412,10 +449,7 @@ class _EventReminderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mainBout = event.bouts.firstWhere(
-      (bout) => bout.isMainEvent,
-      orElse: () => event.bouts.first,
-    );
+    final mainBout = headlineBoutForEvent(event);
 
     return InkWell(
       onTap: onTap,
@@ -441,7 +475,9 @@ class _EventReminderCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${mainBout.fighterAName} vs ${mainBout.fighterBName}',
+                    mainBout == null
+                        ? strings.pendingCardTitle
+                        : '${mainBout.fighterAName} vs ${mainBout.fighterBName}',
                     style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w800,
@@ -451,7 +487,9 @@ class _EventReminderCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   EditorialMetaBand(
-                    label: '${event.localTimeLabel}  •  ${event.locationLabel}',
+                    label: mainBout == null
+                        ? strings.pendingCardBody
+                        : '${event.localTimeLabel}  •  ${event.locationLabel}',
                   ),
                   const SizedBox(height: 12),
                   Wrap(

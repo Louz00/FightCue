@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/domain_models.dart';
+import '../../models/event_summary_utils.dart';
 import '../../widgets/editorial_ui.dart';
 import '../../widgets/fighter_avatar.dart';
 
@@ -193,15 +194,13 @@ class _FollowedEventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mainBout = event.bouts.firstWhere(
-      (bout) => bout.isMainEvent,
-      orElse: () => event.bouts.first,
-    );
+    final mainBout = headlineBoutForEvent(event);
     final followedBouts =
         event.bouts.where((bout) => bout.includesFollowedFighter).length;
-    final watchLabel = event.watchProviders.isEmpty
+    final primaryWatchProvider = primaryWatchProviderLabel(event);
+    final watchLabel = primaryWatchProvider == null
         ? event.sourceLabel
-        : '${strings.whereToWatch}: ${event.watchProviders.first.label}';
+        : '${strings.whereToWatch}: $primaryWatchProvider';
 
     return InkWell(
       onTap: onOpenEvent,
@@ -234,32 +233,35 @@ class _FollowedEventCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _CompactFighterPreview(
-                          label: mainBout.fighterAName,
-                          alignEnd: false,
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'VS',
-                          style: TextStyle(
-                            color: AppColors.accent,
-                            fontWeight: FontWeight.w800,
+                  if (mainBout == null)
+                    _PendingCardNotice(strings: strings)
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _CompactFighterPreview(
+                            label: mainBout.fighterAName,
+                            alignEnd: false,
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: _CompactFighterPreview(
-                          label: mainBout.fighterBName,
-                          alignEnd: true,
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            'VS',
+                            style: TextStyle(
+                              color: AppColors.accent,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                        Expanded(
+                          child: _CompactFighterPreview(
+                            label: mainBout.fighterBName,
+                            alignEnd: true,
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 14),
                   EditorialMetaBand(label: watchLabel),
                   const SizedBox(height: 14),
@@ -306,6 +308,17 @@ class _FollowedEventCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _PendingCardNotice extends StatelessWidget {
+  const _PendingCardNotice({required this.strings});
+
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return EditorialMetaBand(label: strings.pendingCardTitle);
   }
 }
 

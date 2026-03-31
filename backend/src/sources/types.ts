@@ -1,4 +1,8 @@
-import type { EventSummary, SourcePreview } from "../domain/models.js";
+import type {
+  EventSummary,
+  LeaderboardSummary,
+  SourcePreview,
+} from "../domain/models.js";
 
 export type EventSourceQuery = {
   timezone: string;
@@ -6,3 +10,5 @@ export type EventSourceQuery = {
 };
 
 export type EventSourcePreview = SourcePreview<EventSummary>;
+export type LeaderboardSourceQuery = EventSourceQuery;
+export type LeaderboardSourcePreview = SourcePreview<LeaderboardSummary>;

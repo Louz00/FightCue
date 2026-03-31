@@ -17,6 +17,8 @@ dist/
 .env
 .env.local
 backend/.data/
+backend/.local/
+backend/postgres.log
 
 # Python legacy
 .pytest_cache/

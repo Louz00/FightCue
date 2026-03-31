@@ -24,9 +24,10 @@ class RankingsScreen extends StatefulWidget {
 }
 
 class _RankingsScreenState extends State<RankingsScreen> {
-  late Future<List<LeaderboardSummary>> _future;
+  late Future<ApiFetchResult<List<LeaderboardSummary>>> _future;
   RankingGroup _selectedGroup = RankingGroup.men;
   String? _selectedWeightClass;
+  bool _didRequestStaleRefresh = false;
 
   @override
   void initState() {
@@ -34,11 +35,18 @@ class _RankingsScreenState extends State<RankingsScreen> {
     _future = _loadRankings();
   }
 
-  Future<List<LeaderboardSummary>> _loadRankings() {
-    return widget.api.fetchLeaderboards();
+  Future<ApiFetchResult<List<LeaderboardSummary>>> _loadRankings() {
+    return widget.api.fetchLeaderboardsResult();
   }
 
   void _retry() {
+    setState(() {
+      _didRequestStaleRefresh = false;
+      _future = _loadRankings();
+    });
+  }
+
+  void _refreshStaleCache() {
     setState(() {
       _future = _loadRankings();
     });
@@ -46,10 +54,11 @@ class _RankingsScreenState extends State<RankingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<LeaderboardSummary>>(
+    return FutureBuilder<ApiFetchResult<List<LeaderboardSummary>>>(
       future: _future,
       builder: (context, snapshot) {
-        final divisions = snapshot.data ?? const <LeaderboardSummary>[];
+        final rankingsResult = snapshot.data;
+        final divisions = rankingsResult?.data ?? const <LeaderboardSummary>[];
         final availableDivisions = divisions
             .where((division) => division.group == _selectedGroup)
             .toList();
@@ -63,6 +72,19 @@ class _RankingsScreenState extends State<RankingsScreen> {
             (division) => division.weightClass == selectedWeightClass,
             orElse: () => availableDivisions.first,
           );
+        }
+
+        if (rankingsResult?.isStaleCache ?? false) {
+          if (!_didRequestStaleRefresh) {
+            _didRequestStaleRefresh = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _refreshStaleCache();
+              }
+            });
+          }
+        } else {
+          _didRequestStaleRefresh = false;
         }
 
         return ListView(
@@ -96,45 +118,64 @@ class _RankingsScreenState extends State<RankingsScreen> {
                 actionLabel: widget.strings.retryAction,
                 onAction: _retry,
               )
-            else if (selectedDivision == null)
-              _EmptyCard(strings: widget.strings)
-            else ...[
-              EditorialSectionTitle(label: selectedDivision.title),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: availableDivisions
-                    .map(
-                      (division) => _WeightChip(
-                        label: division.weightClass,
-                        selected: division.weightClass == selectedWeightClass,
-                        onTap: () => setState(
-                          () => _selectedWeightClass = division.weightClass,
+            else if (rankingsResult?.isFromCache ?? false)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: EditorialNoticeCard(
+                  title: widget.strings.savedRankingsTitle,
+                  body: widget.strings.savedTimestampBody(
+                    widget.strings.savedRankingsBody,
+                    rankingsResult?.lastSyncedAt,
+                    isStale: rankingsResult?.isStaleCache ?? false,
+                  ),
+                  actionLabel: widget.strings.retryAction,
+                  onAction: _retry,
+                ),
+              )
+            else
+              const SizedBox.shrink(),
+            if (snapshot.connectionState != ConnectionState.waiting &&
+                !snapshot.hasError) ...[
+              if (selectedDivision == null)
+                _EmptyCard(strings: widget.strings)
+              else ...[
+                EditorialSectionTitle(label: selectedDivision.title),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: availableDivisions
+                      .map(
+                        (division) => _WeightChip(
+                          label: division.weightClass,
+                          selected: division.weightClass == selectedWeightClass,
+                          onTap: () => setState(
+                            () => _selectedWeightClass = division.weightClass,
+                          ),
                         ),
-                      ),
-                    )
-                    .toList(),
-              ),
-              const SizedBox(height: 16),
-              _SourceCard(
-                division: selectedDivision,
-                body: widget.strings.rankingsSourceBody,
-                sourceLabel: widget.strings.sourceLabel,
-              ),
-              const SizedBox(height: 16),
-              ...selectedDivision.entries.map(
-                (entry) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _RankingEntryCard(
-                    entry: entry,
-                    strings: widget.strings,
-                    onTap: entry.fighterId.isEmpty
-                        ? null
-                        : () => widget.onOpenFighter(entry.fighterId),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 16),
+                _SourceCard(
+                  division: selectedDivision,
+                  body: widget.strings.rankingsSourceBody,
+                  sourceLabel: widget.strings.sourceLabel,
+                ),
+                const SizedBox(height: 16),
+                ...selectedDivision.entries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _RankingEntryCard(
+                      entry: entry,
+                      strings: widget.strings,
+                      onTap: entry.fighterId.isEmpty
+                          ? null
+                          : () => widget.onOpenFighter(entry.fighterId),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ],
         );
@@ -198,21 +239,26 @@ class _TogglePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: selected ? AppColors.accent : Colors.white,
-            fontWeight: FontWeight.w800,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected ? AppColors.accent : Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ),
@@ -233,23 +279,32 @@ class _WeightChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.accent : AppColors.surface,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? AppColors.accent : AppColors.border,
+    final surface = AppColors.surfaceFor(context);
+    final border = AppColors.borderFor(context);
+    final textPrimary = AppColors.textPrimaryFor(context);
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.accent : surface,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? AppColors.accent : border,
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),
@@ -272,10 +327,10 @@ class _SourceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceFor(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
+        border: Border.all(color: AppColors.borderFor(context)),
+        boxShadow: AppShadows.cardFor(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -294,8 +349,8 @@ class _SourceCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   body,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: AppColors.textSecondaryFor(context),
                     height: 1.45,
                   ),
                 ),
@@ -321,124 +376,133 @@ class _RankingEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.border),
-          boxShadow: AppShadows.card,
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
-              decoration: const BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+    final surface = AppColors.surfaceFor(context);
+    final border = AppColors.borderFor(context);
+    final textPrimary = AppColors.textPrimaryFor(context);
+    final textSecondary = AppColors.textSecondaryFor(context);
+
+    return Semantics(
+      button: onTap != null,
+      label: entry.fighterName,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: border),
+            boxShadow: AppShadows.cardFor(context),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+                decoration: const BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
                 ),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Text(
-                      entry.rank.toString(),
-                      style: const TextStyle(
-                        color: AppColors.accent,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      entry.organization.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                  ),
-                  if (entry.isChampion)
+                child: Row(
+                  children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
+                      width: 42,
+                      height: 42,
+                      alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: const Color(0x22FFFFFF),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: const Color(0x33FFFFFF)),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Text(
-                        strings.championLabel.toUpperCase(),
+                        entry.rank.toString(),
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 10,
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
                         ),
                       ),
                     ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  FighterAvatar(
-                    name: entry.fighterName,
-                    size: 64,
-                    showInitialsChip: false,
-                    framed: true,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          entry.fighterName,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 20,
-                            letterSpacing: -0.3,
-                          ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        entry.organization.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          entry.recordLabel,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        if (entry.pointsLabel != null) ...[
-                          const SizedBox(height: 10),
-                          EditorialMetaBand(label: entry.pointsLabel!),
-                        ],
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                    if (entry.isChampion)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0x22FFFFFF),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: const Color(0x33FFFFFF)),
+                        ),
+                        child: Text(
+                          strings.championLabel.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    FighterAvatar(
+                      name: entry.fighterName,
+                      size: 64,
+                      showInitialsChip: false,
+                      framed: true,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.fighterName,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 20,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            entry.recordLabel,
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (entry.pointsLabel != null) ...[
+                            const SizedBox(height: 10),
+                            EditorialMetaBand(label: entry.pointsLabel!),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -452,14 +516,17 @@ class _EmptyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textPrimary = AppColors.textPrimaryFor(context);
+    final textSecondary = AppColors.textSecondaryFor(context);
+
     return EditorialSurfaceCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             strings.noRankingsTitle,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: textPrimary,
               fontWeight: FontWeight.w800,
               fontSize: 18,
             ),
@@ -467,8 +534,8 @@ class _EmptyCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             strings.noRankingsBody,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: textSecondary,
               height: 1.45,
             ),
           ),

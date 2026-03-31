@@ -30,17 +30,25 @@ class FighterProfileScreen extends StatefulWidget {
 }
 
 class _FighterProfileScreenState extends State<FighterProfileScreen> {
-  late Future<FighterDetailSnapshot> _detailFuture;
+  late Future<ApiFetchResult<FighterDetailSnapshot>> _detailFuture;
+  bool _didRequestStaleRefresh = false;
 
   @override
   void initState() {
     super.initState();
-    _detailFuture = widget.api.fetchFighterDetail(widget.fighterId);
+    _detailFuture = widget.api.fetchFighterDetailResult(widget.fighterId);
   }
 
   Future<void> _refreshDetails() async {
     setState(() {
-      _detailFuture = widget.api.fetchFighterDetail(widget.fighterId);
+      _didRequestStaleRefresh = false;
+      _detailFuture = widget.api.fetchFighterDetailResult(widget.fighterId);
+    });
+  }
+
+  void _refreshStaleCache() {
+    setState(() {
+      _detailFuture = widget.api.fetchFighterDetailResult(widget.fighterId);
     });
   }
 
@@ -49,15 +57,15 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
     final strings = AppStrings.of(context);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.backgroundFor(context),
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.surfaceFor(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
           strings.aboutFighterTitle,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            color: AppColors.textPrimaryFor(context),
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -65,11 +73,12 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
       body: ValueListenableBuilder<HomeSnapshot>(
         valueListenable: widget.snapshotListenable,
         builder: (context, snapshot, _) {
-          return FutureBuilder<FighterDetailSnapshot>(
+          return FutureBuilder<ApiFetchResult<FighterDetailSnapshot>>(
             future: _detailFuture,
             builder: (context, detailSnapshot) {
               final snapshotFighter = snapshot.fighterById(widget.fighterId);
-              final fetchedFighter = detailSnapshot.data?.fighter;
+              final fetchedResult = detailSnapshot.data;
+              final fetchedFighter = fetchedResult?.data.fighter;
               final baseFighter = fetchedFighter ?? snapshotFighter;
 
               if (detailSnapshot.connectionState == ConnectionState.waiting &&
@@ -100,13 +109,38 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
                 isFollowed: snapshotFighter?.isFollowed ?? baseFighter.isFollowed,
               );
               final relatedEvents =
-                  detailSnapshot.data?.relatedEvents ??
+                  fetchedResult?.data.relatedEvents ??
                   snapshot.relatedEventsForFighter(widget.fighterId);
+
+              if (fetchedResult?.isStaleCache ?? false) {
+                if (!_didRequestStaleRefresh) {
+                  _didRequestStaleRefresh = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      _refreshStaleCache();
+                    }
+                  });
+                }
+              } else {
+                _didRequestStaleRefresh = false;
+              }
 
               return ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
                 children: [
-                  if (detailSnapshot.hasError) ...[
+                  if (fetchedResult?.isFromCache ?? false) ...[
+                    EditorialNoticeCard(
+                      title: strings.savedFighterTitle,
+                      body: strings.savedTimestampBody(
+                        strings.savedFighterBody,
+                        fetchedResult?.lastSyncedAt,
+                        isStale: fetchedResult?.isStaleCache ?? false,
+                      ),
+                      actionLabel: strings.retryAction,
+                      onAction: _refreshDetails,
+                    ),
+                    const SizedBox(height: 16),
+                  ] else if (detailSnapshot.hasError) ...[
                     EditorialNoticeCard(
                       title: strings.detailFallbackTitle,
                       body: strings.fighterFallbackBody,
@@ -129,8 +163,8 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
                   EditorialSurfaceCard(
                     child: Text(
                       fighter.headline,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
+                      style: TextStyle(
+                        color: AppColors.textSecondaryFor(context),
                         height: 1.5,
                       ),
                     ),
@@ -142,8 +176,8 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
                     EditorialSurfaceCard(
                       child: Text(
                         strings.noFilteredEventsBody,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
+                        style: TextStyle(
+                          color: AppColors.textSecondaryFor(context),
                           height: 1.45,
                         ),
                       ),
@@ -184,98 +218,103 @@ class _FighterHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final nickname = fighter.nickname == null ? '' : ' "${fighter.nickname}"';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.accent,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          EditorialCardHeaderBand(
-            pillLabel: fighter.organizationHint,
-            title: fighter.name,
-            trailingLabel: fighter.nationalityLabel,
-          ),
-          Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    FighterAvatar(
-                      name: fighter.name,
-                      size: 96,
-                      showInitialsChip: false,
-                      framed: true,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${fighter.name}$nickname',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 26,
-                              height: 1.02,
-                              letterSpacing: -0.7,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            fighter.headline,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Color(0xFFFFE4E8),
-                              height: 1.45,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _HeroMetric(
-                        label: strings.recordLabel,
-                        value: fighter.recordLabel,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _HeroMetric(
-                        label: strings.nationalityLabel,
-                        value: fighter.nationalityLabel,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                _HeroMetric(
-                  label: strings.nextAppearanceTitle,
-                  value: fighter.nextAppearanceLabel,
-                ),
-                const SizedBox(height: 14),
-                EditorialActionPill(
-                  label: fighter.isFollowed
-                      ? strings.unfollowAction
-                      : strings.favoriteFighterAction,
-                  emphasized: true,
-                  onTap: onToggleFollow,
-                ),
-              ],
+    return Semantics(
+      container: true,
+      label:
+          '${fighter.name}${nickname.isEmpty ? '' : nickname}, ${fighter.recordLabel}, ${fighter.nationalityLabel}',
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.accent,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: AppShadows.cardFor(context),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            EditorialCardHeaderBand(
+              pillLabel: fighter.organizationHint,
+              title: fighter.name,
+              trailingLabel: fighter.nationalityLabel,
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      FighterAvatar(
+                        name: fighter.name,
+                        size: 96,
+                        showInitialsChip: false,
+                        framed: true,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${fighter.name}$nickname',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 26,
+                                height: 1.02,
+                                letterSpacing: -0.7,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              fighter.headline,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFFFFE4E8),
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _HeroMetric(
+                          label: strings.recordLabel,
+                          value: fighter.recordLabel,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _HeroMetric(
+                          label: strings.nationalityLabel,
+                          value: fighter.nationalityLabel,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  _HeroMetric(
+                    label: strings.nextAppearanceTitle,
+                    value: fighter.nextAppearanceLabel,
+                  ),
+                  const SizedBox(height: 14),
+                  EditorialActionPill(
+                    label: fighter.isFollowed
+                        ? strings.unfollowAction
+                        : strings.favoriteFighterAction,
+                    emphasized: true,
+                    onTap: onToggleFollow,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -342,78 +381,83 @@ class _RelatedEventCard extends StatelessWidget {
         ? event.sourceLabel
         : '${strings.whereToWatch}: $primaryWatchProvider';
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.border),
-          boxShadow: AppShadows.card,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            EditorialCardHeaderBand(
-              pillLabel: event.organization,
-              title: event.title,
-              trailingLabel: event.localDateLabel,
-            ),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${event.localTimeLabel}  •  ${event.locationLabel}',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
+    return Semantics(
+      button: true,
+      label:
+          '${event.title}, ${event.organization}, ${event.localDateLabel}, ${event.localTimeLabel}',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surfaceFor(context),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.borderFor(context)),
+            boxShadow: AppShadows.cardFor(context),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              EditorialCardHeaderBand(
+                pillLabel: event.organization,
+                title: event.title,
+                trailingLabel: event.localDateLabel,
+              ),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${event.localTimeLabel}  •  ${event.locationLabel}',
+                      style: TextStyle(
+                        color: AppColors.textSecondaryFor(context),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  if (mainBout == null)
-                    EditorialMetaBand(label: strings.pendingCardTitle)
-                  else
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _CompactPortraitName(
-                            name: mainBout.fighterAName,
-                            alignEnd: false,
-                          ),
-                        ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Text(
-                            'VS',
-                            style: TextStyle(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w800,
+                    const SizedBox(height: 14),
+                    if (mainBout == null)
+                      EditorialMetaBand(label: strings.pendingCardTitle)
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _CompactPortraitName(
+                              name: mainBout.fighterAName,
+                              alignEnd: false,
                             ),
                           ),
-                        ),
-                        Expanded(
-                          child: _CompactPortraitName(
-                            name: mainBout.fighterBName,
-                            alignEnd: true,
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              'VS',
+                              style: TextStyle(
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                          Expanded(
+                            child: _CompactPortraitName(
+                              name: mainBout.fighterBName,
+                              alignEnd: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 14),
+                    EditorialMetaBand(label: watchLabel),
+                    const SizedBox(height: 14),
+                    EditorialActionPill(
+                      label: strings.viewEventDetails,
+                      emphasized: true,
+                      onTap: onTap,
                     ),
-                  const SizedBox(height: 14),
-                  EditorialMetaBand(label: watchLabel),
-                  const SizedBox(height: 14),
-                  EditorialActionPill(
-                    label: strings.viewEventDetails,
-                    emphasized: true,
-                    onTap: onTap,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -441,8 +485,8 @@ class _CompactPortraitName extends StatelessWidget {
       child: Text(
         name,
         textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
+        style: TextStyle(
+          color: AppColors.textPrimaryFor(context),
           fontWeight: FontWeight.w800,
         ),
         maxLines: 2,

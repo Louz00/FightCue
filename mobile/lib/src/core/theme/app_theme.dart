@@ -19,6 +19,29 @@ class AppColors {
   static const darkTextPrimary = Color(0xFFF6F7F9);
   static const darkTextSecondary = Color(0xFFB7BEC8);
   static const darkShadow = Color(0x44000000);
+
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  static Color backgroundFor(BuildContext context) =>
+      isDark(context) ? darkBackground : background;
+
+  static Color surfaceFor(BuildContext context) =>
+      isDark(context) ? darkSurface : surface;
+
+  static Color surfaceAltFor(BuildContext context) =>
+      isDark(context) ? darkSurfaceAlt : surfaceAlt;
+
+  static Color borderFor(BuildContext context) =>
+      isDark(context) ? darkBorder : border;
+
+  static Color textPrimaryFor(BuildContext context) =>
+      isDark(context) ? darkTextPrimary : textPrimary;
+
+  static Color textSecondaryFor(BuildContext context) =>
+      isDark(context) ? darkTextSecondary : textSecondary;
+
+  static Color inkFor(BuildContext context) => isDark(context) ? darkBorder : ink;
 }
 
 class AppShadows {
@@ -29,6 +52,18 @@ class AppShadows {
       offset: Offset(0, 8),
     ),
   ];
+
+  static List<BoxShadow> cardFor(BuildContext context) {
+    return [
+      BoxShadow(
+        color: AppColors.isDark(context)
+            ? AppColors.darkShadow
+            : AppColors.shadow,
+        blurRadius: 16,
+        offset: const Offset(0, 8),
+      ),
+    ];
+  }
 }
 
 ThemeData buildAppTheme() {

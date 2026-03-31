@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/app_strings.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
 import '../../models/event_summary_utils.dart';
 import '../../widgets/editorial_ui.dart';
@@ -12,6 +13,8 @@ class FollowingScreen extends StatelessWidget {
   const FollowingScreen({
     super.key,
     required this.snapshotListenable,
+    required this.cachedFallbackListenable,
+    required this.lastSyncedAtListenable,
     required this.strings,
     required this.onOpenEvent,
     required this.onOpenFighter,
@@ -20,6 +23,8 @@ class FollowingScreen extends StatelessWidget {
   });
 
   final ValueListenable<HomeSnapshot> snapshotListenable;
+  final ValueListenable<bool> cachedFallbackListenable;
+  final ValueListenable<DateTime?> lastSyncedAtListenable;
   final AppStrings strings;
   final ValueChanged<String> onOpenEvent;
   final ValueChanged<String> onOpenFighter;
@@ -31,57 +36,83 @@ class FollowingScreen extends StatelessWidget {
     return ValueListenableBuilder<HomeSnapshot>(
       valueListenable: snapshotListenable,
       builder: (context, snapshot, _) {
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-          children: [
-            EditorialPageHero(
-              eyebrow: strings.following.toUpperCase(),
-              title: strings.followingTitle,
-              body: strings.followingSubtitle,
-              trailingLabel:
-                  '${snapshot.followedFighters.length + snapshot.followedEvents.length}',
-            ),
-            const SizedBox(height: 24),
-            EditorialSectionTitle(label: strings.followedFightersTitle),
-            const SizedBox(height: 12),
-            if (snapshot.followedFighters.isEmpty)
-              _EmptyStateCard(
-                title: strings.followedFightersEmptyTitle,
-                body: strings.followedFightersEmptyBody,
-              )
-            else
-              ...snapshot.followedFighters.map(
-                (fighter) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _FollowedFighterTile(
-                    fighter: fighter,
-                    strings: strings,
-                    onOpenFighter: () => onOpenFighter(fighter.id),
-                    onToggleFollow: () => onToggleFighterFollow(fighter.id),
-                  ),
-                ),
-              ),
-            const SizedBox(height: 20),
-            EditorialSectionTitle(label: strings.followedEventsTitle),
-            const SizedBox(height: 12),
-            if (snapshot.followedEvents.isEmpty)
-              _EmptyStateCard(
-                title: strings.followedEventsEmptyTitle,
-                body: strings.followedEventsEmptyBody,
-              )
-            else
-              ...snapshot.followedEvents.map(
-                (event) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _FollowedEventCard(
-                    event: event,
-                    strings: strings,
-                    onOpenEvent: () => onOpenEvent(event.id),
-                    onToggleFollow: () => onToggleEventFollow(event.id),
-                  ),
-                ),
-              ),
-          ],
+        return ValueListenableBuilder<bool>(
+          valueListenable: cachedFallbackListenable,
+          builder: (context, usingCachedFallback, __) {
+            return ValueListenableBuilder<DateTime?>(
+              valueListenable: lastSyncedAtListenable,
+              builder: (context, lastSyncedAt, ___) {
+                final isStale = usingCachedFallback &&
+                    lastSyncedAt != null &&
+                    DateTime.now().toUtc().difference(lastSyncedAt.toUtc()) >
+                        ApiFetchResult.staleThreshold;
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+                  children: [
+                    EditorialPageHero(
+                      eyebrow: strings.following.toUpperCase(),
+                      title: strings.followingTitle,
+                      body: strings.followingSubtitle,
+                      trailingLabel:
+                          '${snapshot.followedFighters.length + snapshot.followedEvents.length}',
+                    ),
+                    const SizedBox(height: 24),
+                    if (usingCachedFallback) ...[
+                      EditorialNoticeCard(
+                        title: strings.savedPreviewTitle,
+                        body: strings.savedTimestampBody(
+                          strings.savedPreviewBody,
+                          lastSyncedAt,
+                          isStale: isStale,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    EditorialSectionTitle(label: strings.followedFightersTitle),
+                    const SizedBox(height: 12),
+                    if (snapshot.followedFighters.isEmpty)
+                      _EmptyStateCard(
+                        title: strings.followedFightersEmptyTitle,
+                        body: strings.followedFightersEmptyBody,
+                      )
+                    else
+                      ...snapshot.followedFighters.map(
+                        (fighter) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _FollowedFighterTile(
+                            fighter: fighter,
+                            strings: strings,
+                            onOpenFighter: () => onOpenFighter(fighter.id),
+                            onToggleFollow: () => onToggleFighterFollow(fighter.id),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    EditorialSectionTitle(label: strings.followedEventsTitle),
+                    const SizedBox(height: 12),
+                    if (snapshot.followedEvents.isEmpty)
+                      _EmptyStateCard(
+                        title: strings.followedEventsEmptyTitle,
+                        body: strings.followedEventsEmptyBody,
+                      )
+                    else
+                      ...snapshot.followedEvents.map(
+                        (event) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _FollowedEventCard(
+                            event: event,
+                            strings: strings,
+                            onOpenEvent: () => onOpenEvent(event.id),
+                            onToggleFollow: () => onToggleEventFollow(event.id),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -103,76 +134,80 @@ class _FollowedFighterTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onOpenFighter,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.border),
-          boxShadow: AppShadows.card,
-        ),
-        child: Column(
-          children: [
-            EditorialCardHeaderBand(
-              pillLabel: fighter.organizationHint,
-              title: fighter.name,
-              trailingLabel: strings.trackedTagLabel.toUpperCase(),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FighterAvatar(
-                    name: fighter.name,
-                    size: 72,
-                    showInitialsChip: false,
-                    framed: true,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          fighter.headline,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            height: 1.45,
-                          ),
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 12),
-                        EditorialMetaBand(label: fighter.nextAppearanceLabel),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: EditorialActionPill(
-                                label: strings.aboutFighterTitle,
-                                emphasized: true,
-                                onTap: onOpenFighter,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: EditorialActionPill(
-                                label: strings.unfollowAction,
-                                onTap: onToggleFollow,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+    return Semantics(
+      button: true,
+      label: '${fighter.name}, ${fighter.organizationHint}, ${fighter.nextAppearanceLabel}',
+      child: InkWell(
+        onTap: onOpenFighter,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppShadows.card,
+          ),
+          child: Column(
+            children: [
+              EditorialCardHeaderBand(
+                pillLabel: fighter.organizationHint,
+                title: fighter.name,
+                trailingLabel: strings.trackedTagLabel.toUpperCase(),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FighterAvatar(
+                      name: fighter.name,
+                      size: 72,
+                      showInitialsChip: false,
+                      framed: true,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fighter.headline,
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              height: 1.45,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 12),
+                          EditorialMetaBand(label: fighter.nextAppearanceLabel),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: EditorialActionPill(
+                                  label: strings.aboutFighterTitle,
+                                  emphasized: true,
+                                  onTap: onOpenFighter,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: EditorialActionPill(
+                                  label: strings.unfollowAction,
+                                  onTap: onToggleFollow,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -202,109 +237,113 @@ class _FollowedEventCard extends StatelessWidget {
         ? event.sourceLabel
         : '${strings.whereToWatch}: $primaryWatchProvider';
 
-    return InkWell(
-      onTap: onOpenEvent,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.border),
-          boxShadow: AppShadows.card,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            EditorialCardHeaderBand(
-              pillLabel: event.organization,
-              title: event.title,
-              trailingLabel: event.localDateLabel,
-            ),
-            Padding(
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${event.localTimeLabel}  •  ${event.locationLabel}',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w700,
+    return Semantics(
+      button: true,
+      label: '${event.title}, ${event.organization}, ${event.localDateLabel}, ${event.localTimeLabel}',
+      child: InkWell(
+        onTap: onOpenEvent,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border),
+            boxShadow: AppShadows.card,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              EditorialCardHeaderBand(
+                pillLabel: event.organization,
+                title: event.title,
+                trailingLabel: event.localDateLabel,
+              ),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${event.localTimeLabel}  •  ${event.locationLabel}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 14),
-                  if (mainBout == null)
-                    _PendingCardNotice(strings: strings)
-                  else
+                    const SizedBox(height: 14),
+                    if (mainBout == null)
+                      _PendingCardNotice(strings: strings)
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _CompactFighterPreview(
+                              label: mainBout.fighterAName,
+                              alignEnd: false,
+                            ),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              'VS',
+                              style: TextStyle(
+                                color: AppColors.accent,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: _CompactFighterPreview(
+                              label: mainBout.fighterBName,
+                              alignEnd: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 14),
+                    EditorialMetaBand(label: watchLabel),
+                    const SizedBox(height: 14),
                     Row(
                       children: [
                         Expanded(
-                          child: _CompactFighterPreview(
-                            label: mainBout.fighterAName,
-                            alignEnd: false,
+                          child: _Metric(
+                            label: strings.followedFightersTitle,
+                            value: followedBouts.toString(),
                           ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 10),
-                          child: Text(
-                            'VS',
-                            style: TextStyle(
-                              color: AppColors.accent,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: _CompactFighterPreview(
-                            label: mainBout.fighterBName,
-                            alignEnd: true,
+                          child: _Metric(
+                            label: strings.selectedCountryLabel,
+                            value: event.selectedCountryCode,
                           ),
                         ),
                       ],
                     ),
-                  const SizedBox(height: 14),
-                  EditorialMetaBand(label: watchLabel),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _Metric(
-                          label: strings.followedFightersTitle,
-                          value: followedBouts.toString(),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: EditorialActionPill(
+                            label: strings.viewEventDetails,
+                            emphasized: true,
+                            onTap: onOpenEvent,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: _Metric(
-                          label: strings.selectedCountryLabel,
-                          value: event.selectedCountryCode,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: EditorialActionPill(
+                            label: strings.unfollowAction,
+                            onTap: onToggleFollow,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: EditorialActionPill(
-                          label: strings.viewEventDetails,
-                          emphasized: true,
-                          onTap: onOpenEvent,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: EditorialActionPill(
-                          label: strings.unfollowAction,
-                          onTap: onToggleFollow,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

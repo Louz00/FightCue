@@ -35,18 +35,26 @@ class EventDetailScreen extends StatefulWidget {
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
-  late Future<EventDetailSnapshot> _detailFuture;
+  late Future<ApiFetchResult<EventDetailSnapshot>> _detailFuture;
   _FightCardSection _selectedSection = _FightCardSection.main;
+  bool _didRequestStaleRefresh = false;
 
   @override
   void initState() {
     super.initState();
-    _detailFuture = widget.api.fetchEventDetail(widget.eventId);
+    _detailFuture = widget.api.fetchEventDetailResult(widget.eventId);
   }
 
   Future<void> _refreshDetails() async {
     setState(() {
-      _detailFuture = widget.api.fetchEventDetail(widget.eventId);
+      _didRequestStaleRefresh = false;
+      _detailFuture = widget.api.fetchEventDetailResult(widget.eventId);
+    });
+  }
+
+  void _refreshStaleCache() {
+    setState(() {
+      _detailFuture = widget.api.fetchEventDetailResult(widget.eventId);
     });
   }
 
@@ -73,15 +81,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     final strings = AppStrings.of(context);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.backgroundFor(context),
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.surfaceFor(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: Text(
           strings.eventOverviewTitle,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            color: AppColors.textPrimaryFor(context),
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -89,11 +97,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       body: ValueListenableBuilder<HomeSnapshot>(
         valueListenable: widget.snapshotListenable,
         builder: (context, snapshot, _) {
-          return FutureBuilder<EventDetailSnapshot>(
+          return FutureBuilder<ApiFetchResult<EventDetailSnapshot>>(
             future: _detailFuture,
             builder: (context, detailSnapshot) {
               final snapshotEvent = snapshot.eventById(widget.eventId);
-              final fetchedDetail = detailSnapshot.data;
+              final fetchedResult = detailSnapshot.data;
+              final fetchedDetail = fetchedResult?.data;
               final fetchedEvent = fetchedDetail?.event;
               final baseEvent = fetchedEvent ?? snapshotEvent;
 
@@ -145,6 +154,19 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   fetchedDetail?.calendarExportPath ??
                   '/v1/events/${widget.eventId}/calendar.ics';
 
+              if (fetchedResult?.isStaleCache ?? false) {
+                if (!_didRequestStaleRefresh) {
+                  _didRequestStaleRefresh = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      _refreshStaleCache();
+                    }
+                  });
+                }
+              } else {
+                _didRequestStaleRefresh = false;
+              }
+
               return ListView(
                 padding: const EdgeInsets.only(bottom: 28),
                 children: [
@@ -165,7 +187,22 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                     onCalendarExport: () =>
                         _copyCalendarLink(context, calendarExportPath),
                   ),
-                  if (detailSnapshot.hasError) ...[
+                  if (fetchedResult?.isFromCache ?? false) ...[
+                    const SizedBox(height: 18),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: EditorialNoticeCard(
+                        title: strings.savedDetailTitle,
+                        body: strings.savedTimestampBody(
+                          strings.savedDetailBody,
+                          fetchedResult?.lastSyncedAt,
+                          isStale: fetchedResult?.isStaleCache ?? false,
+                        ),
+                        actionLabel: strings.retryAction,
+                        onAction: _refreshDetails,
+                      ),
+                    ),
+                  ] else if (detailSnapshot.hasError) ...[
                     const SizedBox(height: 18),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -479,7 +516,11 @@ class _HeadlineFightRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Semantics(
+      container: true,
+      label:
+          '${bout.fighterAName} versus ${bout.fighterBName}, ${bout.slotLabel}',
+      child: Row(
       children: [
         Expanded(
           child: _HeadlineFighterBlock(
@@ -516,6 +557,7 @@ class _HeadlineFightRow extends StatelessWidget {
           ),
         ),
       ],
+      ),
     );
   }
 }
@@ -604,24 +646,32 @@ class _HeaderActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: filled ? Colors.white : AppColors.ink,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: filled ? Colors.white : const Color(0x33FFFFFF),
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: filled
+                ? Colors.white
+                : (AppColors.isDark(context)
+                      ? AppColors.darkSurface
+                      : AppColors.ink),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: filled ? Colors.white : const Color(0x33FFFFFF),
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: filled ? AppColors.accent : Colors.white,
-            fontWeight: FontWeight.w800,
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: filled ? AppColors.accent : Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
           ),
         ),
       ),
@@ -644,11 +694,13 @@ class _FightCardSectionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceFor(context);
+    final border = AppColors.borderFor(context);
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: surface,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: Row(
         children: [
@@ -686,27 +738,35 @@ class _SectionToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
-        decoration: BoxDecoration(
-          border: selected
-              ? const Border(
-                  bottom: BorderSide(
-                    color: AppColors.textPrimary,
-                    width: 2.5,
-                  ),
-                )
-              : null,
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: selected ? AppColors.textPrimary : AppColors.textSecondary,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+    final textPrimary = AppColors.textPrimaryFor(context);
+    final textSecondary = AppColors.textSecondaryFor(context);
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+          decoration: BoxDecoration(
+            border: selected
+                ? Border(
+                    bottom: BorderSide(
+                      color: textPrimary,
+                      width: 2.5,
+                    ),
+                  )
+                : null,
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: selected ? textPrimary : textSecondary,
+              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -733,12 +793,17 @@ class _EditorialBoutTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceFor(context);
+    final border = AppColors.borderFor(context);
+    final textPrimary = AppColors.textPrimaryFor(context);
+    final textSecondary = AppColors.textSecondaryFor(context);
+    final surfaceAlt = AppColors.surfaceAltFor(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,8 +813,8 @@ class _EditorialBoutTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   '${event.localDateLabel}, ${event.localTimeLabel}',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -777,8 +842,8 @@ class _EditorialBoutTile extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             _boutHeadline(bout),
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: textPrimary,
               fontWeight: FontWeight.w800,
               fontSize: 21,
               letterSpacing: -0.4,
@@ -802,7 +867,7 @@ class _EditorialBoutTile extends StatelessWidget {
                 height: 44,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt,
+                  color: surfaceAlt,
                   shape: BoxShape.circle,
                 ),
                 child: const Text(
@@ -853,6 +918,9 @@ class _BoutFighterSide extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFollowed = fighter?.isFollowed ?? false;
+    final textPrimary = AppColors.textPrimaryFor(context);
+    final textSecondary = AppColors.textSecondaryFor(context);
+    final surface = AppColors.surfaceFor(context);
     final avatar = FighterAvatar(
       name: displayName,
       size: 60,
@@ -860,70 +928,81 @@ class _BoutFighterSide extends StatelessWidget {
       framed: true,
     );
     final info = Expanded(
-      child: InkWell(
-        onTap: () => onOpenFighter(fighterId),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Column(
-            crossAxisAlignment: alignEnd
-                ? CrossAxisAlignment.end
-                : CrossAxisAlignment.start,
-            children: [
-              Text(
-                displayName,
-                textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-                style: TextStyle(
-                  color: isFollowed ? AppColors.accent : AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  letterSpacing: -0.2,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (fighter?.recordLabel != null) ...[
-                const SizedBox(height: 4),
+      child: Semantics(
+        button: true,
+        label: 'Open fighter profile for $displayName',
+        child: InkWell(
+          onTap: () => onOpenFighter(fighterId),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Column(
+              crossAxisAlignment: alignEnd
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
+              children: [
                 Text(
-                  fighter!.recordLabel,
+                  displayName,
                   textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
+                    color: isFollowed ? AppColors.accent : textPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    letterSpacing: -0.2,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-              if (fighter?.organizationHint != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  fighter!.organizationHint,
-                  textAlign: alignEnd ? TextAlign.right : TextAlign.left,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
+                if (fighter?.recordLabel != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    fighter!.recordLabel,
+                    textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
+                ],
+                if (fighter?.organizationHint != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    fighter!.organizationHint,
+                    textAlign: alignEnd ? TextAlign.right : TextAlign.left,
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
     );
 
-    final followButton = InkWell(
-      onTap: () => onToggleFighterFollow(fighterId),
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: isFollowed ? AppColors.accent : Colors.white,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: AppColors.accent),
-        ),
-        child: Icon(
-          isFollowed ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-          size: 16,
-          color: isFollowed ? Colors.white : AppColors.accent,
+    final followButton = Semantics(
+      button: true,
+      toggled: isFollowed,
+      label: isFollowed
+          ? 'Unfollow $displayName'
+          : 'Follow $displayName',
+      child: InkWell(
+        onTap: () => onToggleFighterFollow(fighterId),
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: isFollowed ? AppColors.accent : surface,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppColors.accent),
+          ),
+          child: Icon(
+            isFollowed ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            size: 16,
+            color: isFollowed ? Colors.white : AppColors.accent,
+          ),
         ),
       ),
     );
@@ -952,17 +1031,20 @@ class _EmptyFightCardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceFor(context);
+    final border = AppColors.borderFor(context);
+    final textSecondary = AppColors.textSecondaryFor(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: Text(
         strings.noFilteredEventsBody,
-        style: const TextStyle(
-          color: AppColors.textSecondary,
+        style: TextStyle(
+          color: textSecondary,
           height: 1.45,
         ),
       ),
@@ -978,12 +1060,14 @@ class _OverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceFor(context);
+    final border = AppColors.borderFor(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: surface,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: Column(
         children: [
@@ -1020,14 +1104,16 @@ class _OverviewRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textSecondary = AppColors.textSecondaryFor(context);
+    final textPrimary = AppColors.textPrimaryFor(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: textSecondary,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1037,8 +1123,8 @@ class _OverviewRow extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
+            style: TextStyle(
+              color: textPrimary,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1059,12 +1145,17 @@ class _ProviderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceFor(context);
+    final border = AppColors.borderFor(context);
+    final surfaceAlt = AppColors.surfaceAltFor(context);
+    final textPrimary = AppColors.textPrimaryFor(context);
+    final textSecondary = AppColors.textSecondaryFor(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: border),
       ),
       child: Row(
         children: [
@@ -1072,7 +1163,7 @@ class _ProviderCard extends StatelessWidget {
             width: 42,
             height: 42,
             decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
+              color: surfaceAlt,
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
@@ -1087,8 +1178,8 @@ class _ProviderCard extends StatelessWidget {
               children: [
                 Text(
                   provider.label,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  style: TextStyle(
+                    color: textPrimary,
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
                   ),
@@ -1096,8 +1187,8 @@ class _ProviderCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${strings.selectedCountryLabel}: ${provider.countryCode}  •  ${provider.confidenceLabel}',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -1117,13 +1208,17 @@ class _PanelTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textPrimary = AppColors.textPrimaryFor(context);
     return Row(
       children: [
-        Text(
-          label.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.textPrimary,
-              ),
+        Semantics(
+          header: true,
+          child: Text(
+            label.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: textPrimary,
+                ),
+          ),
         ),
         const SizedBox(width: 10),
         Expanded(

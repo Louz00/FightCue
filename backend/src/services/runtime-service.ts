@@ -11,33 +11,18 @@ import {
   mergeExternalEvents,
 } from "../domain/runtime-data.js";
 import { filterUniqueBoxingEventsAgainstExisting } from "../domain/boxing-deduplication.js";
-import { loadEspnBoxingRankingsPreview } from "../sources/boxing/espn-boxing-rankings-source.js";
-import { loadEspnBoxingSchedulePreview } from "../sources/boxing/espn-boxing-schedule-source.js";
-import { loadRingBoxingRatingsPreview } from "../sources/boxing/ring-boxing-ratings-source.js";
-import { loadBoxxerEventsPreview } from "../sources/boxxer/boxxer-events-source.js";
-import { loadGoldenBoyEventsPreview } from "../sources/golden-boy/golden-boy-events-source.js";
-import { loadGloryEventsPreview } from "../sources/glory/glory-events-source.js";
-import { loadMatchroomEventsPreview } from "../sources/matchroom/matchroom-events-source.js";
-import { loadOneEventsPreview } from "../sources/one/one-events-source.js";
-import { loadPbcEventsPreview } from "../sources/pbc/pbc-events-source.js";
-import { loadQueensberryEventsPreview } from "../sources/queensberry/queensberry-events-source.js";
-import { loadTopRankEventsPreview } from "../sources/top-rank/top-rank-events-source.js";
-import { loadUfcEventsPreview } from "../sources/ufc/ufc-events-source.js";
 import type { EventSourcePreview } from "../sources/types.js";
+import type { LeaderboardSourcePreview } from "../sources/types.js";
+import {
+  EVENT_SOURCE_DEFINITION_BY_KEY,
+  HOME_EVENT_SOURCE_KEYS,
+  LEADERBOARD_SOURCE_DEFINITION_BY_KEY,
+  type EventSourceKey,
+  type LeaderboardSourceKey,
+} from "../sources/source-registry.js";
 import type { UserStateStore } from "../store/user-state-store.js";
+import { logError, logWarn } from "../observability/logger.js";
 
-const UFC_SOURCE_CACHE_TTL_MS = 2 * 60 * 1000;
-const GLORY_SOURCE_CACHE_TTL_MS = 2 * 60 * 1000;
-const MATCHROOM_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
-const ONE_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
-const QUEENSBERRY_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
-const TOP_RANK_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
-const PBC_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
-const GOLDEN_BOY_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
-const BOXXER_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
-const ESPN_BOXING_SOURCE_CACHE_TTL_MS = 10 * 60 * 1000;
-const ESPN_BOXING_RANKINGS_SOURCE_CACHE_TTL_MS = 30 * 60 * 1000;
-const RING_BOXING_RATINGS_SOURCE_CACHE_TTL_MS = 30 * 60 * 1000;
 const RUNTIME_DATA_CACHE_TTL_MS = 20 * 1000;
 const RUNTIME_SOURCE_TIMEOUT_MS = 6 * 1000;
 const MAX_RUNTIME_CACHE_ENTRIES = 25;
@@ -121,156 +106,44 @@ export class RuntimeService {
     return this.resolveRuntimeData(await this.stateStore.read(deviceId));
   }
 
-  async getCachedUfcPreview(timezone: string, countryCode: string) {
+  async getCachedEventPreview(
+    source: EventSourceKey,
+    timezone: string,
+    countryCode: string,
+  ): Promise<EventSourcePreview> {
+    const definition = EVENT_SOURCE_DEFINITION_BY_KEY.get(source);
+    if (!definition) {
+      throw new Error(`Unknown event source: ${source}`);
+    }
+
     return this.loadCachedPreview(
-      "ufc",
+      source,
       `${timezone}:${countryCode}`,
-      UFC_SOURCE_CACHE_TTL_MS,
+      definition.ttlMs,
       () =>
-        loadUfcEventsPreview({
+        definition.loader({
           timezone,
           selectedCountryCode: countryCode,
         }),
     );
   }
 
-  async getCachedGloryPreview(timezone: string, countryCode: string) {
-    return this.loadCachedPreview(
-      "glory",
-      `${timezone}:${countryCode}`,
-      GLORY_SOURCE_CACHE_TTL_MS,
-      () =>
-        loadGloryEventsPreview({
-          timezone,
-          selectedCountryCode: countryCode,
-        }),
-    );
-  }
+  async getCachedLeaderboardPreview(
+    source: LeaderboardSourceKey,
+    timezone: string,
+    countryCode: string,
+  ): Promise<LeaderboardSourcePreview> {
+    const definition = LEADERBOARD_SOURCE_DEFINITION_BY_KEY.get(source);
+    if (!definition) {
+      throw new Error(`Unknown leaderboard source: ${source}`);
+    }
 
-  async getCachedMatchroomPreview(timezone: string, countryCode: string) {
     return this.loadCachedPreview(
-      "matchroom",
+      source,
       `${timezone}:${countryCode}`,
-      MATCHROOM_SOURCE_CACHE_TTL_MS,
+      definition.ttlMs,
       () =>
-        loadMatchroomEventsPreview({
-          timezone,
-          selectedCountryCode: countryCode,
-        }),
-    );
-  }
-
-  async getCachedOnePreview(timezone: string, countryCode: string) {
-    return this.loadCachedPreview(
-      "one",
-      `${timezone}:${countryCode}`,
-      ONE_SOURCE_CACHE_TTL_MS,
-      () =>
-        loadOneEventsPreview({
-          timezone,
-          selectedCountryCode: countryCode,
-        }),
-    );
-  }
-
-  async getCachedPbcPreview(timezone: string, countryCode: string) {
-    return this.loadCachedPreview(
-      "pbc",
-      `${timezone}:${countryCode}`,
-      PBC_SOURCE_CACHE_TTL_MS,
-      () =>
-        loadPbcEventsPreview({
-          timezone,
-          selectedCountryCode: countryCode,
-        }),
-    );
-  }
-
-  async getCachedGoldenBoyPreview(timezone: string, countryCode: string) {
-    return this.loadCachedPreview(
-      "golden_boy",
-      `${timezone}:${countryCode}`,
-      GOLDEN_BOY_SOURCE_CACHE_TTL_MS,
-      () =>
-        loadGoldenBoyEventsPreview({
-          timezone,
-          selectedCountryCode: countryCode,
-        }),
-    );
-  }
-
-  async getCachedBoxxerPreview(timezone: string, countryCode: string) {
-    return this.loadCachedPreview(
-      "boxxer",
-      `${timezone}:${countryCode}`,
-      BOXXER_SOURCE_CACHE_TTL_MS,
-      () =>
-        loadBoxxerEventsPreview({
-          timezone,
-          selectedCountryCode: countryCode,
-        }),
-    );
-  }
-
-  async getCachedQueensberryPreview(timezone: string, countryCode: string) {
-    return this.loadCachedPreview(
-      "queensberry",
-      `${timezone}:${countryCode}`,
-      QUEENSBERRY_SOURCE_CACHE_TTL_MS,
-      () =>
-        loadQueensberryEventsPreview({
-          timezone,
-          selectedCountryCode: countryCode,
-        }),
-    );
-  }
-
-  async getCachedTopRankPreview(timezone: string, countryCode: string) {
-    return this.loadCachedPreview(
-      "top_rank",
-      `${timezone}:${countryCode}`,
-      TOP_RANK_SOURCE_CACHE_TTL_MS,
-      () =>
-        loadTopRankEventsPreview({
-          timezone,
-          selectedCountryCode: countryCode,
-        }),
-    );
-  }
-
-  async getCachedEspnBoxingPreview(timezone: string, countryCode: string) {
-    return this.loadCachedPreview(
-      "espn_boxing",
-      `${timezone}:${countryCode}`,
-      ESPN_BOXING_SOURCE_CACHE_TTL_MS,
-      () =>
-        loadEspnBoxingSchedulePreview({
-          timezone,
-          selectedCountryCode: countryCode,
-        }),
-    );
-  }
-
-  async getCachedEspnBoxingRankingsPreview(timezone: string, countryCode: string) {
-    return this.loadCachedPreview(
-      "espn_boxing_rankings",
-      `${timezone}:${countryCode}`,
-      ESPN_BOXING_RANKINGS_SOURCE_CACHE_TTL_MS,
-      () =>
-        loadEspnBoxingRankingsPreview({
-          timezone,
-          selectedCountryCode: countryCode,
-        }),
-    );
-  }
-
-  async getCachedRingBoxingRatingsPreview(timezone: string, countryCode: string) {
-    return this.loadCachedPreview(
-      "ring_boxing_ratings",
-      `${timezone}:${countryCode}`,
-      RING_BOXING_RATINGS_SOURCE_CACHE_TTL_MS,
-      () =>
-        loadRingBoxingRatingsPreview({
+        definition.loader({
           timezone,
           selectedCountryCode: countryCode,
         }),
@@ -282,224 +155,62 @@ export class RuntimeService {
   ): Promise<TimedRuntimeResolution> {
     const profile = buildRuntimeProfile(state);
     const baseEvents = buildRuntimeEvents(state, profile);
-    const [
-      ufcPreview,
-      gloryPreview,
-      onePreview,
-      matchroomPreview,
-      queensberryPreview,
-      topRankPreview,
-      pbcPreview,
-      goldenBoyPreview,
-      boxxerPreview,
-      espnBoxingPreview,
-    ] = await Promise.all([
-      this.loadHomePreviewWithTimeout({
-        source: "ufc",
-        officialUrl: "https://www.ufc.com/events",
-        timezone: profile.timezone,
-        countryCode: profile.viewingCountryCode,
-        loader: () =>
-          this.getCachedUfcPreview(profile.timezone, profile.viewingCountryCode),
-      }),
-      this.loadHomePreviewWithTimeout({
-        source: "glory",
-        officialUrl: "https://glorykickboxing.com/en/events",
-        timezone: profile.timezone,
-        countryCode: profile.viewingCountryCode,
-        loader: () =>
-          this.getCachedGloryPreview(profile.timezone, profile.viewingCountryCode),
-      }),
-      this.loadHomePreviewWithTimeout({
-        source: "one",
-        officialUrl: "https://www.onefc.com/events/",
-        timezone: profile.timezone,
-        countryCode: profile.viewingCountryCode,
-        loader: () =>
-          this.getCachedOnePreview(profile.timezone, profile.viewingCountryCode),
-      }),
-      this.loadHomePreviewWithTimeout({
-        source: "matchroom",
-        officialUrl: "https://www.matchroomboxing.com/events/",
-        timezone: profile.timezone,
-        countryCode: profile.viewingCountryCode,
-        loader: () =>
-          this.getCachedMatchroomPreview(
-            profile.timezone,
-            profile.viewingCountryCode,
-          ),
-      }),
-      this.loadHomePreviewWithTimeout({
-        source: "queensberry",
-        officialUrl: "https://queensberry.co.uk/pages/events",
-        timezone: profile.timezone,
-        countryCode: profile.viewingCountryCode,
-        loader: () =>
-          this.getCachedQueensberryPreview(
-            profile.timezone,
-            profile.viewingCountryCode,
-          ),
-      }),
-      this.loadHomePreviewWithTimeout({
-        source: "top_rank",
-        officialUrl: "https://www.toprank.com/",
-        timezone: profile.timezone,
-        countryCode: profile.viewingCountryCode,
-        loader: () =>
-          this.getCachedTopRankPreview(profile.timezone, profile.viewingCountryCode),
-      }),
-      this.loadHomePreviewWithTimeout({
-        source: "pbc",
-        officialUrl: "https://www.premierboxingchampions.com/boxing-schedule",
-        timezone: profile.timezone,
-        countryCode: profile.viewingCountryCode,
-        loader: () =>
-          this.getCachedPbcPreview(profile.timezone, profile.viewingCountryCode),
-      }),
-      this.loadHomePreviewWithTimeout({
-        source: "golden_boy",
-        officialUrl: "https://www.goldenboy.com/events/",
-        timezone: profile.timezone,
-        countryCode: profile.viewingCountryCode,
-        loader: () =>
-          this.getCachedGoldenBoyPreview(
-            profile.timezone,
-            profile.viewingCountryCode,
-          ),
-      }),
-      this.loadHomePreviewWithTimeout({
-        source: "boxxer",
-        officialUrl: "https://www.boxxer.com/tickets/",
-        timezone: profile.timezone,
-        countryCode: profile.viewingCountryCode,
-        loader: () =>
-          this.getCachedBoxxerPreview(profile.timezone, profile.viewingCountryCode),
-      }),
-      this.loadHomePreviewWithTimeout({
-        source: "espn_boxing",
-        officialUrl: "https://www.espn.com/boxing/story/_/id/12508267/boxing-schedule",
-        timezone: profile.timezone,
-        countryCode: profile.viewingCountryCode,
-        loader: () =>
-          this.getCachedEspnBoxingPreview(
-            profile.timezone,
-            profile.viewingCountryCode,
-          ),
+    const homeSourceDefinitions = HOME_EVENT_SOURCE_KEYS.map((key) => {
+      const definition = EVENT_SOURCE_DEFINITION_BY_KEY.get(key);
+      if (!definition) {
+        throw new Error(`Missing home source definition for ${key}`);
+      }
+      return definition;
+    });
+    const previews = await Promise.all(
+      homeSourceDefinitions.map((definition) =>
+        this.loadHomePreviewWithTimeout({
+          source: definition.key,
+          officialUrl: definition.officialUrl,
+          timezone: profile.timezone,
+          countryCode: profile.viewingCountryCode,
+          loader: () =>
+            this.getCachedEventPreview(
+              definition.key,
+              profile.timezone,
+              profile.viewingCountryCode,
+            ),
         }),
-    ]);
+      ),
+    );
 
-    logSourcePreviewIssues([
-      ufcPreview,
-      gloryPreview,
-      onePreview,
-      matchroomPreview,
-      queensberryPreview,
-      topRankPreview,
-      pbcPreview,
-      goldenBoyPreview,
-      boxxerPreview,
-      espnBoxingPreview,
-    ]);
+    logSourcePreviewIssues(previews);
 
-    const withUfcEvents = mergeExternalEvents(
-      state,
-      baseEvents,
-      ufcPreview.items,
-      "ufc",
-      profile,
-    );
-    const withOneEvents = mergeExternalEvents(
-      state,
-      withUfcEvents,
-      onePreview.items,
-      "one",
-      profile,
-    );
-    const withGloryEvents = mergeExternalEvents(
-      state,
-      withOneEvents,
-      gloryPreview.items,
-      "glory",
-      profile,
-    );
-    const withTopRankEvents = mergeExternalEvents(
-      state,
-      withGloryEvents,
-      topRankPreview.items,
-      "top_rank",
-      profile,
-    );
-    const withPbcEvents = mergeExternalEvents(
-      state,
-      withTopRankEvents,
-      filterUniqueBoxingEventsAgainstExisting(withTopRankEvents, pbcPreview.items),
-      "pbc",
-      profile,
-    );
-    const withGoldenBoyEvents = mergeExternalEvents(
-      state,
-      withPbcEvents,
-      filterUniqueBoxingEventsAgainstExisting(withPbcEvents, goldenBoyPreview.items),
-      "golden_boy",
-      profile,
-    );
-    const withQueensberryEvents = mergeExternalEvents(
-      state,
-      withGoldenBoyEvents,
-      filterUniqueBoxingEventsAgainstExisting(
-        withGoldenBoyEvents,
-        queensberryPreview.items,
-      ),
-      "queensberry",
-      profile,
-    );
-    const withMatchroomEvents = mergeExternalEvents(
-      state,
-      withQueensberryEvents,
-      filterUniqueBoxingEventsAgainstExisting(
-        withQueensberryEvents,
-        matchroomPreview.items,
-      ),
-      "matchroom",
-      profile,
-    );
-    const withBoxxerEvents = mergeExternalEvents(
-      state,
-      withMatchroomEvents,
-      filterUniqueBoxingEventsAgainstExisting(withMatchroomEvents, boxxerPreview.items),
-      "boxxer",
-      profile,
-    );
-    const withEspnBoxingEvents = mergeExternalEvents(
-      state,
-      withBoxxerEvents,
-      filterUniqueBoxingEventsAgainstExisting(
-        withBoxxerEvents,
-        espnBoxingPreview.items,
-      ),
-      "espn_boxing",
-      profile,
-    );
-    const fighters = buildRuntimeFightersFromEvents(state, withEspnBoxingEvents);
+    const mergedEvents = homeSourceDefinitions.reduce((currentEvents, definition, index) => {
+      const preview = previews[index];
+      if (!preview) {
+        return currentEvents;
+      }
+
+      const incomingItems =
+        definition.mergeStrategy === "dedupe_boxing"
+          ? filterUniqueBoxingEventsAgainstExisting(currentEvents, preview.items)
+          : preview.items;
+
+      return mergeExternalEvents(
+        state,
+        currentEvents,
+        incomingItems,
+        definition.key,
+        profile,
+      );
+    }, baseEvents);
+    const fighters = buildRuntimeFightersFromEvents(state, mergedEvents);
 
     return {
       data: {
         profile,
         fighters,
-        events: withEspnBoxingEvents,
+        events: mergedEvents,
       },
-      timedOutSourceCount: [
-        ufcPreview,
-        onePreview,
-        gloryPreview,
-        matchroomPreview,
-        queensberryPreview,
-        topRankPreview,
-        pbcPreview,
-        goldenBoyPreview,
-        boxxerPreview,
-        espnBoxingPreview,
-      ].filter((preview) => preview.warnings.some((warning) => warning.includes("timed out"))).length,
+      timedOutSourceCount: previews.filter((preview) =>
+        preview.warnings.some((warning) => warning.includes("timed out")),
+      ).length,
     };
   }
 
@@ -611,12 +322,19 @@ export class RuntimeService {
           clearTimeout(timeoutId);
           resolve(preview);
         })
-        .catch(() => {
+        .catch((error) => {
           if (settled) {
             return;
           }
           settled = true;
           clearTimeout(timeoutId);
+          logError("source.loader_failed", {
+            source,
+            timezone,
+            countryCode,
+            officialUrl,
+            errorMessage: getErrorMessage(error),
+          });
           resolve(
             this.buildTimedOutPreview({
               source,
@@ -699,6 +417,14 @@ function logSourcePreviewIssues(previews: EventSourcePreview[]): void {
       fetchedAt: preview.fetchedAt,
     };
 
-    console.warn("[FightCue][source.preview_issue]", JSON.stringify(payload));
+    logWarn("source.preview_issue", payload);
   }
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Unknown source loader error";
 }

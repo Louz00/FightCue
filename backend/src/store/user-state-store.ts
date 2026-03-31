@@ -3,10 +3,14 @@ import path from "node:path";
 
 import { Pool, type PoolClient } from "pg";
 
+import { isDatabaseRequired, isFileStateFallbackAllowed } from "../config/persistence.js";
 import { runSchemaMigrations } from "../db/migrations.js";
+import { logWarn } from "../observability/logger.js";
 import type {
   AlertPresetKey,
   PremiumState,
+  PushPermissionStatus,
+  PushTokenPlatform,
   SupportedLanguage,
   UserProfile,
 } from "../domain/models.js";
@@ -29,6 +33,13 @@ export type PersistedUserState = {
     fighters: Record<string, AlertPresetKey[]>;
     events: Record<string, AlertPresetKey[]>;
   };
+  push: {
+    pushEnabled: boolean;
+    permissionStatus: PushPermissionStatus;
+    tokenPlatform?: PushTokenPlatform;
+    tokenValue?: string;
+    tokenUpdatedAt?: string;
+  };
 };
 
 export interface UserStateStore {
@@ -50,6 +61,10 @@ export interface UserStateStore {
     targetId: string,
     presetKeys: AlertPresetKey[],
   ): Promise<PersistedUserState>;
+  updatePushSettings(
+    deviceId: string,
+    updates: Partial<PersistedUserState["push"]>,
+  ): Promise<PersistedUserState>;
   close?(): Promise<void>;
 }
 
@@ -60,7 +75,8 @@ export async function createUserStateStore(
   },
 ): Promise<UserStateStore> {
   const connectionString = process.env.DATABASE_URL ?? process.env.FIGHTCUE_DATABASE_URL;
-  const requireDatabase = process.env.FIGHTCUE_REQUIRE_DATABASE === "true";
+  const requireDatabase = isDatabaseRequired();
+  const allowFileFallback = isFileStateFallbackAllowed();
 
   if (!connectionString) {
     if (requireDatabase) {
@@ -78,14 +94,14 @@ export async function createUserStateStore(
       connectionString,
     );
   } catch (error) {
-    if (requireDatabase) {
+    if (requireDatabase || !allowFileFallback) {
       throw error;
     }
-    console.warn(
-      `FightCue could not initialize PostgreSQL persistence, falling back to file storage: ${getErrorMessage(
-        error,
-      )}`,
-    );
+    logWarn("persistence.fallback_to_file", {
+      backend: "postgres",
+      fallbackBackend: "file",
+      reason: getErrorMessage(error),
+    });
     return new FileUserStateStore(baseProfile, initialState);
   }
 }
@@ -128,6 +144,15 @@ class FileUserStateStore implements UserStateStore {
         alerts: {
           fighters: parsed.alerts?.fighters ?? seededState.alerts.fighters,
           events: parsed.alerts?.events ?? seededState.alerts.events,
+        },
+        push: {
+          pushEnabled: parsed.push?.pushEnabled ?? seededState.push.pushEnabled,
+          permissionStatus:
+            parsed.push?.permissionStatus ?? seededState.push.permissionStatus,
+          tokenPlatform: parsed.push?.tokenPlatform ?? seededState.push.tokenPlatform,
+          tokenValue: parsed.push?.tokenValue ?? seededState.push.tokenValue,
+          tokenUpdatedAt:
+            parsed.push?.tokenUpdatedAt ?? seededState.push.tokenUpdatedAt,
         },
       };
     } catch {
@@ -204,6 +229,35 @@ class FileUserStateStore implements UserStateStore {
           },
         },
       };
+
+      await this.write(deviceId, next);
+      return next;
+    });
+  }
+
+  async updatePushSettings(
+    deviceId: string,
+    updates: Partial<PersistedUserState["push"]>,
+  ): Promise<PersistedUserState> {
+    return this.enqueue(async () => {
+      const current = await this.read(deviceId);
+      const next: PersistedUserState = {
+        ...current,
+        push: {
+          ...current.push,
+          ...updates,
+          tokenUpdatedAt:
+            updates.tokenValue == null && updates.tokenUpdatedAt == null
+              ? current.push.tokenUpdatedAt
+              : updates.tokenUpdatedAt ??
+                new Date().toISOString(),
+        },
+      };
+
+      if (!next.push.tokenValue) {
+        next.push.tokenPlatform = undefined;
+        next.push.tokenUpdatedAt = undefined;
+      }
 
       await this.write(deviceId, next);
       return next;
@@ -293,7 +347,21 @@ class PostgresUserStateStore implements UserStateStore {
         [userId],
       );
 
+      const pushResult = await client.query<{
+        push_enabled: boolean;
+        permission_status: PushPermissionStatus;
+        token_platform: PushTokenPlatform | null;
+        token_value: string | null;
+        token_updated_at: Date | string | null;
+      }>(
+        `SELECT push_enabled, permission_status, token_platform, token_value, token_updated_at
+           FROM user_push_devices
+          WHERE user_id = $1`,
+        [userId],
+      );
+
       const preferences = preferencesResult.rows[0];
+      const push = pushResult.rows[0];
       const state = seedStateForDevice(deviceId, this.initialState);
       const fighters: string[] = [];
       const events: string[] = [];
@@ -335,6 +403,14 @@ class PostgresUserStateStore implements UserStateStore {
         alerts: {
           fighters: fighterAlerts,
           events: eventAlerts,
+        },
+        push: {
+          pushEnabled: push?.push_enabled ?? state.push.pushEnabled,
+          permissionStatus:
+            push?.permission_status ?? state.push.permissionStatus,
+          tokenPlatform: push?.token_platform ?? state.push.tokenPlatform,
+          tokenValue: push?.token_value ?? state.push.tokenValue,
+          tokenUpdatedAt: toIsoTimestamp(push?.token_updated_at) ?? state.push.tokenUpdatedAt,
         },
       };
     });
@@ -425,6 +501,55 @@ class PostgresUserStateStore implements UserStateStore {
     });
   }
 
+  async updatePushSettings(
+    deviceId: string,
+    updates: Partial<PersistedUserState["push"]>,
+  ): Promise<PersistedUserState> {
+    return this.withUserTransaction(deviceId, async (client, userId) => {
+      const current = await this.readForUser(client, userId);
+      const nextPush = {
+        ...current.push,
+        ...updates,
+      };
+
+      if (!nextPush.tokenValue) {
+        nextPush.tokenPlatform = undefined;
+        nextPush.tokenUpdatedAt = undefined;
+      } else if (updates.tokenValue != null || updates.tokenUpdatedAt != null) {
+        nextPush.tokenUpdatedAt = updates.tokenUpdatedAt ?? new Date().toISOString();
+      }
+
+      await client.query(
+        `INSERT INTO user_push_devices (
+           user_id,
+           push_enabled,
+           permission_status,
+           token_platform,
+           token_value,
+           token_updated_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (user_id) DO UPDATE
+             SET push_enabled = COALESCE($2, user_push_devices.push_enabled),
+                 permission_status = COALESCE($3, user_push_devices.permission_status),
+                 token_platform = $4,
+                 token_value = $5,
+                 token_updated_at = $6,
+                 updated_at = NOW()`,
+        [
+          userId,
+          nextPush.pushEnabled,
+          nextPush.permissionStatus,
+          nextPush.tokenPlatform ?? null,
+          nextPush.tokenValue ?? null,
+          nextPush.tokenUpdatedAt ?? null,
+        ],
+      );
+
+      return this.readForUser(client, userId);
+    });
+  }
+
   async close(): Promise<void> {
     await this.pool.end();
   }
@@ -503,6 +628,27 @@ class PostgresUserStateStore implements UserStateStore {
         seededState.profile.premiumState,
         seededState.profile.analyticsConsent,
         seededState.profile.adConsentGranted,
+      ],
+    );
+
+    await client.query(
+      `INSERT INTO user_push_devices (
+         user_id,
+         push_enabled,
+         permission_status,
+         token_platform,
+         token_value,
+         token_updated_at
+       )
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (user_id) DO NOTHING`,
+      [
+        userId,
+        seededState.push.pushEnabled,
+        seededState.push.permissionStatus,
+        seededState.push.tokenPlatform ?? null,
+        seededState.push.tokenValue ?? null,
+        seededState.push.tokenUpdatedAt ?? null,
       ],
     );
 
@@ -597,6 +743,19 @@ class PostgresUserStateStore implements UserStateStore {
       [userId],
     );
 
+    const pushResult = await client.query<{
+      push_enabled: boolean;
+      permission_status: PushPermissionStatus;
+      token_platform: PushTokenPlatform | null;
+      token_value: string | null;
+      token_updated_at: Date | string | null;
+    }>(
+      `SELECT push_enabled, permission_status, token_platform, token_value, token_updated_at
+         FROM user_push_devices
+        WHERE user_id = $1`,
+      [userId],
+    );
+
     const fighterIds: string[] = [];
     const eventIds: string[] = [];
     for (const row of followsResult.rows) {
@@ -616,6 +775,7 @@ class PostgresUserStateStore implements UserStateStore {
     }
 
     const preferences = preferencesResult.rows[0];
+    const push = pushResult.rows[0];
 
     return {
       profile: {
@@ -637,6 +797,13 @@ class PostgresUserStateStore implements UserStateStore {
       alerts: {
         fighters: fighterAlerts,
         events: eventAlerts,
+      },
+      push: {
+        pushEnabled: push?.push_enabled ?? seededState.push.pushEnabled,
+        permissionStatus: push?.permission_status ?? seededState.push.permissionStatus,
+        tokenPlatform: push?.token_platform ?? seededState.push.tokenPlatform,
+        tokenValue: push?.token_value ?? seededState.push.tokenValue,
+        tokenUpdatedAt: toIsoTimestamp(push?.token_updated_at) ?? seededState.push.tokenUpdatedAt,
       },
     };
   }
@@ -666,6 +833,13 @@ function seedStateForDevice(
       fighters: structuredClone(initialState.alerts.fighters),
       events: structuredClone(initialState.alerts.events),
     },
+    push: {
+      pushEnabled: initialState.push.pushEnabled,
+      permissionStatus: initialState.push.permissionStatus,
+      tokenPlatform: initialState.push.tokenPlatform,
+      tokenValue: initialState.push.tokenValue,
+      tokenUpdatedAt: initialState.push.tokenUpdatedAt,
+    },
   };
 }
 
@@ -675,6 +849,16 @@ function sanitizeDeviceId(deviceId: string): string {
 
 function buildUserIdForDevice(deviceId: string): string {
   return `usr_${sanitizeDeviceId(deviceId)}`;
+}
+
+function toIsoTimestamp(value: Date | string | null | undefined): string | undefined {
+  if (value == null) {
+    return undefined;
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  return value;
 }
 
 function getErrorMessage(error: unknown): string {

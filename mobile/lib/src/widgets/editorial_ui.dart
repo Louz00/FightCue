@@ -24,7 +24,7 @@ class EditorialPageHero extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.accent,
         borderRadius: BorderRadius.circular(28),
-        boxShadow: AppShadows.card,
+        boxShadow: AppShadows.cardFor(context),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,14 +52,17 @@ class EditorialPageHero extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 31,
-                    height: 0.98,
-                    letterSpacing: -0.9,
+                Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 31,
+                      height: 0.98,
+                      letterSpacing: -0.9,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -93,12 +96,17 @@ class EditorialSectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textColor = AppColors.textPrimaryFor(context);
+
     return Row(
       children: [
-        Text(
-          label.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: AppColors.textPrimary,
+        Semantics(
+          header: true,
+          child: Text(
+            label.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: textColor,
+                ),
               ),
         ),
         const SizedBox(width: 10),
@@ -127,25 +135,31 @@ class EditorialActionPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final background = emphasized ? AppColors.accent : Colors.white;
+    final background = emphasized
+        ? AppColors.accent
+        : AppColors.surfaceFor(context);
     final textColor = emphasized ? Colors.white : AppColors.accent;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: AppColors.accent),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: textColor,
-            fontWeight: FontWeight.w700,
+    return Semantics(
+      button: true,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppColors.accent),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),
@@ -168,10 +182,10 @@ class EditorialSurfaceCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceFor(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
+        border: Border.all(color: AppColors.borderFor(context)),
+        boxShadow: AppShadows.cardFor(context),
       ),
       child: child,
     );
@@ -188,6 +202,8 @@ class EditorialLoadingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textColor = AppColors.textSecondaryFor(context);
+
     return EditorialSurfaceCard(
       padding: const EdgeInsets.all(26),
       child: Column(
@@ -199,8 +215,8 @@ class EditorialLoadingCard extends StatelessWidget {
             Text(
               label!,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
+              style: TextStyle(
+                color: textColor,
                 height: 1.4,
               ),
             ),
@@ -227,35 +243,41 @@ class EditorialNoticeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EditorialSurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
+    final titleColor = AppColors.textPrimaryFor(context);
+    final bodyColor = AppColors.textSecondaryFor(context);
+
+    return Semantics(
+      container: true,
+      child: EditorialSurfaceCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: titleColor,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            body,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              height: 1.45,
+            const SizedBox(height: 8),
+            Text(
+              body,
+              style: TextStyle(
+                color: bodyColor,
+                height: 1.45,
+              ),
             ),
-          ),
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 14),
-            EditorialActionPill(
-              label: actionLabel!,
-              emphasized: true,
-              onTap: onAction!,
-            ),
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: 14),
+              EditorialActionPill(
+                label: actionLabel!,
+                emphasized: true,
+                onTap: onAction!,
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -304,14 +326,17 @@ class EditorialCardHeaderBand extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Text(
-            title.toUpperCase(),
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 20,
-              height: 1.06,
-              letterSpacing: -0.4,
+          Semantics(
+            header: true,
+            child: Text(
+              title.toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 20,
+                height: 1.06,
+                letterSpacing: -0.4,
+              ),
             ),
           ),
         ],
@@ -334,13 +359,13 @@ class EditorialMetaBand extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
+        color: AppColors.surfaceAltFor(context),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(
         label,
-        style: const TextStyle(
-          color: AppColors.textPrimary,
+        style: TextStyle(
+          color: AppColors.textPrimaryFor(context),
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -358,7 +383,7 @@ class _EditorialDarkPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.ink,
+        color: AppColors.inkFor(context),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(

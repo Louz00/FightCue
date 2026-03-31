@@ -4,6 +4,12 @@ import type {
   EventSummary,
   WatchProviderSummary,
 } from "../../domain/models.js";
+import {
+  absoluteUrl as sharedAbsoluteUrl,
+  matchSingle as sharedMatchSingle,
+  sanitizeText as sharedSanitizeText,
+  toSlug as sharedToSlug,
+} from "../parse-utils.js";
 import { buildSourceHealth } from "../source-health.js";
 import type { EventSourcePreview, EventSourceQuery } from "../types.js";
 import {
@@ -270,25 +276,15 @@ function cleanFighterName(input: string): string {
 }
 
 function absoluteUrl(path: string): string {
-  if (!path) {
-    return "";
-  }
-
-  return path.startsWith("http") ? path : `https://queensberry.co.uk${path}`;
+  return sharedAbsoluteUrl(path, "https://queensberry.co.uk");
 }
 
 function sanitizeText(input: string): string {
-  return input
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, "\"")
-    .replace(/&#x27;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
+  return sharedSanitizeText(input);
 }
 
 function matchSingle(input: string, regex: RegExp): string | undefined {
-  return regex.exec(input)?.[1];
+  return sharedMatchSingle(input, regex);
 }
 
 function normalizeYear(value: number): number {
@@ -310,10 +306,7 @@ function formatDateLabel(day: number, month: number, year: number): string {
 }
 
 function toSlug(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  return sharedToSlug(input);
 }
 
 function getErrorMessage(error: unknown): string {

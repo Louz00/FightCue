@@ -34,6 +34,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
   AlertsSnapshot? _alerts;
   bool _isLoading = false;
   bool _loadFailed = false;
+  bool _usingCachedFallback = false;
+  DateTime? _lastSyncedAt;
+  bool _didRequestStaleRefresh = false;
 
   @override
   void initState() {
@@ -41,9 +44,13 @@ class _AlertsScreenState extends State<AlertsScreen> {
     _loadAlerts();
   }
 
-  Future<void> _loadAlerts() async {
+  Future<void> _loadAlerts({bool resetStaleRefresh = true}) async {
     if (!mounted) {
       return;
+    }
+
+    if (resetStaleRefresh) {
+      _didRequestStaleRefresh = false;
     }
 
     setState(() {
@@ -52,7 +59,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
     });
 
     try {
-      final alerts = await widget.api.fetchAlerts();
+      final result = await widget.api.fetchAlertsResult();
+      final alerts = result.data;
       if (!mounted) {
         return;
       }
@@ -60,6 +68,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
       setState(() {
         _alerts = alerts;
         _loadFailed = false;
+        _usingCachedFallback = result.isFromCache;
+        _lastSyncedAt = result.lastSyncedAt;
       });
     } catch (error, stackTrace) {
       logUiError(error, stackTrace, context: 'alerts.load');
@@ -69,6 +79,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
       setState(() {
         _loadFailed = true;
+        _usingCachedFallback = false;
       });
     } finally {
       if (mounted) {
@@ -181,168 +192,199 @@ class _AlertsScreenState extends State<AlertsScreen> {
       valueListenable: widget.snapshotListenable,
       builder: (context, snapshot, _) {
         final alerts = _alerts;
+        final isStaleCachedAlerts = _usingCachedFallback &&
+            _lastSyncedAt != null &&
+            DateTime.now().toUtc().difference(_lastSyncedAt!.toUtc()) >
+                ApiFetchResult.staleThreshold;
 
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
-          children: [
-            EditorialPageHero(
-              eyebrow: widget.strings.alerts.toUpperCase(),
-              title: widget.strings.alerts,
-              body: widget.strings.alertsSubtitle,
-              trailingLabel:
-                  '${snapshot.followedFighters.length + snapshot.followedEvents.length}',
-            ),
-            const SizedBox(height: 24),
-            if (_loadFailed) ...[
-              EditorialNoticeCard(
-                title: widget.strings.alertsFallbackTitle,
-                body: widget.strings.alertsFallbackBody,
-                actionLabel: widget.strings.retryAction,
-                onAction: _loadAlerts,
+        if (isStaleCachedAlerts && !_didRequestStaleRefresh) {
+          _didRequestStaleRefresh = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _loadAlerts(resetStaleRefresh: false);
+            }
+          });
+        } else if (!isStaleCachedAlerts) {
+          _didRequestStaleRefresh = false;
+        }
+
+        return RefreshIndicator(
+          onRefresh: _loadAlerts,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+            children: [
+              EditorialPageHero(
+                eyebrow: widget.strings.alerts.toUpperCase(),
+                title: widget.strings.alerts,
+                body: widget.strings.alertsSubtitle,
+                trailingLabel:
+                    '${snapshot.followedFighters.length + snapshot.followedEvents.length}',
               ),
+              const SizedBox(height: 24),
+              if (_loadFailed) ...[
+                EditorialNoticeCard(
+                  title: widget.strings.alertsFallbackTitle,
+                  body: widget.strings.alertsFallbackBody,
+                  actionLabel: widget.strings.retryAction,
+                  onAction: _loadAlerts,
+                ),
+                const SizedBox(height: 16),
+              ] else if (_usingCachedFallback) ...[
+                EditorialNoticeCard(
+                  title: widget.strings.savedAlertsTitle,
+                  body: widget.strings.savedTimestampBody(
+                    widget.strings.savedAlertsBody,
+                    _lastSyncedAt,
+                    isStale: isStaleCachedAlerts,
+                  ),
+                  actionLabel: widget.strings.retryAction,
+                  onAction: _loadAlerts,
+                ),
+                const SizedBox(height: 16),
+              ] else if (_isLoading && alerts == null) ...[
+                EditorialLoadingCard(label: widget.strings.liveSyncingLabel),
+                const SizedBox(height: 16),
+              ],
+              EditorialSectionTitle(label: widget.strings.fighterReminderPresetsTitle),
+              const SizedBox(height: 12),
+              if (snapshot.followedFighters.isEmpty)
+                _EmptyReminderCard(
+                  title: widget.strings.followedFightersEmptyTitle,
+                  body: widget.strings.followedFightersEmptyBody,
+                )
+              else
+                ...snapshot.followedFighters.map(
+                  (fighter) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _FighterReminderCard(
+                      fighter: fighter,
+                      presets: [
+                        _PresetChipData(
+                          label: widget.strings.reminderPreset24h,
+                          selected:
+                              (alerts?.fighterPresetsFor(fighter.id) ??
+                                      {
+                                        AlertPreset.before24h,
+                                        AlertPreset.before1h,
+                                        AlertPreset.timeChanges,
+                                      })
+                                  .contains(AlertPreset.before24h),
+                          onTap: () => _toggleFighterPreset(
+                            fighter.id,
+                            AlertPreset.before24h,
+                          ),
+                        ),
+                        _PresetChipData(
+                          label: widget.strings.reminderPreset1h,
+                          selected:
+                              (alerts?.fighterPresetsFor(fighter.id) ??
+                                      {
+                                        AlertPreset.before24h,
+                                        AlertPreset.before1h,
+                                        AlertPreset.timeChanges,
+                                      })
+                                  .contains(AlertPreset.before1h),
+                          onTap: () => _toggleFighterPreset(
+                            fighter.id,
+                            AlertPreset.before1h,
+                          ),
+                        ),
+                        _PresetChipData(
+                          label: widget.strings.reminderPresetChanges,
+                          selected:
+                              (alerts?.fighterPresetsFor(fighter.id) ??
+                                      {
+                                        AlertPreset.before24h,
+                                        AlertPreset.before1h,
+                                        AlertPreset.timeChanges,
+                                      })
+                                  .contains(AlertPreset.timeChanges),
+                          onTap: () => _toggleFighterPreset(
+                            fighter.id,
+                            AlertPreset.timeChanges,
+                          ),
+                        ),
+                      ],
+                      strings: widget.strings,
+                      onTap: () => widget.onOpenFighter(fighter.id),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 20),
+              EditorialSectionTitle(label: widget.strings.eventReminderPresetsTitle),
+              const SizedBox(height: 12),
+              if (snapshot.followedEvents.isEmpty)
+                _EmptyReminderCard(
+                  title: widget.strings.followedEventsEmptyTitle,
+                  body: widget.strings.followedEventsEmptyBody,
+                )
+              else
+                ...snapshot.followedEvents.map(
+                  (event) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _EventReminderCard(
+                      event: event,
+                      presets: [
+                        _PresetChipData(
+                          label: widget.strings.reminderPreset24h,
+                          selected:
+                              (alerts?.eventPresetsFor(event.id) ??
+                                      {
+                                        AlertPreset.before24h,
+                                        AlertPreset.timeChanges,
+                                        AlertPreset.watchUpdates,
+                                      })
+                                  .contains(AlertPreset.before24h),
+                          onTap: () => _toggleEventPreset(
+                            event.id,
+                            AlertPreset.before24h,
+                          ),
+                        ),
+                        _PresetChipData(
+                          label: widget.strings.reminderPresetChanges,
+                          selected:
+                              (alerts?.eventPresetsFor(event.id) ??
+                                      {
+                                        AlertPreset.before24h,
+                                        AlertPreset.timeChanges,
+                                        AlertPreset.watchUpdates,
+                                      })
+                                  .contains(AlertPreset.timeChanges),
+                          onTap: () => _toggleEventPreset(
+                            event.id,
+                            AlertPreset.timeChanges,
+                          ),
+                        ),
+                        _PresetChipData(
+                          label: widget.strings.reminderPresetWatch,
+                          selected:
+                              (alerts?.eventPresetsFor(event.id) ??
+                                      {
+                                        AlertPreset.before24h,
+                                        AlertPreset.timeChanges,
+                                        AlertPreset.watchUpdates,
+                                      })
+                                  .contains(AlertPreset.watchUpdates),
+                          onTap: () => _toggleEventPreset(
+                            event.id,
+                            AlertPreset.watchUpdates,
+                          ),
+                        ),
+                      ],
+                      strings: widget.strings,
+                      onTap: () => widget.onOpenEvent(event.id),
+                    ),
+                  ),
+                ),
               const SizedBox(height: 16),
-            ] else if (_isLoading && alerts == null) ...[
-              EditorialLoadingCard(label: widget.strings.liveSyncingLabel),
-              const SizedBox(height: 16),
+              _PolicyCard(
+                eyebrow: widget.strings.policyLabel.toUpperCase(),
+                title: widget.strings.alertPolicyTitle,
+                body: widget.strings.alertPolicyBody,
+              ),
             ],
-            EditorialSectionTitle(label: widget.strings.fighterReminderPresetsTitle),
-            const SizedBox(height: 12),
-            if (snapshot.followedFighters.isEmpty)
-              _EmptyReminderCard(
-                title: widget.strings.followedFightersEmptyTitle,
-                body: widget.strings.followedFightersEmptyBody,
-              )
-            else
-              ...snapshot.followedFighters.map(
-                (fighter) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _FighterReminderCard(
-                    fighter: fighter,
-                    presets: [
-                      _PresetChipData(
-                        label: widget.strings.reminderPreset24h,
-                        selected:
-                            (alerts?.fighterPresetsFor(fighter.id) ??
-                                    {
-                                      AlertPreset.before24h,
-                                      AlertPreset.before1h,
-                                      AlertPreset.timeChanges,
-                                    })
-                                .contains(AlertPreset.before24h),
-                        onTap: () => _toggleFighterPreset(
-                          fighter.id,
-                          AlertPreset.before24h,
-                        ),
-                      ),
-                      _PresetChipData(
-                        label: widget.strings.reminderPreset1h,
-                        selected:
-                            (alerts?.fighterPresetsFor(fighter.id) ??
-                                    {
-                                      AlertPreset.before24h,
-                                      AlertPreset.before1h,
-                                      AlertPreset.timeChanges,
-                                    })
-                                .contains(AlertPreset.before1h),
-                        onTap: () => _toggleFighterPreset(
-                          fighter.id,
-                          AlertPreset.before1h,
-                        ),
-                      ),
-                      _PresetChipData(
-                        label: widget.strings.reminderPresetChanges,
-                        selected:
-                            (alerts?.fighterPresetsFor(fighter.id) ??
-                                    {
-                                      AlertPreset.before24h,
-                                      AlertPreset.before1h,
-                                      AlertPreset.timeChanges,
-                                    })
-                                .contains(AlertPreset.timeChanges),
-                        onTap: () => _toggleFighterPreset(
-                          fighter.id,
-                          AlertPreset.timeChanges,
-                        ),
-                      ),
-                    ],
-                    strings: widget.strings,
-                    onTap: () => widget.onOpenFighter(fighter.id),
-                  ),
-                ),
-              ),
-            const SizedBox(height: 20),
-            EditorialSectionTitle(label: widget.strings.eventReminderPresetsTitle),
-            const SizedBox(height: 12),
-            if (snapshot.followedEvents.isEmpty)
-              _EmptyReminderCard(
-                title: widget.strings.followedEventsEmptyTitle,
-                body: widget.strings.followedEventsEmptyBody,
-              )
-            else
-              ...snapshot.followedEvents.map(
-                (event) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _EventReminderCard(
-                    event: event,
-                    presets: [
-                      _PresetChipData(
-                        label: widget.strings.reminderPreset24h,
-                        selected:
-                            (alerts?.eventPresetsFor(event.id) ??
-                                    {
-                                      AlertPreset.before24h,
-                                      AlertPreset.timeChanges,
-                                      AlertPreset.watchUpdates,
-                                    })
-                                .contains(AlertPreset.before24h),
-                        onTap: () => _toggleEventPreset(
-                          event.id,
-                          AlertPreset.before24h,
-                        ),
-                      ),
-                      _PresetChipData(
-                        label: widget.strings.reminderPresetChanges,
-                        selected:
-                            (alerts?.eventPresetsFor(event.id) ??
-                                    {
-                                      AlertPreset.before24h,
-                                      AlertPreset.timeChanges,
-                                      AlertPreset.watchUpdates,
-                                    })
-                                .contains(AlertPreset.timeChanges),
-                        onTap: () => _toggleEventPreset(
-                          event.id,
-                          AlertPreset.timeChanges,
-                        ),
-                      ),
-                      _PresetChipData(
-                        label: widget.strings.reminderPresetWatch,
-                        selected:
-                            (alerts?.eventPresetsFor(event.id) ??
-                                    {
-                                      AlertPreset.before24h,
-                                      AlertPreset.timeChanges,
-                                      AlertPreset.watchUpdates,
-                                    })
-                                .contains(AlertPreset.watchUpdates),
-                        onTap: () => _toggleEventPreset(
-                          event.id,
-                          AlertPreset.watchUpdates,
-                        ),
-                      ),
-                    ],
-                    strings: widget.strings,
-                    onTap: () => widget.onOpenEvent(event.id),
-                  ),
-                ),
-              ),
-            const SizedBox(height: 16),
-            _PolicyCard(
-              eyebrow: widget.strings.policyLabel.toUpperCase(),
-              title: widget.strings.alertPolicyTitle,
-              body: widget.strings.alertPolicyBody,
-            ),
-          ],
+          ),
         );
       },
     );
@@ -550,23 +592,28 @@ class _ReminderPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.accent : AppColors.surfaceAlt,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(
-            color: selected ? AppColors.accent : AppColors.border,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.accent : AppColors.surfaceAlt,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? AppColors.accent : AppColors.border,
+            ),
           ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: selected ? Colors.white : AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : AppColors.textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),

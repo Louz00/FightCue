@@ -4,6 +4,10 @@ import type {
   WatchProviderSummary,
 } from "../../domain/models.js";
 import { formatForTimezone, normalizeTimeZone } from "../../domain/time.js";
+import {
+  sanitizeText as sharedSanitizeText,
+  toSlug as sharedToSlug,
+} from "../parse-utils.js";
 import { buildSourceHealth } from "../source-health.js";
 import type { EventSourcePreview, EventSourceQuery } from "../types.js";
 
@@ -327,20 +331,11 @@ function monthNumber(value: string): number {
 }
 
 function sanitizeText(input: string): string {
-  return input
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, "\"")
-    .replace(/&#x27;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
+  return sharedSanitizeText(input);
 }
 
 function toSlug(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  return sharedToSlug(input);
 }
 
 function getErrorMessage(error: unknown): string {

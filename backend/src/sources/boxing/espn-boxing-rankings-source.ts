@@ -2,6 +2,11 @@ import type {
   LeaderboardEntry,
   LeaderboardSummary,
 } from "../../domain/models.js";
+import {
+  decodeHtmlEntities as sharedDecodeHtmlEntities,
+  sanitizeText as sharedSanitizeText,
+  toSlug as sharedToSlug,
+} from "../parse-utils.js";
 import { buildSourceHealth } from "../source-health.js";
 import type {
   LeaderboardSourcePreview,
@@ -230,24 +235,15 @@ function normalizeEspnWeightClass(heading: string): string {
 }
 
 function sanitizeText(input: string): string {
-  return input.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return sharedSanitizeText(input);
 }
 
 function decodeHtmlEntities(input: string): string {
-  return input
-    .replace(/&#39;|&#x27;/g, "'")
-    .replace(/&amp;/g, "&")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+  return sharedDecodeHtmlEntities(input);
 }
 
 function toSlug(input: string): string {
-  return sanitizeText(input)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  return sharedToSlug(input);
 }
 
 function getErrorMessage(error: unknown): string {

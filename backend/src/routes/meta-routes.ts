@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 
+import { isSignedDeviceTokenRequired } from "../config/device-auth.js";
+import { isDatabaseRequired, isFileStateFallbackAllowed } from "../config/persistence.js";
 import { sampleLeaderboards } from "../domain/mock-data.js";
 import { fightCueRuntimeProfile } from "../domain/models.js";
 import { resolveRawDeviceId } from "../http/device-id.js";
@@ -14,7 +16,9 @@ export function registerMetaRoutes(
     ok: true,
     service: "fightcue-backend",
     persistenceBackend: stateStore.backendLabel,
-    databaseRequired: process.env.FIGHTCUE_REQUIRE_DATABASE === "true",
+    databaseRequired: isDatabaseRequired(),
+    fileFallbackAllowed: isFileStateFallbackAllowed(),
+    signedDeviceTokenRequired: isSignedDeviceTokenRequired(),
   }));
 
   app.get("/v1/meta", async () => ({
@@ -25,7 +29,9 @@ export function registerMetaRoutes(
     storeReadyOnly: true,
     firstSourceCandidates: ["matchroom", "ufc", "glory"],
     persistenceBackend: stateStore.backendLabel,
-    databaseRequired: process.env.FIGHTCUE_REQUIRE_DATABASE === "true",
+    databaseRequired: isDatabaseRequired(),
+    fileFallbackAllowed: isFileStateFallbackAllowed(),
+    signedDeviceTokenRequired: isSignedDeviceTokenRequired(),
     runtimeProfile: fightCueRuntimeProfile,
   }));
 

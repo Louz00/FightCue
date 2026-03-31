@@ -11,6 +11,7 @@
     "lint:fix": "npm run lint -- --fix",
     "db:start-local": "./scripts/start-local-postgres.sh",
     "db:stop-local": "./scripts/stop-local-postgres.sh",
+    "db:verify-required": "./scripts/verify-required-postgres.sh",
     "migrate": "tsx src/db/migrate.ts",
     "test": "tsx --test $(find tests -name '*.test.ts' -print)"
   },

@@ -7,6 +7,12 @@ import type {
   WatchProviderSummary,
 } from "../../domain/models.js";
 import { formatForTimezone, normalizeTimeZone } from "../../domain/time.js";
+import {
+  absoluteUrl as sharedAbsoluteUrl,
+  decodeHtmlEntities as sharedDecodeHtmlEntities,
+  sanitizeText as sharedSanitizeText,
+  toSlug as sharedToSlug,
+} from "../parse-utils.js";
 import { buildSourceHealth } from "../source-health.js";
 import type { EventSourcePreview, EventSourceQuery } from "../types.js";
 import { loadEspnUfcUpcomingSchedule } from "./espn-ufc-schedule-source.js";
@@ -398,11 +404,11 @@ function absoluteUrl(pathOrUrl: string): string {
     return pathOrUrl;
   }
 
-  return new URL(pathOrUrl, OFFICIAL_UFC_EVENTS_URL).toString();
+  return sharedAbsoluteUrl(pathOrUrl, OFFICIAL_UFC_EVENTS_URL);
 }
 
 function sanitizeText(input: string): string {
-  return decodeHtmlEntities(stripTags(input))
+  return sharedSanitizeText(decodeHtmlEntities(stripTags(input)))
     .replace(/\s+/g, " ")
     .replace(/\s+,/g, ",")
     .trim();
@@ -413,19 +419,13 @@ function stripTags(input: string): string {
 }
 
 function decodeHtmlEntities(input: string): string {
-  return input
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
+  return sharedDecodeHtmlEntities(input)
     .replace(/&#039;/g, "'")
-    .replace(/&rsquo;/g, "'")
-    .replace(/&nbsp;/g, " ");
+    .replace(/&rsquo;/g, "'");
 }
 
 function toSlug(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  return sharedToSlug(input);
 }
 
 function getErrorMessage(error: unknown): string {

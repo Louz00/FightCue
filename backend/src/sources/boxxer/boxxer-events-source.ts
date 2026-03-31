@@ -5,6 +5,11 @@ import type {
   ProviderKind,
   WatchProviderSummary,
 } from "../../domain/models.js";
+import {
+  decodeHtmlEntities as sharedDecodeHtmlEntities,
+  sanitizeText as sharedSanitizeText,
+  toSlug as sharedToSlug,
+} from "../parse-utils.js";
 import { buildSourceHealth } from "../source-health.js";
 import type { EventSourcePreview, EventSourceQuery } from "../types.js";
 
@@ -497,20 +502,17 @@ function htmlToText(input: string): string {
 }
 
 function decodeHtmlEntities(input: string): string {
-  return input
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&amp;/g, "&")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, "\"")
-    .replace(/&#039;/g, "'")
-    .replace(/&rsquo;/g, "'")
-    .replace(/&ndash;/g, "-")
-    .replace(/&mdash;/g, "-")
-    .replace(/\u00a0/g, " ");
+  return sharedDecodeHtmlEntities(
+    input
+      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+      .replace(/&ndash;/g, "-")
+      .replace(/&mdash;/g, "-")
+      .replace(/\u00a0/g, " "),
+  );
 }
 
 function sanitizeText(input: string): string {
-  return input.replace(/\s+/g, " ").trim();
+  return sharedSanitizeText(input);
 }
 
 function sanitizeName(input: string): string {
@@ -534,12 +536,7 @@ function pad(value: number): string {
 }
 
 function toSlug(input: string): string {
-  return input
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  return sharedToSlug(input);
 }
 
 function getErrorMessage(error: unknown): string {

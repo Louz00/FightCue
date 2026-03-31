@@ -1,3 +1,5 @@
+import { sanitizeText as sharedSanitizeText } from "../parse-utils.js";
+
 const ESPN_UFC_SCHEDULE_URL = "https://www.espn.com/mma/schedule/_/league/ufc";
 const ESPN_PAGE_DATA_MARKER = "window['__espnfitt__']=";
 const ESPN_PAGE_DATA_END_MARKER = ";</script>";
@@ -84,5 +86,5 @@ function extractEspnSchedulePayload(
 }
 
 function sanitizeText(input: string): string {
-  return input.replace(/\s+/g, " ").trim();
+  return sharedSanitizeText(input);
 }

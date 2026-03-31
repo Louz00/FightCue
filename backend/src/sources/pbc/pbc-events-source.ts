@@ -5,6 +5,12 @@ import type {
   ProviderKind,
   WatchProviderSummary,
 } from "../../domain/models.js";
+import {
+  absoluteUrl as sharedAbsoluteUrl,
+  matchSingle as sharedMatchSingle,
+  sanitizeText as sharedSanitizeText,
+  toSlug as sharedToSlug,
+} from "../parse-utils.js";
 import { buildSourceHealth } from "../source-health.js";
 import type { EventSourcePreview, EventSourceQuery } from "../types.js";
 
@@ -279,26 +285,15 @@ function extractVenueLabel(locationLabel: string): string {
 }
 
 function absoluteUrl(input: string): string {
-  if (!input) {
-    return "";
-  }
-  if (input.startsWith("http")) {
-    return input;
-  }
-
-  return new URL(input, OFFICIAL_PBC_SCHEDULE_URL).toString();
+  return sharedAbsoluteUrl(input, OFFICIAL_PBC_SCHEDULE_URL);
 }
 
 function matchSingle(input: string, pattern: RegExp): string | undefined {
-  return input.match(pattern)?.[1];
+  return sharedMatchSingle(input, pattern);
 }
 
 function sanitizeText(input: string): string {
-  return input
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return sharedSanitizeText(input);
 }
 
 function monthNumber(name: string): number {
@@ -325,12 +320,7 @@ function pad(value: number): string {
 }
 
 function toSlug(input: string): string {
-  return input
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  return sharedToSlug(input);
 }
 
 function getErrorMessage(error: unknown): string {

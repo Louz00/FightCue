@@ -837,6 +837,51 @@ class AppStrings {
         nl: 'Opslaan',
         es: 'Guardando',
       );
+  String get pushConnectDeviceAction => _pick(
+        en: 'Connect this device',
+        nl: 'Koppel dit apparaat',
+        es: 'Conectar este dispositivo',
+      );
+  String get pushRefreshDeviceAction => _pick(
+        en: 'Refresh device status',
+        nl: 'Ververs apparaatstatus',
+        es: 'Actualizar estado del dispositivo',
+      );
+  String get pushDeviceLinkingLabel => _pick(
+        en: 'Linking device',
+        nl: 'Apparaat koppelen',
+        es: 'Conectando dispositivo',
+      );
+  String get pushDeviceReadyLabel => _pick(
+        en: 'Device connected',
+        nl: 'Apparaat gekoppeld',
+        es: 'Dispositivo conectado',
+      );
+  String get pushDevicePendingLabel => _pick(
+        en: 'Device token pending',
+        nl: 'Apparaattoken in afwachting',
+        es: 'Token del dispositivo pendiente',
+      );
+  String get pushPermissionDeniedBody => _pick(
+        en: 'Device notifications are blocked right now. Re-enable notification permission in the system settings to receive FightCue reminders on this device.',
+        nl: 'Apparaatmeldingen zijn nu geblokkeerd. Zet notificatietoestemming weer aan in de systeeminstellingen om FightCue-herinneringen op dit apparaat te ontvangen.',
+        es: 'Las notificaciones del dispositivo estan bloqueadas. Vuelve a activar el permiso en los ajustes del sistema para recibir recordatorios de FightCue en este dispositivo.',
+      );
+  String get pushPermissionPromptBody => _pick(
+        en: 'FightCue can now ask the operating system for notification permission and register this device when permission is granted.',
+        nl: 'FightCue kan nu het besturingssysteem om notificatietoestemming vragen en dit apparaat registreren zodra toestemming is gegeven.',
+        es: 'FightCue ya puede pedir permiso de notificaciones al sistema y registrar este dispositivo cuando se conceda.',
+      );
+  String get pushTokenPendingBody => _pick(
+        en: 'Permission is available, but this device still needs a delivery token. That can remain pending until platform push services are fully configured.',
+        nl: 'Toestemming is beschikbaar, maar dit apparaat heeft nog een leveringstoken nodig. Dat kan in afwachting blijven totdat platform push-services volledig zijn geconfigureerd.',
+        es: 'El permiso esta disponible, pero este dispositivo todavia necesita un token de entrega. Puede seguir pendiente hasta que los servicios push de la plataforma esten completamente configurados.',
+      );
+  String get pushTokenReadyBody => _pick(
+        en: 'This device is ready for push delivery. FightCue can now store the platform token server-side for future reminder delivery.',
+        nl: 'Dit apparaat is klaar voor push-delivery. FightCue kan nu het platformtoken server-side opslaan voor toekomstige herinneringen.',
+        es: 'Este dispositivo esta listo para recibir notificaciones push. FightCue ahora puede guardar el token de la plataforma en el servidor para futuros recordatorios.',
+      );
   String get pushTokenRegisteredLabel => _pick(
         en: 'Token linked',
         nl: 'Token gekoppeld',

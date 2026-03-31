@@ -5,6 +5,11 @@ import type {
 } from "../../domain/models.js";
 import { getMatchroomFallbackEvents } from "../../domain/mock-data.js";
 import { formatForTimezone, normalizeTimeZone } from "../../domain/time.js";
+import {
+  matchSingle as sharedMatchSingle,
+  sanitizeText as sharedSanitizeText,
+  toSlug as sharedToSlug,
+} from "../parse-utils.js";
 import { buildSourceHealth } from "../source-health.js";
 import type { EventSourcePreview, EventSourceQuery } from "../types.js";
 import {
@@ -332,22 +337,15 @@ function buildWatchProviders(
 }
 
 function matchSingle(input: string, regex: RegExp): string | undefined {
-  return regex.exec(input)?.[1];
+  return sharedMatchSingle(input, regex);
 }
 
 function sanitizeText(input: string): string {
-  return input
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ")
-    .trim();
+  return sharedSanitizeText(input);
 }
 
 function toSlug(input: string): string {
-  return input
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  return sharedToSlug(input);
 }
 
 function getErrorMessage(error: unknown): string {

@@ -5,6 +5,7 @@ import '../../core/app_strings.dart';
 import '../../core/runtime/app_diagnostics.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/fightcue_api.dart';
+import '../../data/push_delivery_service.dart';
 import '../../models/domain_models.dart';
 import '../../widgets/editorial_ui.dart';
 
@@ -15,6 +16,7 @@ class SettingsScreen extends StatelessWidget {
     required this.snapshotListenable,
     required this.strings,
     this.onMonetizationChanged,
+    this.pushDeliveryService,
     required this.onSelectLanguage,
     required this.onSelectViewingCountry,
   });
@@ -23,6 +25,7 @@ class SettingsScreen extends StatelessWidget {
   final ValueListenable<HomeSnapshot> snapshotListenable;
   final AppStrings strings;
   final ValueChanged<MonetizationSnapshot>? onMonetizationChanged;
+  final PushDeliveryService? pushDeliveryService;
   final ValueChanged<String> onSelectLanguage;
   final ValueChanged<String> onSelectViewingCountry;
 
@@ -139,6 +142,7 @@ class SettingsScreen extends StatelessWidget {
             _PushSettingsCard(
               api: api,
               strings: strings,
+              pushDeliveryService: pushDeliveryService,
             ),
             const SizedBox(height: 12),
             _SettingCard(
@@ -390,10 +394,12 @@ class _PushSettingsCard extends StatefulWidget {
   const _PushSettingsCard({
     required this.api,
     required this.strings,
+    this.pushDeliveryService,
   });
 
   final FightCueApi api;
   final AppStrings strings;
+  final PushDeliveryService? pushDeliveryService;
 
   @override
   State<_PushSettingsCard> createState() => _PushSettingsCardState();
@@ -673,6 +679,7 @@ class _MonetizationCardState extends State<_MonetizationCard> {
 }
 
 class _PushSettingsCardState extends State<_PushSettingsCard> {
+  late final PushDeliveryService _pushDeliveryService;
   PushSettingsSnapshot? _settings;
   bool _isLoading = true;
   bool _isSaving = false;
@@ -684,6 +691,8 @@ class _PushSettingsCardState extends State<_PushSettingsCard> {
   @override
   void initState() {
     super.initState();
+    _pushDeliveryService =
+        widget.pushDeliveryService ?? NativePushDeliveryService();
     _load();
   }
 
@@ -772,10 +781,62 @@ class _PushSettingsCardState extends State<_PushSettingsCard> {
     }
   }
 
+  Future<void> _syncDevicePush({required bool requestPermission}) async {
+    final current = _settings;
+    if (current == null) {
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _hasError = false;
+    });
+
+    try {
+      final delivery = requestPermission
+          ? await _pushDeliveryService.requestPermission()
+          : await _pushDeliveryService.getStatus();
+      final saved = await widget.api.registerPushToken(
+        permissionStatus: delivery.permissionStatus,
+        tokenPlatform: delivery.platform,
+        tokenValue: delivery.tokenValue,
+      );
+      if (mounted) {
+        setState(() {
+          _settings = saved;
+          _usingCachedFallback = false;
+          _lastSyncedAt = DateTime.now().toUtc();
+        });
+      }
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'settings.sync_device_push');
+      if (mounted) {
+        setState(() {
+          _settings = current;
+          _hasError = true;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = widget.strings;
     final settings = _settings;
+    final pushDetailBody = settings == null
+        ? strings.pushSetupBody
+        : switch ((settings.permissionStatus, settings.tokenRegistered)) {
+            (PushPermissionStatus.denied, _) => strings.pushPermissionDeniedBody,
+            (PushPermissionStatus.granted, false) => strings.pushTokenPendingBody,
+            (PushPermissionStatus.granted, true) => strings.pushTokenReadyBody,
+            _ => strings.pushPermissionPromptBody,
+          };
     final isStaleCachedSettings = _usingCachedFallback &&
         _lastSyncedAt != null &&
         DateTime.now().toUtc().difference(_lastSyncedAt!.toUtc()) >
@@ -804,7 +865,7 @@ class _PushSettingsCardState extends State<_PushSettingsCard> {
                 )
               : settings == null
               ? strings.pushSetupBody
-              : strings.pushStatusSummary(
+              : '${strings.pushStatusSummary(
                   enabled: settings.pushEnabled,
                   permissionLabel: strings.pushPermissionLabel(
                     settings.permissionStatus,
@@ -812,36 +873,68 @@ class _PushSettingsCardState extends State<_PushSettingsCard> {
                   tokenLabel: settings.tokenRegistered
                       ? strings.pushTokenRegisteredLabel
                       : strings.pushTokenMissingLabel,
-                ),
+                )}\n\n$pushDetailBody',
       icon: Icons.notifications_active_outlined,
       child: _isLoading && settings == null
           ? const LinearProgressIndicator(minHeight: 3)
-          : Wrap(
-              spacing: 8,
-              runSpacing: 8,
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _PreferenceChip(
-                  label: strings.pushOffLabel,
-                  selected: settings?.pushEnabled == false,
-                  onSelected: _isSaving ? () {} : () => _setEnabled(false),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _PreferenceChip(
+                      label: strings.pushOffLabel,
+                      selected: settings?.pushEnabled == false,
+                      onSelected: _isSaving ? () {} : () => _setEnabled(false),
+                    ),
+                    _PreferenceChip(
+                      label: strings.pushQuietAlertsLabel,
+                      selected: settings?.pushEnabled == true,
+                      onSelected: _isSaving ? () {} : () => _setEnabled(true),
+                    ),
+                    if (_usingCachedFallback)
+                      _StatusPill(
+                        label: strings.savedPushTitle,
+                      ),
+                    if (_isSaving)
+                      _StatusPill(
+                        label: strings.pushSavingLabel,
+                      )
+                    else if (settings != null)
+                      _StatusPill(
+                        label: strings.pushPermissionLabel(settings.permissionStatus),
+                      ),
+                    if (settings != null)
+                      _StatusPill(
+                        label: settings.tokenRegistered
+                            ? strings.pushDeviceReadyLabel
+                            : strings.pushDevicePendingLabel,
+                      ),
+                  ],
                 ),
-                _PreferenceChip(
-                  label: strings.pushQuietAlertsLabel,
-                  selected: settings?.pushEnabled == true,
-                  onSelected: _isSaving ? () {} : () => _setEnabled(true),
-                ),
-                if (_usingCachedFallback)
-                  _StatusPill(
-                    label: strings.savedPushTitle,
+                if (settings != null && settings.pushEnabled) ...[
+                  const SizedBox(height: 14),
+                  EditorialActionPill(
+                    label: settings.permissionStatus == PushPermissionStatus.granted &&
+                            settings.tokenRegistered
+                        ? strings.pushRefreshDeviceAction
+                        : strings.pushConnectDeviceAction,
+                    emphasized: true,
+                    onTap: _isSaving
+                        ? () {}
+                        : () => _syncDevicePush(
+                              requestPermission:
+                                  settings.permissionStatus !=
+                                  PushPermissionStatus.granted,
+                            ),
                   ),
-                if (_isSaving)
-                  _StatusPill(
-                    label: strings.pushSavingLabel,
-                  )
-                else if (settings != null)
-                  _StatusPill(
-                    label: strings.pushPermissionLabel(settings.permissionStatus),
-                  ),
+                  if (_isSaving) ...[
+                    const SizedBox(height: 10),
+                    _StatusPill(label: strings.pushDeviceLinkingLabel),
+                  ],
+                ],
               ],
             ),
     );

@@ -4,6 +4,12 @@ import type {
   WatchProviderSummary,
 } from "../../domain/models.js";
 import { formatForTimezone, normalizeTimeZone } from "../../domain/time.js";
+import {
+  absoluteUrl as sharedAbsoluteUrl,
+  matchSingle as sharedMatchSingle,
+  sanitizeText as sharedSanitizeText,
+  toSlug as sharedToSlug,
+} from "../parse-utils.js";
 import { buildSourceHealth } from "../source-health.js";
 import type { EventSourcePreview, EventSourceQuery } from "../types.js";
 
@@ -230,40 +236,19 @@ function extractVenueLabel(locationLabel: string): string {
 }
 
 function absoluteUrl(value: string): string {
-  if (!value) {
-    return "";
-  }
-
-  return value.startsWith("http") ? value : new URL(value, ONE_EVENTS_URL).toString();
+  return sharedAbsoluteUrl(value, ONE_EVENTS_URL);
 }
 
 function matchSingle(input: string, pattern: RegExp): string | undefined {
-  const match = input.match(pattern);
-  return match?.[1] ?? undefined;
+  return sharedMatchSingle(input, pattern);
 }
 
 function sanitizeText(input: string): string {
-  return decodeHtmlEntities(input)
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function decodeHtmlEntities(input: string): string {
-  return input
-    .replace(/&#39;|&#x27;/g, "'")
-    .replace(/&#038;|&amp;/g, "&")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">");
+  return sharedSanitizeText(input);
 }
 
 function toSlug(input: string): string {
-  return sanitizeText(input)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  return sharedToSlug(input);
 }
 
 function getErrorMessage(error: unknown): string {

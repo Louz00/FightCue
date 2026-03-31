@@ -7,6 +7,7 @@ import {
   sampleFollowedFighters,
   sampleUserProfile,
 } from "./domain/mock-data.js";
+import { DeviceAuthError } from "./http/device-id.js";
 import { registerEventRoutes } from "./routes/event-routes.js";
 import { registerFighterRoutes } from "./routes/fighter-routes.js";
 import { registerMeRoutes } from "./routes/me-routes.js";
@@ -39,6 +40,10 @@ export function createInitialUserState(): Omit<PersistedUserState, "profile"> & 
       fighters: {},
       events: {},
     },
+    push: {
+      pushEnabled: false,
+      permissionStatus: "unknown",
+    },
   };
 }
 
@@ -54,7 +59,14 @@ export async function buildApp({
   runtimeService?: RuntimeService;
 } = {}): Promise<FastifyInstance> {
   const resolvedStateStore = stateStore ?? (await createDefaultUserStateStore());
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    logger: {
+      level: process.env.LOG_LEVEL ?? "info",
+      base: {
+        service: "fightcue-backend",
+      },
+    },
+  });
   const resolvedRuntimeService = runtimeService ?? new RuntimeService(resolvedStateStore);
 
   await app.register(cors, {
@@ -82,6 +94,30 @@ export async function buildApp({
   registerSourceRoutes(app, {
     stateStore: resolvedStateStore,
     runtimeService: resolvedRuntimeService,
+  });
+
+  app.setErrorHandler((error, _request, reply) => {
+    const message = error instanceof Error ? error.message : "Unexpected server error.";
+
+    if (error instanceof DeviceAuthError) {
+      return reply.code(error.statusCode).send({
+        error: error.code,
+        message,
+      });
+    }
+
+    if ((error as { statusCode?: number }).statusCode) {
+      return reply.code((error as { statusCode: number }).statusCode).send({
+        error: "request_failed",
+        message,
+      });
+    }
+
+    app.log.error({ err: error }, "request.failed");
+    return reply.code(500).send({
+      error: "internal_error",
+      message: "Unexpected server error.",
+    });
   });
 
   app.addHook("onClose", async () => {

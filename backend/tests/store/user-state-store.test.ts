@@ -31,6 +31,10 @@ const initialState = {
     fighters: {},
     events: {},
   },
+  push: {
+    pushEnabled: false,
+    permissionStatus: "unknown",
+  },
 } satisfies Omit<PersistedUserState, "profile"> & {
   profile: Omit<PersistedUserState["profile"], "userId">;
 };
@@ -84,6 +88,12 @@ test("postgres user state store persists preferences, follows, and alerts per de
       "before_1h",
       "time_changes",
     ]);
+    await store.updatePushSettings("device_alpha", {
+      pushEnabled: true,
+      permissionStatus: "granted",
+      tokenPlatform: "ios",
+      tokenValue: "apns_token_demo",
+    });
 
     const updated = await store.read("device_alpha");
     assert.equal(updated.profile.language, "nl");
@@ -94,11 +104,17 @@ test("postgres user state store persists preferences, follows, and alerts per de
       "before_1h",
       "time_changes",
     ]);
+    assert.equal(updated.push.pushEnabled, true);
+    assert.equal(updated.push.permissionStatus, "granted");
+    assert.equal(updated.push.tokenPlatform, "ios");
+    assert.equal(updated.push.tokenValue, "apns_token_demo");
+    assert.equal(typeof updated.push.tokenUpdatedAt, "string");
 
     const secondDevice = await store.read("device_beta");
     assert.equal(secondDevice.profile.userId, "usr_device_beta");
     assert.equal(secondDevice.profile.language, "en");
     assert.equal(secondDevice.follows.fighterIds.includes("ftr_chris_duncan"), false);
+    assert.equal(secondDevice.push.pushEnabled, false);
   } finally {
     await store.close?.();
   }

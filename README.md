@@ -92,7 +92,7 @@ Fully or functionally done in the current codebase:
 - watch-provider enrichment has been moved out of the small inline runtime fallback map into a dedicated backend enrichment layer
 - strict signed-device-token mode now exists for stateful backend routes, beyond the earlier bootstrap/token foundation
 - watch-provider enrichment now keeps source-vs-default provenance and prefers the strongest verified provider when duplicate labels collide
-- push-notification foundations are now in place across backend persistence, API routes, mobile API parsing, and a first settings status surface
+- push-notification foundations are now in place across backend persistence, API routes, mobile API parsing, a first settings status surface, and a new backend push-preview planning endpoint
 - offline UX now includes cached-response timestamps, stale-data warnings, visible saved-data notices across home, following, alerts, detail, rankings, and push-settings surfaces, pull-to-refresh where it matters, and background prefetch for key read surfaces after a successful home sync
 - monetization now has a first real state foundation for premium/ad tier, ad consent, analytics consent, and quiet-ad eligibility
 
@@ -115,7 +115,7 @@ Still open:
 - complete a wider offline UX strategy with broader screen coverage, clearer stale-state behavior, and more proactive refresh beyond the current key read surfaces
 - continue the accessibility pass across more screens and interaction patterns
 - finish dark-mode polish across the rest of the app
-- connect real push permission capture, token registration, and delivery on top of the new push foundation
+- connect real provider-backed push delivery on top of the new push foundation and preview-planning layer
 - deepen the new billing/quiet-ad foundation into real store wiring, entitlement verification, and live ad delivery
 
 ### Immediate priorities
@@ -249,6 +249,8 @@ Not in the first release:
 - Made cached mobile fallback explicit in the UI for home, event detail, and fighter profile surfaces
 - Added mobile widget tests for cached home loads, optimistic event-follow rollback, and event-detail cache/fallback behavior
 - Started the next UX tranche by making shared editorial surfaces dark-mode aware and adding semantics to core interactive controls
+- Added native iOS/Android push permission bridges plus a backend push-preview endpoint that shows which reminders FightCue would schedule or signal for the current device state
+- Added iOS remote-notification background mode configuration so simulator/device builds are closer to real push-ready app settings
 
 ### 2026-03-30
 

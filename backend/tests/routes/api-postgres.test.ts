@@ -192,6 +192,16 @@ test("preferences, follows, and alerts persist through postgres-backed API route
     assert.equal(persistedPush.json().permissionStatus, "granted");
     assert.equal(persistedPush.json().tokenRegistered, true);
 
+    const pushPreview = await app.inject({
+      method: "GET",
+      url: "/v1/me/push/preview",
+      headers,
+    });
+    assert.equal(pushPreview.statusCode, 200);
+    assert.equal(pushPreview.json().deliveryReadiness, "ready");
+    assert.equal(pushPreview.json().scheduledCount >= 1, true);
+    assert.equal(Array.isArray(pushPreview.json().items), true);
+
     const persistedMonetization = await app.inject({
       method: "GET",
       url: "/v1/me/monetization",

@@ -34,6 +34,13 @@ export type PushPermissionStatus =
   | "granted"
   | "denied";
 export type PushTokenPlatform = "android" | "ios" | "web";
+export type PushDeliveryReadiness =
+  | "ready"
+  | "disabled"
+  | "permission_required"
+  | "token_missing";
+export type PushPreviewTargetType = "fighter" | "event";
+export type PushPreviewDeliveryKind = "scheduled" | "signal";
 
 export type UserProfile = {
   id: string;
@@ -140,6 +147,26 @@ export type PushSettingsSummary = {
   tokenPlatform?: PushTokenPlatform;
   tokenRegistered: boolean;
   tokenUpdatedAt?: string;
+};
+
+export type PushPreviewItem = {
+  id: string;
+  deliveryKind: PushPreviewDeliveryKind;
+  reason: AlertPresetKey;
+  targetType: PushPreviewTargetType;
+  targetId: string;
+  eventId?: string;
+  title: string;
+  body: string;
+  scheduledForUtc?: string;
+  scheduledLocalLabel?: string;
+};
+
+export type PushPreviewSummary = PushSettingsSummary & {
+  deliveryReadiness: PushDeliveryReadiness;
+  scheduledCount: number;
+  signalCount: number;
+  items: PushPreviewItem[];
 };
 
 export type MonetizationSummary = {

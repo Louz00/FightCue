@@ -8,6 +8,7 @@ import {
   buildRuntimeProfile,
   buildRuntimePush,
 } from "../domain/runtime-data.js";
+import { buildRuntimePushPreview } from "../domain/push-preview.js";
 import { resolveDeviceId } from "../http/device-id.js";
 import {
   alertPresetSchema,
@@ -82,6 +83,12 @@ export function registerMeRoutes(
     const deviceId = resolveDeviceId(request);
     const state = await stateStore.read(deviceId);
     return buildRuntimePush(state);
+  });
+
+  app.get("/v1/me/push/preview", async (request) => {
+    const deviceId = resolveDeviceId(request);
+    const state = await stateStore.read(deviceId);
+    return buildRuntimePushPreview(state);
   });
 
   app.get("/v1/me/monetization", async (request) => {

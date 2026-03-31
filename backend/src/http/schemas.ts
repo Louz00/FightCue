@@ -31,3 +31,19 @@ export const alertPresetSchema = z.object({
     .array(z.enum(["before_24h", "before_1h", "time_changes", "watch_updates"]))
     .max(4),
 });
+
+export const pushSettingsSchema = z.object({
+  pushEnabled: z.boolean().optional(),
+  permissionStatus: z.enum(["unknown", "prompt", "granted", "denied"]).optional(),
+});
+
+export const pushTokenSchema = z.object({
+  permissionStatus: z.enum(["unknown", "prompt", "granted", "denied"]),
+  tokenPlatform: z.enum(["android", "ios", "web"]).optional(),
+  tokenValue: z.string().trim().min(1).max(4096).optional(),
+});
+
+export const monetizationSettingsSchema = z.object({
+  analyticsConsent: z.boolean().optional(),
+  adConsentGranted: z.boolean().optional(),
+});

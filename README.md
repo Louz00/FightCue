@@ -56,14 +56,75 @@ Last updated: 2026-03-31
 - Global Flutter error handling is now wired in as a first app-level safety net
 - Backend linting and a first GitHub Actions CI workflow are now in place
 - A first system-level dark-mode foundation is now wired into the Flutter app theme, with additional per-screen polish still needed
+- PostgreSQL is now the default backend runtime expectation; file-state fallback is explicit opt-in instead of the normal path
+- Backend source ingestion now uses a shared source registry plus a declarative home-feed pipeline instead of a hardcoded merge chain
+- Shared parsing utilities now back the main source adapters, reducing repeated slug/sanitize/entity logic
+- Structured backend source-failure logging is now in place, so parser and timeout issues emit machine-readable log events instead of ad-hoc warnings
+- Watch-provider enrichment now runs through a shared backend enrichment layer with organization defaults and event-specific overrides instead of a small inline runtime map
+- The mobile shell now surfaces saved-preview state explicitly when home or detail views fall back to cached data
+- Mobile widget coverage now includes cached home load, optimistic follow rollback, and event-detail cache/fallback behavior
+- Mobile widget coverage now also includes rankings, alerts, and following screens so the main read-only user flows have direct UI regression coverage
+- Shared editorial UI is now dark-mode aware on core surfaces instead of hardcoding light-only card colors
+- Accessibility semantics are now added on key headings, action pills, ranking toggles, and settings preference chips
+- Accessibility semantics now also cover navigation, home filter chips, home event/fighter cards, and more detail/settings interaction surfaces
+- Billing and quiet-ad foundations now exist across backend routes, mobile API parsing, settings consent controls, and a reserved quiet-ad slot in the home feed for free users
+
+### Implementation status
+
+Fully or functionally done in the current codebase:
+
+- crash-risk paths in Flutter and source parsing are largely defended against
+- HTTP timeouts are in place in the mobile API client
+- the main silent mobile catch paths now log errors and stack traces
+- backend ESLint is configured
+- a minimal GitHub Actions CI pipeline is configured
+- the runtime cache key has been narrowed
+- signed anonymous device/session token foundations are in place
+- global Flutter error handling is wired in
+- cached GET fallback exists for home, detail, and leaderboard-style reads
+- source-health and coverage monitoring are materially expanded
+- more live organizations are integrated, including `ONE Championship`
+- dark-mode foundations are in place
+- shared parse utilities now back the main source adapters
+- the runtime now uses a declarative source pipeline
+- generic source config replaced the earlier many-`getCachedXxxPreview` pattern
+- PostgreSQL is now the default runtime expectation, with file fallback as explicit opt-in
+- watch-provider enrichment has been moved out of the small inline runtime fallback map into a dedicated backend enrichment layer
+- strict signed-device-token mode now exists for stateful backend routes, beyond the earlier bootstrap/token foundation
+- watch-provider enrichment now keeps source-vs-default provenance and prefers the strongest verified provider when duplicate labels collide
+- push-notification foundations are now in place across backend persistence, API routes, mobile API parsing, and a first settings status surface
+- offline UX now includes cached-response timestamps, stale-data warnings, visible saved-data notices across home, following, alerts, detail, rankings, and push-settings surfaces, pull-to-refresh where it matters, and background prefetch for key read surfaces after a successful home sync
+- monetization now has a first real state foundation for premium/ad tier, ad consent, analytics consent, and quiet-ad eligibility
+
+Partly done:
+
+- formatting checks: ESLint is in place, but there is still no full Prettier/format-check pipeline
+- structured backend logging: significantly better than before, but not yet a full observability stack
+- mobile test coverage: clearly improved across cache handling, following, alerts, rankings, and optimistic rollback, but still not broad enough to call finished
+- offline/cache strategy: the UX is materially better with cached timestamps, stale-data affordances, pull-to-refresh, light background prefetch, and stale auto-refresh on key read surfaces, but it still needs broader screen coverage and a more complete proactive strategy
+- extra feature breadth before hardening: some has been added, but it has been kept deliberately bounded
+- dark mode: the shared UI layer plus following, event detail, fighter profile, settings, app shell, and key home widgets are improved, but the app is not fully polished screen by screen yet
+- accessibility: the pass now also covers navigation, home filter chips, home cards, reminder chips, event/fighter detail interactions, and settings controls, but a full screen-by-screen pass is still open
+
+Still open:
+
+- run local development against a real PostgreSQL instance with `FIGHTCUE_REQUIRE_DATABASE=true` outside the current sandbox and verify that path end to end
+- keep hardening the signed anonymous session-token/device-auth flow and reduce residual reliance on raw headers in non-strict mode
+- expand watch-provider verification beyond the current curated/default enrichment layer and reduce remaining organization-default assumptions
+- broaden mobile test coverage further across home, event detail, fighter detail, settings, alerts mutations, and state transitions
+- complete a wider offline UX strategy with broader screen coverage, clearer stale-state behavior, and more proactive refresh beyond the current key read surfaces
+- continue the accessibility pass across more screens and interaction patterns
+- finish dark-mode polish across the rest of the app
+- connect real push permission capture, token registration, and delivery on top of the new push foundation
+- deepen the new billing/quiet-ad foundation into real store wiring, entitlement verification, and live ad delivery
 
 ### Immediate priorities
 
-1. Run local development against a real PostgreSQL instance outside the current sandbox and flip `FIGHTCUE_REQUIRE_DATABASE=true`
-2. Finish hardening the signed anonymous session-token flow and phase out reliance on raw device headers over time
-3. Expand watch-provider verification beyond the current UFC, GLORY, ONE, Matchroom, Queensberry, Top Rank, PBC, Golden Boy, BOXXER, and ESPN pilots
-4. Add structured backend logging, shared parsing utilities, and broader mobile test coverage
-5. Add push delivery, billing, quiet-ad integrations, and the next release foundations after persistence is fully verified
+1. Continue the accessibility pass across the remaining screens and navigation/detail edge cases
+2. Finish dark-mode polish across the remaining screens and smaller widgets
+3. Connect real push permission capture and device-token delivery on top of the new push foundation
+4. Broaden offline UX further across additional screens and stale-state scenarios
+5. Deepen the new billing and quiet-ad foundations into real store/ad integrations once the core experience is stable
 
 ### Two-week execution plan
 
@@ -180,6 +241,14 @@ Not in the first release:
 - Added mobile API request timeouts, cached-response fallback, lightweight diagnostics logging, and global Flutter error handling
 - Added backend ESLint plus a first GitHub Actions CI workflow for lint, build, and test
 - Added a first system-driven dark mode theme foundation in Flutter so the app can start moving beyond light-only rendering
+- Switched the backend to a PostgreSQL-first default runtime, with file fallback available only via explicit opt-in
+- Replaced the hardcoded home-feed source chain with a shared source registry and declarative merge order
+- Added shared backend parse utilities and started consolidating source-adapter text/slug helpers onto them
+- Added structured backend logging for source failures, preview warnings, and persistence fallback events
+- Moved watch-provider enrichment into a dedicated backend module with organization defaults plus event-specific overrides
+- Made cached mobile fallback explicit in the UI for home, event detail, and fighter profile surfaces
+- Added mobile widget tests for cached home loads, optimistic event-follow rollback, and event-detail cache/fallback behavior
+- Started the next UX tranche by making shared editorial surfaces dark-mode aware and adding semantics to core interactive controls
 
 ### 2026-03-30
 

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../models/domain_models.dart';
+
 class AppStrings {
   const AppStrings._(this.locale);
 
@@ -34,6 +36,11 @@ class AppStrings {
         en: 'Home',
         nl: 'Home',
         es: 'Inicio',
+      );
+  String get navigationSectionsLabel => _pick(
+        en: 'Main navigation',
+        nl: 'Hoofdnavigatie',
+        es: 'Navegacion principal',
       );
   String get homeTitle => _pick(
         en: 'Upcoming fights',
@@ -230,6 +237,21 @@ class AppStrings {
         nl: 'Live events worden gesynchroniseerd...',
         es: 'Sincronizando eventos en vivo...',
       );
+  String get savedPreviewTitle => _pick(
+        en: 'Showing saved preview',
+        nl: 'Opgeslagen preview wordt getoond',
+        es: 'Mostrando vista guardada',
+      );
+  String get savedPreviewBody => _pick(
+        en: 'FightCue is using the last synced feed while live data reconnects.',
+        nl: 'FightCue gebruikt de laatst gesynchroniseerde feed terwijl live data opnieuw verbindt.',
+        es: 'FightCue usa el ultimo feed sincronizado mientras los datos en vivo vuelven a conectarse.',
+      );
+  String get pullToRefreshHint => _pick(
+        en: 'Pull down to refresh the live feed.',
+        nl: 'Trek omlaag om de live feed te vernieuwen.',
+        es: 'Desliza hacia abajo para actualizar el feed en vivo.',
+      );
   String get pendingCardTitle => _pick(
         en: 'Fight card pending',
         nl: 'Fight card volgt nog',
@@ -255,6 +277,61 @@ class AppStrings {
         nl: 'FightCue toont de laatst bekende vechtersdata totdat het live profiel weer reageert.',
         es: 'FightCue muestra los ultimos datos conocidos del peleador hasta que el perfil en vivo vuelva a responder.',
       );
+  String get savedDetailTitle => _pick(
+        en: 'Showing saved event details',
+        nl: 'Opgeslagen eventdetails worden getoond',
+        es: 'Mostrando detalles guardados del evento',
+      );
+  String get savedDetailBody => _pick(
+        en: 'FightCue is using the last synced event detail while the live card reconnects.',
+        nl: 'FightCue gebruikt de laatst gesynchroniseerde eventdetails terwijl de live card opnieuw verbindt.',
+        es: 'FightCue usa el ultimo detalle sincronizado del evento mientras la cartelera en vivo vuelve a conectarse.',
+      );
+  String get savedFighterTitle => _pick(
+        en: 'Showing saved fighter profile',
+        nl: 'Opgeslagen vechtersprofiel wordt getoond',
+        es: 'Mostrando perfil guardado del peleador',
+      );
+  String get savedFighterBody => _pick(
+        en: 'FightCue is using the last synced fighter profile while the live source reconnects.',
+        nl: 'FightCue gebruikt het laatst gesynchroniseerde vechtersprofiel terwijl de live bron opnieuw verbindt.',
+        es: 'FightCue usa el ultimo perfil sincronizado del peleador mientras la fuente en vivo vuelve a conectarse.',
+      );
+  String savedTimestampBody(
+    String baseBody,
+    DateTime? syncedAt, {
+    bool isStale = false,
+  }) {
+    final timestampLine = syncedAt == null ? offlineTimestampUnknown : offlineTimestampLabel(syncedAt);
+    final staleLine = isStale ? '\n\n$staleDataWarning' : '';
+    return '$baseBody\n\n$timestampLine$staleLine';
+  }
+
+  String get offlineTimestampUnknown => _pick(
+        en: 'Last synced: unknown',
+        nl: 'Laatst gesynchroniseerd: onbekend',
+        es: 'Ultima sincronizacion: desconocida',
+      );
+
+  String offlineTimestampLabel(DateTime syncedAt) {
+    final local = syncedAt.toLocal();
+    final day = local.day.toString().padLeft(2, '0');
+    final month = local.month.toString().padLeft(2, '0');
+    final hour = local.hour.toString().padLeft(2, '0');
+    final minute = local.minute.toString().padLeft(2, '0');
+    final formatted = '$day-$month $hour:$minute';
+
+    return _pick(
+      en: 'Last synced: $formatted',
+      nl: 'Laatst gesynchroniseerd: $formatted',
+      es: 'Ultima sincronizacion: $formatted',
+    );
+  }
+  String get staleDataWarning => _pick(
+        en: 'This saved data may be out of date until the next live refresh succeeds.',
+        nl: 'Deze opgeslagen data kan verouderd zijn totdat de volgende live verversing lukt.',
+        es: 'Estos datos guardados pueden estar desactualizados hasta que la siguiente actualizacion en vivo funcione.',
+      );
   String get alertsFallbackTitle => _pick(
         en: 'Saved alerts unavailable',
         nl: 'Opgeslagen meldingen niet beschikbaar',
@@ -265,10 +342,40 @@ class AppStrings {
         nl: 'FightCue gebruikt tijdelijk de standaard rustige presets totdat je opgeslagen meldingen weer laden.',
         es: 'FightCue usa temporalmente los ajustes discretos por defecto hasta que vuelvan a cargar tus alertas guardadas.',
       );
+  String get savedAlertsTitle => _pick(
+        en: 'Showing saved alerts',
+        nl: 'Opgeslagen meldingen worden getoond',
+        es: 'Mostrando alertas guardadas',
+      );
+  String get savedAlertsBody => _pick(
+        en: 'FightCue is using the last synced alert presets while the live settings reconnect.',
+        nl: 'FightCue gebruikt de laatst gesynchroniseerde meldingsinstellingen terwijl de live instellingen opnieuw verbinden.',
+        es: 'FightCue usa los ultimos ajustes de alertas sincronizados mientras la configuracion en vivo vuelve a conectarse.',
+      );
   String get rankingsErrorBody => _pick(
         en: 'The rankings feed could not be loaded right now. You can retry without affecting the event flow.',
         nl: 'De rankingsfeed kon nu niet worden geladen. Je kunt opnieuw proberen zonder de eventflow te verstoren.',
         es: 'No se pudo cargar el feed de rankings ahora mismo. Puedes reintentar sin afectar el flujo de eventos.',
+      );
+  String get savedRankingsTitle => _pick(
+        en: 'Showing saved rankings',
+        nl: 'Opgeslagen ranglijsten worden getoond',
+        es: 'Mostrando rankings guardados',
+      );
+  String get savedRankingsBody => _pick(
+        en: 'FightCue is using the last synced rankings while the live list reconnects.',
+        nl: 'FightCue gebruikt de laatst gesynchroniseerde ranglijsten terwijl de live lijst opnieuw verbindt.',
+        es: 'FightCue usa los ultimos rankings sincronizados mientras la lista en vivo vuelve a conectarse.',
+      );
+  String get savedPushTitle => _pick(
+        en: 'Showing saved push setup',
+        nl: 'Opgeslagen pushstatus wordt getoond',
+        es: 'Mostrando configuracion guardada de notificaciones',
+      );
+  String get savedPushBody => _pick(
+        en: 'FightCue is using the last synced push reminder setup while the live status reconnects.',
+        nl: 'FightCue gebruikt de laatst gesynchroniseerde push-instellingen terwijl de live status opnieuw verbindt.',
+        es: 'FightCue usa la ultima configuracion sincronizada de notificaciones mientras el estado en vivo vuelve a conectarse.',
       );
   String get expandCardHint => _pick(
         en: 'Tap to see the full fight card',
@@ -450,6 +557,26 @@ class AppStrings {
         nl: 'Gratis gebruikers krijgen alleen rustige feed ads. Premium verwijdert alle advertenties.',
         es: 'Los usuarios gratis solo reciben anuncios discretos en el feed. Premium elimina todos los anuncios.',
       );
+  String get quietAdSlotTitle => _pick(
+        en: 'Quiet ad slot',
+        nl: 'Rustige advertentieplek',
+        es: 'Espacio de anuncio discreto',
+      );
+  String get quietAdSlotBody => _pick(
+        en: 'This reserved placement is where a low-noise sponsored message will appear for free users after consent.',
+        nl: 'Op deze gereserveerde plek verschijnt later een rustige gesponsorde boodschap voor gratis gebruikers na toestemming.',
+        es: 'En este espacio reservado aparecera un mensaje patrocinado discreto para usuarios gratuitos despues del consentimiento.',
+      );
+  String get quietAdsConsentBody => _pick(
+        en: 'Quiet ad slots stay disabled until ad consent is enabled in settings.',
+        nl: 'Rustige advertentieplekken blijven uitgeschakeld totdat advertentietoestemming in instellingen aanstaat.',
+        es: 'Los espacios de anuncios discretos permanecen desactivados hasta activar el consentimiento en ajustes.',
+      );
+  String get sponsoredLabel => _pick(
+        en: 'Sponsored',
+        nl: 'Gesponsord',
+        es: 'Patrocinado',
+      );
   String get accountModelBody => _pick(
         en: 'Anonymous by default. Optional email sign-in can be added later for sync and restore.',
         nl: 'Standaard anoniem. Optioneel e-mail inloggen kan later worden toegevoegd voor sync en herstel.',
@@ -514,6 +641,86 @@ class AppStrings {
         en: 'Current plan',
         nl: 'Huidig plan',
         es: 'Plan actual',
+      );
+  String get monetizationTitle => _pick(
+        en: 'Billing and ads',
+        nl: 'Billing en advertenties',
+        es: 'Facturacion y anuncios',
+      );
+  String get monetizationBody => _pick(
+        en: 'Store billing is still foundation-only, but consent, quiet-ad behavior, and premium state are already wired.',
+        nl: 'Store-billing staat nog in de basisfase, maar toestemming, rustige advertentielogica en premiumstatus zijn al aangesloten.',
+        es: 'La facturacion en tiendas sigue en fase base, pero el consentimiento, el comportamiento de anuncios discretos y el estado premium ya estan conectados.',
+      );
+  String get adConsentTitle => _pick(
+        en: 'Ad consent',
+        nl: 'Advertentietoestemming',
+        es: 'Consentimiento de anuncios',
+      );
+  String get analyticsConsentTitle => _pick(
+        en: 'Analytics consent',
+        nl: 'Analytics-toestemming',
+        es: 'Consentimiento de analiticas',
+      );
+  String get adConsentEnabledLabel => _pick(
+        en: 'Ads allowed',
+        nl: 'Ads toegestaan',
+        es: 'Anuncios permitidos',
+      );
+  String get adConsentDisabledLabel => _pick(
+        en: 'Ads off',
+        nl: 'Ads uit',
+        es: 'Anuncios desactivados',
+      );
+  String get analyticsEnabledLabel => _pick(
+        en: 'Analytics on',
+        nl: 'Analytics aan',
+        es: 'Analiticas activadas',
+      );
+  String get analyticsDisabledLabel => _pick(
+        en: 'Analytics off',
+        nl: 'Analytics uit',
+        es: 'Analiticas desactivadas',
+      );
+  String get monetizationSavingLabel => _pick(
+        en: 'Updating',
+        nl: 'Bijwerken',
+        es: 'Actualizando',
+      );
+  String get monetizationFallbackBody => _pick(
+        en: 'Billing and consent status could not be refreshed right now. The saved monetization setup stays visible.',
+        nl: 'Billing- en toestemmingsstatus konden nu niet worden vernieuwd. De opgeslagen monetization-status blijft zichtbaar.',
+        es: 'No se pudo actualizar el estado de facturacion y consentimiento. La configuracion guardada sigue visible.',
+      );
+  String get savedMonetizationTitle => _pick(
+        en: 'Showing saved billing setup',
+        nl: 'Opgeslagen billingstatus wordt getoond',
+        es: 'Mostrando configuracion guardada de facturacion',
+      );
+  String get savedMonetizationBody => _pick(
+        en: 'FightCue is using the last synced billing and ad-consent state while the live status reconnects.',
+        nl: 'FightCue gebruikt de laatst gesynchroniseerde billing- en advertentietoestemming terwijl de live status opnieuw verbindt.',
+        es: 'FightCue usa el ultimo estado sincronizado de facturacion y consentimiento de anuncios mientras el estado en vivo vuelve a conectarse.',
+      );
+  String get quietAdsEnabledLabel => _pick(
+        en: 'Quiet ads active',
+        nl: 'Rustige ads actief',
+        es: 'Anuncios discretos activos',
+      );
+  String get quietAdsDisabledLabel => _pick(
+        en: 'Quiet ads paused',
+        nl: 'Rustige ads gepauzeerd',
+        es: 'Anuncios discretos pausados',
+      );
+  String get billingFoundationTitle => _pick(
+        en: 'Store billing foundation',
+        nl: 'Store-billing basis',
+        es: 'Base de facturacion en tienda',
+      );
+  String get billingFoundationBody => _pick(
+        en: 'The app is prepared for Play Billing and StoreKit wiring next. Premium still stays source-of-truth driven by the backend until stores are connected.',
+        nl: 'De app is voorbereid op de volgende stap met Play Billing en StoreKit. Premium blijft nog door de backend bepaald totdat stores zijn gekoppeld.',
+        es: 'La app ya esta preparada para conectar Play Billing y StoreKit. Premium sigue gobernado por el backend hasta que las tiendas esten conectadas.',
       );
   String get freePlanLabel => _pick(
         en: 'Free tier',
@@ -600,4 +807,90 @@ class AppStrings {
         nl: 'Spanje',
         es: 'Espana',
       );
+  String get pushSetupTitle => _pick(
+        en: 'Push foundations',
+        nl: 'Push-basis',
+        es: 'Base de notificaciones',
+      );
+  String get pushSetupBody => _pick(
+        en: 'Quiet alert delivery is being prepared. Token registration and permissions will plug in here next.',
+        nl: 'De levering van rustige meldingen wordt voorbereid. Tokenregistratie en toestemmingen sluiten hier daarna op aan.',
+        es: 'La entrega de alertas discretas se esta preparando. El registro del token y los permisos se conectaran aqui despues.',
+      );
+  String get pushSetupFallbackBody => _pick(
+        en: 'Push status could not be refreshed right now. The saved reminder setup stays intact.',
+        nl: 'De pushstatus kon nu niet worden vernieuwd. De opgeslagen reminderinstellingen blijven intact.',
+        es: 'No se pudo actualizar el estado de las notificaciones ahora. La configuracion guardada se mantiene.',
+      );
+  String get pushOffLabel => _pick(
+        en: 'Off',
+        nl: 'Uit',
+        es: 'Desactivado',
+      );
+  String get pushQuietAlertsLabel => _pick(
+        en: 'Quiet alerts',
+        nl: 'Rustige meldingen',
+        es: 'Alertas discretas',
+      );
+  String get pushSavingLabel => _pick(
+        en: 'Saving',
+        nl: 'Opslaan',
+        es: 'Guardando',
+      );
+  String get pushTokenRegisteredLabel => _pick(
+        en: 'Token linked',
+        nl: 'Token gekoppeld',
+        es: 'Token conectado',
+      );
+  String get pushTokenMissingLabel => _pick(
+        en: 'Token pending',
+        nl: 'Token ontbreekt nog',
+        es: 'Token pendiente',
+      );
+  String pushPermissionLabel(PushPermissionStatus status) {
+    switch (status) {
+      case PushPermissionStatus.prompt:
+        return _pick(
+          en: 'Permission pending',
+          nl: 'Toestemming in afwachting',
+          es: 'Permiso pendiente',
+        );
+      case PushPermissionStatus.granted:
+        return _pick(
+          en: 'Permission granted',
+          nl: 'Toestemming gegeven',
+          es: 'Permiso concedido',
+        );
+      case PushPermissionStatus.denied:
+        return _pick(
+          en: 'Permission denied',
+          nl: 'Toestemming geweigerd',
+          es: 'Permiso denegado',
+        );
+      case PushPermissionStatus.unknown:
+        return _pick(
+          en: 'Permission unknown',
+          nl: 'Toestemming onbekend',
+          es: 'Permiso desconocido',
+        );
+    }
+  }
+
+  String pushStatusSummary({
+    required bool enabled,
+    required String permissionLabel,
+    required String tokenLabel,
+  }) {
+    return _pick(
+      en: enabled
+          ? 'Quiet alerts are enabled for this device foundation. $permissionLabel. $tokenLabel.'
+          : 'Quiet alerts are currently off for this device foundation. $permissionLabel. $tokenLabel.',
+      nl: enabled
+          ? 'Rustige meldingen staan aan voor deze device-basis. $permissionLabel. $tokenLabel.'
+          : 'Rustige meldingen staan nu uit voor deze device-basis. $permissionLabel. $tokenLabel.',
+      es: enabled
+          ? 'Las alertas discretas estan activadas para esta base del dispositivo. $permissionLabel. $tokenLabel.'
+          : 'Las alertas discretas estan desactivadas para esta base del dispositivo. $permissionLabel. $tokenLabel.',
+    );
+  }
 }

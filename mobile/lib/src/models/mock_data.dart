@@ -2,6 +2,10 @@ import 'domain_models.dart';
 
 const sampleHomeSnapshot = HomeSnapshot(
   premiumState: PremiumState.free,
+  adTier: AdTier.freeWithAds,
+  adConsentRequired: true,
+  adConsentGranted: false,
+  analyticsConsent: false,
   accountModeLabel: 'Anonymous by default, email login optional later',
   languageCode: 'en',
   timezone: 'Europe/Amsterdam',

@@ -2,21 +2,27 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_strings.dart';
+import '../../core/runtime/app_diagnostics.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
 import '../../widgets/editorial_ui.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({
     super.key,
+    required this.api,
     required this.snapshotListenable,
     required this.strings,
+    this.onMonetizationChanged,
     required this.onSelectLanguage,
     required this.onSelectViewingCountry,
   });
 
+  final FightCueApi api;
   final ValueListenable<HomeSnapshot> snapshotListenable;
   final AppStrings strings;
+  final ValueChanged<MonetizationSnapshot>? onMonetizationChanged;
   final ValueChanged<String> onSelectLanguage;
   final ValueChanged<String> onSelectViewingCountry;
 
@@ -44,6 +50,13 @@ class SettingsScreen extends StatelessWidget {
               planLabel: planLabel,
               timezone: snapshot.timezone,
               strings: strings,
+            ),
+            const SizedBox(height: 12),
+            _MonetizationCard(
+              api: api,
+              strings: strings,
+              snapshot: snapshot,
+              onChanged: onMonetizationChanged,
             ),
             const SizedBox(height: 20),
             EditorialSectionTitle(label: strings.languagePreferencesTitle),
@@ -123,6 +136,11 @@ class SettingsScreen extends StatelessWidget {
               icon: Icons.notifications_outlined,
             ),
             const SizedBox(height: 12),
+            _PushSettingsCard(
+              api: api,
+              strings: strings,
+            ),
+            const SizedBox(height: 12),
             _SettingCard(
               title: strings.sourcePilotTitle,
               body: strings.sourcePilotBody,
@@ -160,10 +178,10 @@ class _HighlightSettingsCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceFor(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
+        border: Border.all(color: AppColors.borderFor(context)),
+        boxShadow: AppShadows.cardFor(context),
       ),
       child: Column(
         children: [
@@ -216,32 +234,39 @@ class _QuickStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAlt,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
+    final surfaceAlt = AppColors.surfaceAltFor(context);
+    final textSecondary = AppColors.textSecondaryFor(context);
+    final textPrimary = AppColors.textPrimaryFor(context);
+
+    return Semantics(
+      label: '$label: $value',
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: surfaceAlt,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: textSecondary,
+                fontSize: 12,
+              ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                color: textPrimary,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -262,49 +287,60 @@ class _SettingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return EditorialSurfaceCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(14),
+    final surfaceAlt = AppColors.surfaceAltFor(context);
+    final textPrimary = AppColors.textPrimaryFor(context);
+    final textSecondary = AppColors.textSecondaryFor(context);
+
+    return Semantics(
+      container: true,
+      label: title,
+      child: EditorialSurfaceCard(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: surfaceAlt,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: textPrimary),
             ),
-            child: Icon(icon, color: AppColors.textPrimary),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
-                    letterSpacing: -0.3,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        color: textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  body,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    height: 1.45,
+                  const SizedBox(height: 6),
+                  Text(
+                    body,
+                    style: TextStyle(
+                      color: textSecondary,
+                      height: 1.45,
+                    ),
                   ),
-                ),
-                if (child != null) ...[
-                  const SizedBox(height: 14),
-                  child!,
+                  if (child != null) ...[
+                    const SizedBox(height: 14),
+                    child!,
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -323,24 +359,520 @@ class _PreferenceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
+    return Semantics(
+      button: true,
       selected: selected,
-      onSelected: (_) => onSelected(),
-      selectedColor: AppColors.accent,
-      backgroundColor: AppColors.surfaceAlt,
-      labelStyle: TextStyle(
-        color: selected ? Colors.white : AppColors.textPrimary,
-        fontWeight: FontWeight.w700,
+      label: label,
+      child: ChoiceChip(
+        label: Text(label),
+        selected: selected,
+        onSelected: (_) => onSelected(),
+        selectedColor: AppColors.accent,
+        backgroundColor: AppColors.surfaceAltFor(context),
+        labelStyle: TextStyle(
+          color: selected ? Colors.white : AppColors.textPrimaryFor(context),
+          fontWeight: FontWeight.w700,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: selected ? AppColors.accent : AppColors.borderFor(context),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        showCheckmark: false,
       ),
-      shape: RoundedRectangleBorder(
+    );
+  }
+}
+
+class _PushSettingsCard extends StatefulWidget {
+  const _PushSettingsCard({
+    required this.api,
+    required this.strings,
+  });
+
+  final FightCueApi api;
+  final AppStrings strings;
+
+  @override
+  State<_PushSettingsCard> createState() => _PushSettingsCardState();
+}
+
+class _MonetizationCard extends StatefulWidget {
+  const _MonetizationCard({
+    required this.api,
+    required this.strings,
+    required this.snapshot,
+    this.onChanged,
+  });
+
+  final FightCueApi api;
+  final AppStrings strings;
+  final HomeSnapshot snapshot;
+  final ValueChanged<MonetizationSnapshot>? onChanged;
+
+  @override
+  State<_MonetizationCard> createState() => _MonetizationCardState();
+}
+
+class _MonetizationCardState extends State<_MonetizationCard> {
+  MonetizationSnapshot? _settings;
+  bool _isLoading = true;
+  bool _isSaving = false;
+  bool _hasError = false;
+  bool _usingCachedFallback = false;
+  DateTime? _lastSyncedAt;
+  bool _didRequestStaleRefresh = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    return _loadInternal(resetStaleRefresh: true);
+  }
+
+  Future<void> _loadInternal({required bool resetStaleRefresh}) async {
+    if (resetStaleRefresh) {
+      _didRequestStaleRefresh = false;
+    }
+
+    try {
+      final result = await widget.api.fetchMonetizationResult();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _settings = result.data;
+        _hasError = false;
+        _usingCachedFallback = result.isFromCache;
+        _lastSyncedAt = result.lastSyncedAt;
+        _didRequestStaleRefresh = false;
+      });
+      widget.onChanged?.call(result.data);
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'settings.load_monetization');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _save({
+    bool? adConsentGranted,
+    bool? analyticsConsent,
+  }) async {
+    final current = _settings;
+    if (current == null) {
+      return;
+    }
+
+    final optimistic = current.copyWith(
+      adConsentGranted: adConsentGranted,
+      analyticsConsent: analyticsConsent,
+      quietAdsEnabled: current.premiumState == PremiumState.free &&
+          (!current.adConsentRequired ||
+              (adConsentGranted ?? current.adConsentGranted)),
+    );
+
+    setState(() {
+      _settings = optimistic;
+      _isSaving = true;
+      _hasError = false;
+    });
+    widget.onChanged?.call(optimistic);
+
+    try {
+      final saved = await widget.api.updateMonetizationSettings(
+        adConsentGranted: adConsentGranted,
+        analyticsConsent: analyticsConsent,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _settings = saved;
+      });
+      widget.onChanged?.call(saved);
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'settings.update_monetization');
+      if (mounted) {
+        setState(() {
+          _settings = current;
+          _hasError = true;
+        });
+      }
+      widget.onChanged?.call(current);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = widget.strings;
+    final settings = _settings ??
+        MonetizationSnapshot(
+          premiumState: widget.snapshot.premiumState,
+          adTier: widget.snapshot.adTier,
+          adConsentRequired: widget.snapshot.adConsentRequired,
+          adConsentGranted: widget.snapshot.adConsentGranted,
+          analyticsConsent: widget.snapshot.analyticsConsent,
+          quietAdsEnabled: widget.snapshot.quietAdsEnabled,
+        );
+    final isStaleCachedSettings = _usingCachedFallback &&
+        _lastSyncedAt != null &&
+        DateTime.now().toUtc().difference(_lastSyncedAt!.toUtc()) >
+            ApiFetchResult.staleThreshold;
+
+    if (isStaleCachedSettings && !_didRequestStaleRefresh) {
+      _didRequestStaleRefresh = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _loadInternal(resetStaleRefresh: false);
+        }
+      });
+    } else if (!isStaleCachedSettings) {
+      _didRequestStaleRefresh = false;
+    }
+
+    final planLabel = settings.premiumState == PremiumState.premium
+        ? strings.premiumPlanLabel
+        : strings.freePlanLabel;
+
+    return _SettingCard(
+      title: strings.monetizationTitle,
+      body: _hasError
+          ? strings.monetizationFallbackBody
+          : _usingCachedFallback
+              ? strings.savedTimestampBody(
+                  strings.savedMonetizationBody,
+                  _lastSyncedAt,
+                  isStale: isStaleCachedSettings,
+                )
+              : strings.monetizationBody,
+      icon: Icons.workspace_premium_outlined,
+      child: _isLoading && _settings == null
+          ? const LinearProgressIndicator(minHeight: 3)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _StatusPill(label: planLabel),
+                    _StatusPill(
+                      label: settings.quietAdsEnabled
+                          ? strings.quietAdsEnabledLabel
+                          : strings.quietAdsDisabledLabel,
+                    ),
+                    if (_usingCachedFallback)
+                      _StatusPill(label: strings.savedMonetizationTitle),
+                    if (_isSaving)
+                      _StatusPill(label: strings.monetizationSavingLabel),
+                  ],
+                ),
+                if (settings.adConsentRequired) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    strings.adConsentTitle,
+                    style: TextStyle(
+                      color: AppColors.textPrimaryFor(context),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _PreferenceChip(
+                        label: strings.adConsentDisabledLabel,
+                        selected: !settings.adConsentGranted,
+                        onSelected: _isSaving
+                            ? () {}
+                            : () => _save(adConsentGranted: false),
+                      ),
+                      _PreferenceChip(
+                        label: strings.adConsentEnabledLabel,
+                        selected: settings.adConsentGranted,
+                        onSelected: _isSaving
+                            ? () {}
+                            : () => _save(adConsentGranted: true),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 14),
+                Text(
+                  strings.analyticsConsentTitle,
+                  style: TextStyle(
+                    color: AppColors.textPrimaryFor(context),
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _PreferenceChip(
+                      label: strings.analyticsDisabledLabel,
+                      selected: !settings.analyticsConsent,
+                      onSelected: _isSaving
+                          ? () {}
+                          : () => _save(analyticsConsent: false),
+                    ),
+                    _PreferenceChip(
+                      label: strings.analyticsEnabledLabel,
+                      selected: settings.analyticsConsent,
+                      onSelected: _isSaving
+                          ? () {}
+                          : () => _save(analyticsConsent: true),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceAltFor(context),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    strings.billingFoundationBody,
+                    style: TextStyle(
+                      color: AppColors.textSecondaryFor(context),
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class _PushSettingsCardState extends State<_PushSettingsCard> {
+  PushSettingsSnapshot? _settings;
+  bool _isLoading = true;
+  bool _isSaving = false;
+  bool _hasError = false;
+  bool _usingCachedFallback = false;
+  DateTime? _lastSyncedAt;
+  bool _didRequestStaleRefresh = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    return _loadInternal(resetStaleRefresh: true);
+  }
+
+  Future<void> _loadInternal({required bool resetStaleRefresh}) async {
+    if (resetStaleRefresh) {
+      _didRequestStaleRefresh = false;
+    }
+
+    try {
+      final result = await widget.api.fetchPushSettingsResult();
+      final settings = result.data;
+      if (mounted) {
+        setState(() {
+          _settings = settings;
+          _hasError = false;
+          _usingCachedFallback = result.isFromCache;
+          _lastSyncedAt = result.lastSyncedAt;
+          _didRequestStaleRefresh = false;
+        });
+      }
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'settings.load_push');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _setEnabled(bool enabled) async {
+    final current = _settings;
+    if (current == null) {
+      return;
+    }
+
+    final optimistic = current.copyWith(
+      pushEnabled: enabled,
+      permissionStatus: enabled
+          ? (current.permissionStatus == PushPermissionStatus.unknown
+                ? PushPermissionStatus.prompt
+                : current.permissionStatus)
+          : current.permissionStatus,
+    );
+
+    setState(() {
+      _settings = optimistic;
+      _isSaving = true;
+      _hasError = false;
+    });
+
+    try {
+      final saved = await widget.api.updatePushSettings(
+        pushEnabled: enabled,
+        permissionStatus: optimistic.permissionStatus,
+      );
+      if (mounted) {
+        setState(() {
+          _settings = saved;
+        });
+      }
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'settings.update_push');
+      if (mounted) {
+        setState(() {
+          _settings = current;
+          _hasError = true;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final strings = widget.strings;
+    final settings = _settings;
+    final isStaleCachedSettings = _usingCachedFallback &&
+        _lastSyncedAt != null &&
+        DateTime.now().toUtc().difference(_lastSyncedAt!.toUtc()) >
+            ApiFetchResult.staleThreshold;
+
+    if (isStaleCachedSettings && !_didRequestStaleRefresh) {
+      _didRequestStaleRefresh = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _loadInternal(resetStaleRefresh: false);
+        }
+      });
+    } else if (!isStaleCachedSettings) {
+      _didRequestStaleRefresh = false;
+    }
+
+    return _SettingCard(
+      title: strings.pushSetupTitle,
+      body: _hasError
+          ? strings.pushSetupFallbackBody
+          : _usingCachedFallback
+              ? strings.savedTimestampBody(
+                  strings.savedPushBody,
+                  _lastSyncedAt,
+                  isStale: isStaleCachedSettings,
+                )
+              : settings == null
+              ? strings.pushSetupBody
+              : strings.pushStatusSummary(
+                  enabled: settings.pushEnabled,
+                  permissionLabel: strings.pushPermissionLabel(
+                    settings.permissionStatus,
+                  ),
+                  tokenLabel: settings.tokenRegistered
+                      ? strings.pushTokenRegisteredLabel
+                      : strings.pushTokenMissingLabel,
+                ),
+      icon: Icons.notifications_active_outlined,
+      child: _isLoading && settings == null
+          ? const LinearProgressIndicator(minHeight: 3)
+          : Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _PreferenceChip(
+                  label: strings.pushOffLabel,
+                  selected: settings?.pushEnabled == false,
+                  onSelected: _isSaving ? () {} : () => _setEnabled(false),
+                ),
+                _PreferenceChip(
+                  label: strings.pushQuietAlertsLabel,
+                  selected: settings?.pushEnabled == true,
+                  onSelected: _isSaving ? () {} : () => _setEnabled(true),
+                ),
+                if (_usingCachedFallback)
+                  _StatusPill(
+                    label: strings.savedPushTitle,
+                  ),
+                if (_isSaving)
+                  _StatusPill(
+                    label: strings.pushSavingLabel,
+                  )
+                else if (settings != null)
+                  _StatusPill(
+                    label: strings.pushPermissionLabel(settings.permissionStatus),
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({
+    required this.label,
+  });
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAltFor(context),
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: selected ? AppColors.accent : AppColors.border,
+      ),
+      child: Semantics(
+        label: label,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: AppColors.textSecondaryFor(context),
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      showCheckmark: false,
     );
   }
 }

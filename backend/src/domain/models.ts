@@ -5,6 +5,11 @@ export type AccountProvider = "email_magic_link";
 export type FollowTarget = "fighter" | "event";
 export type ProviderKind = "streaming" | "tv" | "ppv" | "network";
 export type ProviderConfidence = "confirmed" | "likely" | "unknown";
+export type ProviderVerificationSource =
+  | "source"
+  | "event_override"
+  | "organization_default"
+  | "official_page_fallback";
 export type LeaderboardSourceType =
   | "official"
   | "editorial"
@@ -23,6 +28,12 @@ export type AlertPresetKey =
   | "before_1h"
   | "time_changes"
   | "watch_updates";
+export type PushPermissionStatus =
+  | "unknown"
+  | "prompt"
+  | "granted"
+  | "denied";
+export type PushTokenPlatform = "android" | "ios" | "web";
 
 export type UserProfile = {
   id: string;
@@ -84,6 +95,7 @@ export type WatchProviderSummary = {
   confidence: ProviderConfidence;
   lastVerifiedAt: string;
   providerUrl?: string;
+  verificationSource?: ProviderVerificationSource;
 };
 
 export type EventSummary = {
@@ -120,6 +132,23 @@ export type FollowRecord = {
 export type AlertPreferenceSummary = {
   targetId: string;
   presetKeys: AlertPresetKey[];
+};
+
+export type PushSettingsSummary = {
+  pushEnabled: boolean;
+  permissionStatus: PushPermissionStatus;
+  tokenPlatform?: PushTokenPlatform;
+  tokenRegistered: boolean;
+  tokenUpdatedAt?: string;
+};
+
+export type MonetizationSummary = {
+  premiumState: PremiumState;
+  adTier: UserProfile["adTier"];
+  adConsentRequired: boolean;
+  adConsentGranted: boolean;
+  analyticsConsent: boolean;
+  quietAdsEnabled: boolean;
 };
 
 export type LeaderboardEntry = {

@@ -4,13 +4,18 @@ import {
   buildRuntimeAlerts,
   buildRuntimeEventById,
   buildRuntimeFighterById,
+  buildRuntimeMonetization,
   buildRuntimeProfile,
+  buildRuntimePush,
 } from "../domain/runtime-data.js";
 import { resolveDeviceId } from "../http/device-id.js";
 import {
   alertPresetSchema,
   followSchema,
+  monetizationSettingsSchema,
   preferencesSchema,
+  pushSettingsSchema,
+  pushTokenSchema,
 } from "../http/schemas.js";
 import type { RuntimeService } from "../services/runtime-service.js";
 import type { UserStateStore } from "../store/user-state-store.js";
@@ -71,6 +76,44 @@ export function registerMeRoutes(
     const deviceId = resolveDeviceId(request);
     const state = await stateStore.read(deviceId);
     return buildRuntimeAlerts(state);
+  });
+
+  app.get("/v1/me/push", async (request) => {
+    const deviceId = resolveDeviceId(request);
+    const state = await stateStore.read(deviceId);
+    return buildRuntimePush(state);
+  });
+
+  app.get("/v1/me/monetization", async (request) => {
+    const deviceId = resolveDeviceId(request);
+    const state = await stateStore.read(deviceId);
+    return buildRuntimeMonetization(state);
+  });
+
+  app.put<{ Body: unknown }>("/v1/me/push/settings", async (request) => {
+    const deviceId = resolveDeviceId(request);
+    const updates = pushSettingsSchema.parse(request.body);
+    const state = await stateStore.updatePushSettings(deviceId, updates);
+    return buildRuntimePush(state);
+  });
+
+  app.put<{ Body: unknown }>("/v1/me/monetization/settings", async (request) => {
+    const deviceId = resolveDeviceId(request);
+    const updates = monetizationSettingsSchema.parse(request.body);
+    const state = await stateStore.updateProfile(deviceId, updates);
+    return buildRuntimeMonetization(state);
+  });
+
+  app.put<{ Body: unknown }>("/v1/me/push/token", async (request) => {
+    const deviceId = resolveDeviceId(request);
+    const payload = pushTokenSchema.parse(request.body);
+    const state = await stateStore.updatePushSettings(deviceId, {
+      pushEnabled: payload.permissionStatus === "granted",
+      permissionStatus: payload.permissionStatus,
+      tokenPlatform: payload.tokenValue != null ? payload.tokenPlatform : undefined,
+      tokenValue: payload.tokenValue,
+    });
+    return buildRuntimePush(state);
   });
 
   app.put<{ Params: { fighterId: string }; Body: unknown }>(

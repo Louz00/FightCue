@@ -20,9 +20,11 @@ class AppShell extends StatefulWidget {
   const AppShell({
     super.key,
     this.onLanguageChanged,
+    this.api,
   });
 
   final ValueChanged<String>? onLanguageChanged;
+  final FightCueApi? api;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -30,17 +32,22 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int index = 0;
-  final FightCueApi _api = FightCueApi();
+  late final FightCueApi _api;
   late final ValueNotifier<HomeSnapshot> _snapshotNotifier;
   late final ValueNotifier<bool> _homeSyncingNotifier;
   late final ValueNotifier<bool> _homeSyncErrorNotifier;
+  late final ValueNotifier<bool> _homeCachedFallbackNotifier;
+  late final ValueNotifier<DateTime?> _homeLastSyncedAtNotifier;
 
   @override
   void initState() {
     super.initState();
+    _api = widget.api ?? FightCueApi();
     _snapshotNotifier = ValueNotifier(sampleHomeSnapshot);
     _homeSyncingNotifier = ValueNotifier(false);
     _homeSyncErrorNotifier = ValueNotifier(false);
+    _homeCachedFallbackNotifier = ValueNotifier(false);
+    _homeLastSyncedAtNotifier = ValueNotifier(null);
     unawaited(_bootstrap());
   }
 
@@ -49,6 +56,8 @@ class _AppShellState extends State<AppShell> {
     _snapshotNotifier.dispose();
     _homeSyncingNotifier.dispose();
     _homeSyncErrorNotifier.dispose();
+    _homeCachedFallbackNotifier.dispose();
+    _homeLastSyncedAtNotifier.dispose();
     super.dispose();
   }
 
@@ -61,10 +70,16 @@ class _AppShellState extends State<AppShell> {
     _homeSyncErrorNotifier.value = false;
 
     try {
-      final snapshot = await _api.fetchHome();
+      final result = await _api.fetchHomeResult();
+      final snapshot = result.data;
+      _homeCachedFallbackNotifier.value = result.isFromCache;
+      _homeLastSyncedAtNotifier.value = result.lastSyncedAt;
       _snapshotNotifier.value = snapshot;
       widget.onLanguageChanged?.call(snapshot.languageCode);
       await _mergeLeaderboardFighters();
+      if (!result.isFromCache) {
+        unawaited(_api.prefetchReadSurfaces(_snapshotNotifier.value));
+      }
     } catch (error, stackTrace) {
       logUiError(error, stackTrace, context: 'app_shell.sync_home');
       _homeSyncErrorNotifier.value = true;
@@ -217,6 +232,7 @@ class _AppShellState extends State<AppShell> {
       _snapshotNotifier.value = updated;
       widget.onLanguageChanged?.call(updated.languageCode);
       await _mergeLeaderboardFighters();
+      unawaited(_api.prefetchReadSurfaces(_snapshotNotifier.value));
     } catch (error, stackTrace) {
       logUiError(error, stackTrace, context: 'app_shell.update_language');
       _snapshotNotifier.value = snapshot;
@@ -234,10 +250,22 @@ class _AppShellState extends State<AppShell> {
       _snapshotNotifier.value = updated;
       widget.onLanguageChanged?.call(updated.languageCode);
       await _mergeLeaderboardFighters();
+      unawaited(_api.prefetchReadSurfaces(_snapshotNotifier.value));
     } catch (error, stackTrace) {
       logUiError(error, stackTrace, context: 'app_shell.update_country');
       _snapshotNotifier.value = snapshot;
     }
+  }
+
+  void _applyMonetizationSnapshot(MonetizationSnapshot monetization) {
+    final snapshot = _snapshotNotifier.value;
+    _snapshotNotifier.value = snapshot.copyWith(
+      premiumState: monetization.premiumState,
+      adTier: monetization.adTier,
+      adConsentRequired: monetization.adConsentRequired,
+      adConsentGranted: monetization.adConsentGranted,
+      analyticsConsent: monetization.analyticsConsent,
+    );
   }
 
   void _openEvent(String eventId) {
@@ -283,6 +311,8 @@ class _AppShellState extends State<AppShell> {
         snapshotListenable: _snapshotNotifier,
         syncingListenable: _homeSyncingNotifier,
         syncErrorListenable: _homeSyncErrorNotifier,
+        cachedFallbackListenable: _homeCachedFallbackNotifier,
+        lastSyncedAtListenable: _homeLastSyncedAtNotifier,
         strings: strings,
         onOpenEvent: _openEvent,
         onOpenFighter: _openFighter,
@@ -298,6 +328,8 @@ class _AppShellState extends State<AppShell> {
       ),
       FollowingScreen(
         snapshotListenable: _snapshotNotifier,
+        cachedFallbackListenable: _homeCachedFallbackNotifier,
+        lastSyncedAtListenable: _homeLastSyncedAtNotifier,
         strings: strings,
         onOpenEvent: _openEvent,
         onOpenFighter: _openFighter,
@@ -316,8 +348,10 @@ class _AppShellState extends State<AppShell> {
         onOpenFighter: _openFighter,
       ),
       SettingsScreen(
+        api: _api,
         snapshotListenable: _snapshotNotifier,
         strings: strings,
+        onMonetizationChanged: _applyMonetizationSnapshot,
         onSelectLanguage: (languageCode) {
           unawaited(_updateLanguage(languageCode));
         },
@@ -329,35 +363,44 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       body: DecoratedBox(
-        decoration: const BoxDecoration(color: AppColors.background),
+        decoration: BoxDecoration(color: AppColors.backgroundFor(context)),
         child: SafeArea(child: tabs[index]),
       ),
-      bottomNavigationBar: NavigationBar(
-        height: 72,
-        selectedIndex: index,
-        onDestinationSelected: (value) => setState(() => index = value),
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.sports_mma_outlined),
-            label: strings.homeNavLabel,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.star_border),
-            label: strings.rankingsNavLabel,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.bookmark_border),
-            label: strings.following,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.notifications_none),
-            label: strings.alerts,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.settings_outlined),
-            label: strings.settings,
-          ),
-        ],
+      bottomNavigationBar: Semantics(
+        container: true,
+        label: strings.navigationSectionsLabel,
+        child: NavigationBar(
+          height: 72,
+          selectedIndex: index,
+          onDestinationSelected: (value) => setState(() => index = value),
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(Icons.sports_mma_outlined),
+              tooltip: strings.homeNavLabel,
+              label: strings.homeNavLabel,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.star_border),
+              tooltip: strings.rankingsNavLabel,
+              label: strings.rankingsNavLabel,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.bookmark_border),
+              tooltip: strings.following,
+              label: strings.following,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.notifications_none),
+              tooltip: strings.alerts,
+              label: strings.alerts,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.settings_outlined),
+              tooltip: strings.settings,
+              label: strings.settings,
+            ),
+          ],
+        ),
       ),
     );
   }

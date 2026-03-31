@@ -2,11 +2,17 @@ enum Sport { boxing, mma, kickboxing }
 
 enum PremiumState { free, premium }
 
+enum AdTier { freeWithAds, premiumNoAds }
+
 enum ProviderKind { streaming, tv, ppv, network }
 
 enum RankingGroup { men, women }
 
 enum AlertPreset { before24h, before1h, timeChanges, watchUpdates }
+
+enum PushPermissionStatus { unknown, prompt, granted, denied }
+
+enum PushTokenPlatform { android, ios, web }
 
 class FighterSummary {
   const FighterSummary({
@@ -290,6 +296,10 @@ class HomeSnapshot {
     required this.fighters,
     required this.events,
     required this.premiumState,
+    required this.adTier,
+    required this.adConsentRequired,
+    required this.adConsentGranted,
+    required this.analyticsConsent,
     required this.accountModeLabel,
     required this.languageCode,
     required this.timezone,
@@ -299,10 +309,18 @@ class HomeSnapshot {
   final List<FighterSummary> fighters;
   final List<EventSummary> events;
   final PremiumState premiumState;
+  final AdTier adTier;
+  final bool adConsentRequired;
+  final bool adConsentGranted;
+  final bool analyticsConsent;
   final String accountModeLabel;
   final String languageCode;
   final String timezone;
   final String viewingCountryCode;
+
+  bool get quietAdsEnabled =>
+      premiumState == PremiumState.free &&
+      (!adConsentRequired || adConsentGranted);
 
   List<FighterSummary> get followedFighters =>
       fighters.where((fighter) => fighter.isFollowed).toList();
@@ -342,6 +360,10 @@ class HomeSnapshot {
     List<FighterSummary>? fighters,
     List<EventSummary>? events,
     PremiumState? premiumState,
+    AdTier? adTier,
+    bool? adConsentRequired,
+    bool? adConsentGranted,
+    bool? analyticsConsent,
     String? accountModeLabel,
     String? languageCode,
     String? timezone,
@@ -351,10 +373,82 @@ class HomeSnapshot {
       fighters: fighters ?? this.fighters,
       events: events ?? this.events,
       premiumState: premiumState ?? this.premiumState,
+      adTier: adTier ?? this.adTier,
+      adConsentRequired: adConsentRequired ?? this.adConsentRequired,
+      adConsentGranted: adConsentGranted ?? this.adConsentGranted,
+      analyticsConsent: analyticsConsent ?? this.analyticsConsent,
       accountModeLabel: accountModeLabel ?? this.accountModeLabel,
       languageCode: languageCode ?? this.languageCode,
       timezone: timezone ?? this.timezone,
       viewingCountryCode: viewingCountryCode ?? this.viewingCountryCode,
+    );
+  }
+}
+
+class MonetizationSnapshot {
+  const MonetizationSnapshot({
+    required this.premiumState,
+    required this.adTier,
+    required this.adConsentRequired,
+    required this.adConsentGranted,
+    required this.analyticsConsent,
+    required this.quietAdsEnabled,
+  });
+
+  final PremiumState premiumState;
+  final AdTier adTier;
+  final bool adConsentRequired;
+  final bool adConsentGranted;
+  final bool analyticsConsent;
+  final bool quietAdsEnabled;
+
+  MonetizationSnapshot copyWith({
+    PremiumState? premiumState,
+    AdTier? adTier,
+    bool? adConsentRequired,
+    bool? adConsentGranted,
+    bool? analyticsConsent,
+    bool? quietAdsEnabled,
+  }) {
+    return MonetizationSnapshot(
+      premiumState: premiumState ?? this.premiumState,
+      adTier: adTier ?? this.adTier,
+      adConsentRequired: adConsentRequired ?? this.adConsentRequired,
+      adConsentGranted: adConsentGranted ?? this.adConsentGranted,
+      analyticsConsent: analyticsConsent ?? this.analyticsConsent,
+      quietAdsEnabled: quietAdsEnabled ?? this.quietAdsEnabled,
+    );
+  }
+}
+
+class PushSettingsSnapshot {
+  const PushSettingsSnapshot({
+    required this.pushEnabled,
+    required this.permissionStatus,
+    required this.tokenRegistered,
+    this.tokenPlatform,
+    this.tokenUpdatedAt,
+  });
+
+  final bool pushEnabled;
+  final PushPermissionStatus permissionStatus;
+  final bool tokenRegistered;
+  final PushTokenPlatform? tokenPlatform;
+  final DateTime? tokenUpdatedAt;
+
+  PushSettingsSnapshot copyWith({
+    bool? pushEnabled,
+    PushPermissionStatus? permissionStatus,
+    bool? tokenRegistered,
+    PushTokenPlatform? tokenPlatform,
+    DateTime? tokenUpdatedAt,
+  }) {
+    return PushSettingsSnapshot(
+      pushEnabled: pushEnabled ?? this.pushEnabled,
+      permissionStatus: permissionStatus ?? this.permissionStatus,
+      tokenRegistered: tokenRegistered ?? this.tokenRegistered,
+      tokenPlatform: tokenPlatform ?? this.tokenPlatform,
+      tokenUpdatedAt: tokenUpdatedAt ?? this.tokenUpdatedAt,
     );
   }
 }

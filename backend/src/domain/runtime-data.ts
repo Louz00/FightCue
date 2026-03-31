@@ -2,8 +2,8 @@ import type {
   AlertPreferenceSummary,
   EventSummary,
   FighterSummary,
-  ProviderConfidence,
-  ProviderKind,
+  MonetizationSummary,
+  PushSettingsSummary,
   UserProfile,
 } from "./models.js";
 import {
@@ -18,6 +18,7 @@ import {
   compareEventsByStart,
   formatForTimezone,
 } from "./time.js";
+import { enrichWatchProvidersForCountry } from "./watch-provider-enrichment.js";
 
 export type HomeResponse = {
   profile: UserProfile;
@@ -29,6 +30,9 @@ export type AlertsResponse = {
   fighters: AlertPreferenceSummary[];
   events: AlertPreferenceSummary[];
 };
+
+export type PushSettingsResponse = PushSettingsSummary;
+export type MonetizationResponse = MonetizationSummary;
 
 export function buildRuntimeHome(state: PersistedUserState): HomeResponse {
   const profile = buildRuntimeProfile(state);
@@ -88,7 +92,10 @@ export function buildRuntimeEvents(
       localTimeLabel,
       selectedCountryCode: profile.viewingCountryCode,
       isFollowed: followedEventIds.has(event.id),
-      watchProviders: buildProvidersForCountry(event.id, profile.viewingCountryCode),
+      watchProviders: enrichWatchProvidersForCountry(
+        event,
+        profile.viewingCountryCode,
+      ),
       bouts: event.bouts.map((bout) => ({
         ...bout,
         includesFollowedFighter:
@@ -152,6 +159,34 @@ export function buildRuntimeAlerts(state: PersistedUserState): AlertsResponse {
   };
 }
 
+export function buildRuntimePush(
+  state: PersistedUserState,
+): PushSettingsResponse {
+  return {
+    pushEnabled: state.push.pushEnabled,
+    permissionStatus: state.push.permissionStatus,
+    tokenPlatform: state.push.tokenPlatform,
+    tokenRegistered: Boolean(state.push.tokenValue),
+    tokenUpdatedAt: state.push.tokenUpdatedAt,
+  };
+}
+
+export function buildRuntimeMonetization(
+  state: PersistedUserState,
+): MonetizationResponse {
+  const profile = buildRuntimeProfile(state);
+  return {
+    premiumState: profile.premiumState,
+    adTier: profile.adTier,
+    adConsentRequired: profile.adConsentRequired,
+    adConsentGranted: profile.adConsentGranted,
+    analyticsConsent: profile.analyticsConsent,
+    quietAdsEnabled:
+      profile.premiumState === "free" &&
+      (!profile.adConsentRequired || profile.adConsentGranted),
+  };
+}
+
 export function mergeExternalEvents(
   state: PersistedUserState,
   baseEvents: EventSummary[],
@@ -179,6 +214,14 @@ export function mergeExternalEvents(
       id: stableEventId,
       selectedCountryCode: profile.viewingCountryCode,
       isFollowed: followedEventIds.has(stableEventId),
+      watchProviders: enrichWatchProvidersForCountry(
+        {
+          ...event,
+          id: stableEventId,
+          selectedCountryCode: profile.viewingCountryCode,
+        },
+        profile.viewingCountryCode,
+      ),
       bouts: event.bouts.map((bout) => ({
         ...bout,
         includesFollowedFighter:
@@ -334,80 +377,6 @@ function upsertEventFighter(
 
   fightersById.set(created.id, created);
   fighterIdsByName.set(created.name.toLowerCase(), created.id);
-}
-
-function buildProvidersForCountry(
-  eventId: string,
-  countryCode: string,
-): EventSummary["watchProviders"] {
-  const normalizedCountryCode = countryCode.toUpperCase();
-
-  const mapping: Record<
-    string,
-    Record<
-      string,
-      Array<{
-        label: string;
-        kind: ProviderKind;
-        confidence: ProviderConfidence;
-      }>
-    >
-  > = {
-    evt_matchroom_taylor_serrano: {
-      NL: [{ label: "DAZN", kind: "streaming", confidence: "confirmed" }],
-      GB: [{ label: "DAZN", kind: "streaming", confidence: "confirmed" }],
-      US: [{ label: "DAZN", kind: "streaming", confidence: "likely" }],
-      ES: [{ label: "DAZN", kind: "streaming", confidence: "confirmed" }],
-    },
-    evt_ufc_327: {
-      NL: [
-        {
-          label: "Discovery+ / TNT Sports",
-          kind: "streaming",
-          confidence: "likely",
-        },
-      ],
-      GB: [{ label: "TNT Sports Box Office", kind: "ppv", confidence: "likely" }],
-      US: [{ label: "ESPN+ PPV", kind: "ppv", confidence: "likely" }],
-      ES: [{ label: "UFC Fight Pass", kind: "streaming", confidence: "unknown" }],
-    },
-    evt_ufc_fight_night_moicano_duncan: {
-      NL: [{ label: "UFC Fight Pass", kind: "streaming", confidence: "likely" }],
-      GB: [{ label: "TNT Sports", kind: "tv", confidence: "likely" }],
-      US: [{ label: "ESPN+", kind: "streaming", confidence: "likely" }],
-      ES: [{ label: "UFC Fight Pass", kind: "streaming", confidence: "unknown" }],
-    },
-  };
-
-  const fallbackProviders = sampleEvents.find((event) => event.id === eventId)?.watchProviders;
-  const configuredProviders =
-    mapping[eventId]?.[normalizedCountryCode] ??
-    mapping[eventId]?.NL ??
-    fallbackProviders?.map((provider) => ({
-      label: provider.label,
-      kind: provider.kind,
-      confidence: normalizeConfidence(provider.confidence),
-    })) ??
-    [];
-
-  return configuredProviders.map((provider) => ({
-    label: provider.label,
-    kind: provider.kind,
-    countryCode: normalizedCountryCode,
-    confidence: provider.confidence,
-    lastVerifiedAt: new Date().toISOString(),
-  }));
-}
-
-function normalizeConfidence(confidenceLabel: string): ProviderConfidence {
-  switch (confidenceLabel.toLowerCase()) {
-    case "confirmed":
-      return "confirmed";
-    case "likely":
-      return "likely";
-    default:
-      return "unknown";
-  }
 }
 
 function eventIdentity(event: EventSummary): string {

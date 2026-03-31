@@ -61,7 +61,7 @@ Exit criteria:
 
 Current note:
 - current persistence uses anonymous device IDs and supports PostgreSQL-backed state when `DATABASE_URL` is configured
-- per-device JSON storage remains as a safe fallback for local runs without a database
+- PostgreSQL is now the default runtime expectation and per-device JSON storage is an explicit fallback mode
 - route modularization is now in place with extracted runtime service and focused route files
 - strict database-only mode is now available through `FIGHTCUE_REQUIRE_DATABASE=true`
 - route-level integration tests now validate PostgreSQL-backed metadata, preferences, follows, and alerts
@@ -146,6 +146,17 @@ Current note:
 
 This is the current recommended order for the next engineering cycle.
 
+Current execution order:
+
+1. fix mobile environment/runtime basics such as API base-URL handling
+2. add Flutter CI
+3. split oversized mobile files
+4. add push-notification foundations
+5. expand offline UX
+6. continue the accessibility pass
+7. finish dark-mode polish
+8. add billing and quiet-ad foundations
+
 ### Stage 1: Stability and observability basics
 
 - add HTTP timeouts to the Flutter API client
@@ -159,7 +170,7 @@ Why first:
 
 Current note:
 - HTTP timeouts, cached mobile GET fallback, diagnostics logging, global Flutter error handling, backend linting, and a first CI workflow are now in place
-- the main remaining work in this stage is shared parsing utilities plus a broader sparse-data audit
+- shared parsing utilities are now in place and the main remaining work in this stage is broader sparse-data auditing
 
 ### Stage 2: Security and persistence hardening
 
@@ -173,8 +184,9 @@ Why next:
 
 Current note:
 - signed anonymous session bootstrap and the narrower runtime cache key are now implemented
-- PostgreSQL still needs to become the normal local runtime path outside sandboxed sessions
-- structured source-failure logging is still open
+- PostgreSQL is now the normal default runtime path in config, while file storage is explicit opt-in fallback
+- structured source-failure logging is now in place for loader failures, preview warnings, and persistence fallback events
+- signed device tokens can now also be enforced in strict mode on stateful routes; the main remaining step is operational rollout and validation outside sandboxed sessions
 
 ### Stage 3: Mobile reliability
 
@@ -189,7 +201,12 @@ Why next:
 Current note:
 - local cached fallback is now in place for GET-based API responses
 - global Flutter error handling is now wired in
-- mobile test coverage has started to expand, but it is still far from where it needs to be for beta confidence
+- home, event detail, and fighter profile now surface saved-preview state explicitly when cached data is being shown
+- mobile tests now cover API cache detection, cached home rendering, optimistic event-follow rollback, event-detail cache/fallback behavior, and the rankings/following/alerts screens
+- the shared editorial UI layer is now dark-mode aware on its core cards and controls instead of assuming light-only surfaces
+- event detail, fighter profile, and settings now use more context-aware surfaces and semantics instead of relying on light-only defaults
+- home widgets and the main navigation now also use stronger semantics and more context-aware dark-mode styling on smaller controls and cards
+- mobile test coverage is moving in the right direction, but it is still far from where it needs to be for beta confidence
 
 ### Stage 4: Data quality and enrichment
 
@@ -201,6 +218,11 @@ Current note:
 Why next:
 - this improves user trust without forcing premature feature expansion
 
+Current note:
+- watch-provider enrichment now runs through a shared backend module with organization-level defaults and event-specific overrides
+- watch-provider enrichment now also keeps provider provenance and prefers the strongest verified source when duplicate provider labels collide
+- the next step in this stage is moving more of that enrichment toward source- and database-driven verification instead of curated overrides
+
 ### Stage 5: Beta-readiness
 
 - push notification foundation
@@ -210,3 +232,9 @@ Why next:
 
 Why last:
 - these are valuable, but they depend on the platform being stable and secure first
+
+Current note:
+- accessibility work has started with semantics on key headings and interactive controls, but a broader screen-by-screen pass is still open
+- push foundations now exist for persistence, API routes, and a first mobile settings surface, but real permission capture and delivery are still open
+- offline UX is now clearer in the mobile app with saved-data timestamps, stale-data warnings, visible cached notices across home/following/alerts/detail/rankings/push-settings, pull-to-refresh, background prefetch, and stale auto-refresh on key read surfaces, but it still needs broader screen coverage and deeper proactive refresh behavior
+- billing/ad foundations now exist for monetization state, ad/analytics consent, quiet-ad eligibility, settings controls, and a reserved home-feed ad slot, but real store billing and live ad delivery are still open

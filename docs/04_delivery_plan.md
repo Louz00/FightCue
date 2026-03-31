@@ -81,6 +81,7 @@ Current note:
 - backend now exposes a UFC source-preview endpoint alongside mock detail endpoints
 - source-health checking now compares parsed UFC coverage against the official upcoming count
 - the first GLORY source is now implemented against the official GLORY event API
+- the first ONE Championship source is now implemented against the official ONE events page
 - the first Matchroom boxing source is now implemented against the official Matchroom events page
 - Matchroom coverage checks are now in place against the official on-page card count
 - the first Queensberry boxing source is now implemented against the official Queensberry events page
@@ -90,7 +91,7 @@ Current note:
 - BOXXER is now live through the official BOXXER WordPress events API
 - ESPN boxing rankings and Ring boxing ratings are now available as editorial source layers for future boxing leaderboard work
 - runtime resolution now keeps a short-lived cached home snapshot and coalesces in-flight source requests for faster repeated home loads
-- next priority is adding the next official promoter adapters beyond Matchroom, Queensberry, Top Rank, PBC, Golden Boy, and BOXXER
+- next priority is continuing hardening work around parsing utilities, watch-provider enrichment, and source observability
 
 ## Step 6: Release features
 
@@ -140,3 +141,72 @@ Current note:
 Current note:
 - PostgreSQL-backed state, route splitting, anonymous device identity, GLORY live ingestion, route-level API tests, and Matchroom live ingestion are now implemented
 - the remaining follow-through is to run local development with PostgreSQL required outside sandboxed environments and then harden boxing coverage
+
+## Hardening sequence
+
+This is the current recommended order for the next engineering cycle.
+
+### Stage 1: Stability and observability basics
+
+- add HTTP timeouts to the Flutter API client
+- replace silent `catch (_) {}` blocks with lightweight error logging
+- audit remaining sparse-data crash paths in mobile and backend parsing
+- extract shared parsing utilities for source adapters
+- add backend linting and a minimal CI pipeline
+
+Why first:
+- these changes reduce debugging time and lower the chance that small data issues become app crashes
+
+Current note:
+- HTTP timeouts, cached mobile GET fallback, diagnostics logging, global Flutter error handling, backend linting, and a first CI workflow are now in place
+- the main remaining work in this stage is shared parsing utilities plus a broader sparse-data audit
+
+### Stage 2: Security and persistence hardening
+
+- move from plain device IDs to signed anonymous session/device tokens
+- narrow the runtime cache key so it only depends on state that affects event resolution
+- prefer PostgreSQL as the normal local path and keep file storage as a deliberate fallback
+- add structured logging around live source failures and parser drift
+
+Why next:
+- FightCue now stores meaningful user state, so privacy and traceability matter more than adding more surface area
+
+Current note:
+- signed anonymous session bootstrap and the narrower runtime cache key are now implemented
+- PostgreSQL still needs to become the normal local runtime path outside sandboxed sessions
+- structured source-failure logging is still open
+
+### Stage 3: Mobile reliability
+
+- cache the last successful home, event, and leaderboard payloads locally
+- add global Flutter error handling
+- expand mobile test coverage around API parsing, optimistic update rollback, and key screens
+- continue refining loading, error, and retry states
+
+Why next:
+- once the backend is more trustworthy, the client should become more resilient when networks are slow or unstable
+
+Current note:
+- local cached fallback is now in place for GET-based API responses
+- global Flutter error handling is now wired in
+- mobile test coverage has started to expand, but it is still far from where it needs to be for beta confidence
+
+### Stage 4: Data quality and enrichment
+
+- move watch-provider enrichment away from the small hardcoded runtime fallback map
+- keep hardening boxing and UFC coverage checks
+- make source health easier to inspect during development and staging
+- prepare the future boxing leaderboard path around ESPN and Ring editorial sources
+
+Why next:
+- this improves user trust without forcing premature feature expansion
+
+### Stage 5: Beta-readiness
+
+- push notification foundation
+- accessibility pass
+- store-facing billing/ad infrastructure
+- optional account-linking follow-through after anonymous security is improved
+
+Why last:
+- these are valuable, but they depend on the platform being stable and secure first

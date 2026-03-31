@@ -11,6 +11,14 @@ class AppColors {
   static const accentDark = Color(0xFF97001C);
   static const ink = Color(0xFF141414);
   static const shadow = Color(0x14000000);
+
+  static const darkBackground = Color(0xFF090A0C);
+  static const darkSurface = Color(0xFF14171C);
+  static const darkSurfaceAlt = Color(0xFF1B1F25);
+  static const darkBorder = Color(0xFF2B313A);
+  static const darkTextPrimary = Color(0xFFF6F7F9);
+  static const darkTextSecondary = Color(0xFFB7BEC8);
+  static const darkShadow = Color(0x44000000);
 }
 
 class AppShadows {
@@ -92,6 +100,80 @@ ThemeData buildAppTheme() {
         fontWeight: FontWeight.w700,
         letterSpacing: 1.3,
         color: AppColors.textSecondary,
+      ),
+    ),
+  );
+}
+
+ThemeData buildDarkAppTheme() {
+  final base = ThemeData(
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: AppColors.darkBackground,
+    colorScheme: const ColorScheme.dark(
+      primary: AppColors.accent,
+      secondary: AppColors.accentDark,
+      surface: AppColors.darkSurface,
+      onPrimary: Colors.white,
+      onSurface: AppColors.darkTextPrimary,
+    ),
+    useMaterial3: true,
+  );
+
+  return base.copyWith(
+    dividerColor: AppColors.darkBorder,
+    cardColor: AppColors.darkSurface,
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: AppColors.darkSurface,
+      surfaceTintColor: Colors.transparent,
+      indicatorColor: AppColors.accent,
+      elevation: 0,
+      iconTheme: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return IconThemeData(
+          color: selected ? Colors.white : AppColors.darkTextSecondary,
+          size: 22,
+        );
+      }),
+      labelTextStyle: WidgetStateProperty.resolveWith((states) {
+        final selected = states.contains(WidgetState.selected);
+        return TextStyle(
+          color: selected ? AppColors.darkTextPrimary : AppColors.darkTextSecondary,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 12,
+          letterSpacing: 0.2,
+        );
+      }),
+    ),
+    textTheme: const TextTheme(
+      headlineMedium: TextStyle(
+        fontSize: 34,
+        height: 0.98,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -1.1,
+        color: AppColors.darkTextPrimary,
+      ),
+      titleLarge: TextStyle(
+        fontSize: 21,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.3,
+        color: AppColors.darkTextPrimary,
+      ),
+      titleMedium: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.1,
+        color: AppColors.darkTextPrimary,
+      ),
+      bodyMedium: TextStyle(
+        fontSize: 14,
+        height: 1.45,
+        color: AppColors.darkTextSecondary,
+      ),
+      labelSmall: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.3,
+        color: AppColors.darkTextSecondary,
       ),
     ),
   );

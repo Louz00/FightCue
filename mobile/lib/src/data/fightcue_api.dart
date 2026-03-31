@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../core/runtime/app_diagnostics.dart';
+import 'api_response_cache.dart';
 import 'device_identity.dart';
 import '../models/domain_models.dart';
 
@@ -10,11 +12,15 @@ class FightCueApi {
   FightCueApi({
     http.Client? client,
     DeviceIdentityStore? deviceIdentityStore,
+    ApiResponseCacheStore? responseCacheStore,
   })  : _client = client ?? http.Client(),
-        _deviceIdentityStore = deviceIdentityStore ?? DeviceIdentityStore();
+        _deviceIdentityStore = deviceIdentityStore ?? DeviceIdentityStore(),
+        _responseCacheStore = responseCacheStore ?? ApiResponseCacheStore();
 
   final http.Client _client;
   final DeviceIdentityStore _deviceIdentityStore;
+  final ApiResponseCacheStore _responseCacheStore;
+  static const Duration _requestTimeout = Duration(seconds: 8);
 
   String get _baseUrl {
     const configuredBaseUrl = String.fromEnvironment('FIGHTCUE_API_BASE_URL');
@@ -33,65 +39,138 @@ class FightCueApi {
     Map<String, String>? extraHeaders,
   }) async {
     final deviceId = await _deviceIdentityStore.getOrCreateDeviceId();
+    final deviceToken = await _resolveDeviceToken(deviceId);
     return {
       'x-fightcue-device-id': deviceId,
+      if (deviceToken != null && deviceToken.isNotEmpty)
+        'x-fightcue-device-token': deviceToken,
       ...?extraHeaders,
     };
   }
 
-  Future<HomeSnapshot> fetchHome() async {
-    final response = await _client.get(
-      Uri.parse('$_baseUrl/v1/home'),
-      headers: await _defaultHeaders(),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Home request failed: ${response.statusCode}');
+  Future<String?> _resolveDeviceToken(String deviceId) async {
+    final cached = await _deviceIdentityStore.getStoredDeviceToken();
+    if (cached != null && cached.isNotEmpty) {
+      return cached;
     }
 
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    try {
+      final response = await _client
+          .post(
+            Uri.parse('$_baseUrl/v1/session/bootstrap'),
+            headers: {
+              'x-fightcue-device-id': deviceId,
+            },
+          )
+          .timeout(_requestTimeout);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError(
+          'Session bootstrap failed: ${response.statusCode}',
+        );
+      }
+
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      final token = json['deviceToken'] as String?;
+      if (token == null || token.isEmpty) {
+        throw const FormatException('Missing deviceToken in session bootstrap');
+      }
+
+      await _deviceIdentityStore.saveDeviceToken(token);
+      return token;
+    } catch (error, stackTrace) {
+      logUiError(
+        error,
+        stackTrace,
+        context: 'api.bootstrap_session',
+      );
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>> _getJsonMap(
+    String path, {
+    bool allowCachedFallback = true,
+  }) async {
+    final uri = Uri.parse('$_baseUrl$path');
+
+    try {
+      final response = await _client
+          .get(
+            uri,
+            headers: await _defaultHeaders(),
+          )
+          .timeout(_requestTimeout);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError('GET $path failed: ${response.statusCode}');
+      }
+
+      await _responseCacheStore.write(path, response.body);
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'api.get.$path');
+
+      if (allowCachedFallback) {
+        final cached = await _responseCacheStore.read(path);
+        if (cached != null && cached.isNotEmpty) {
+          return jsonDecode(cached) as Map<String, dynamic>;
+        }
+      }
+
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> _putJsonMap(
+    String path, {
+    required Map<String, dynamic> body,
+  }) async {
+    final uri = Uri.parse('$_baseUrl$path');
+
+    try {
+      final response = await _client
+          .put(
+            uri,
+            headers: await _defaultHeaders(
+              extraHeaders: {'content-type': 'application/json'},
+            ),
+            body: jsonEncode(body),
+          )
+          .timeout(_requestTimeout);
+
+      if (response.statusCode == 401) {
+        await _deviceIdentityStore.clearDeviceToken();
+      }
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError('PUT $path failed: ${response.statusCode}');
+      }
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'api.put.$path');
+      rethrow;
+    }
+  }
+
+  Future<HomeSnapshot> fetchHome() async {
+    final json = await _getJsonMap('/v1/home');
     return HomeSnapshotJson.fromJson(json).toMobile();
   }
 
   Future<EventDetailSnapshot> fetchEventDetail(String eventId) async {
-    final response = await _client.get(
-      Uri.parse('$_baseUrl/v1/events/$eventId'),
-      headers: await _defaultHeaders(),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Event detail request failed: ${response.statusCode}');
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final json = await _getJsonMap('/v1/events/$eventId');
     return EventDetailSnapshotJson.fromJson(json).toMobile();
   }
 
   Future<FighterDetailSnapshot> fetchFighterDetail(String fighterId) async {
-    final response = await _client.get(
-      Uri.parse('$_baseUrl/v1/fighters/$fighterId'),
-      headers: await _defaultHeaders(),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Fighter detail request failed: ${response.statusCode}');
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final json = await _getJsonMap('/v1/fighters/$fighterId');
     return FighterDetailSnapshotJson.fromJson(json).toMobile();
   }
 
   Future<AlertsSnapshot> fetchAlerts() async {
-    final response = await _client.get(
-      Uri.parse('$_baseUrl/v1/me/alerts'),
-      headers: await _defaultHeaders(),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Alerts request failed: ${response.statusCode}');
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final json = await _getJsonMap('/v1/me/alerts');
     return AlertsSnapshotJson.fromJson(json).toMobile();
   }
 
@@ -102,16 +181,7 @@ class FightCueApi {
     final uri = Uri.parse(
       '$_baseUrl/v1/sources/ufc/events?timezone=$timezone&country=$countryCode',
     );
-    final response = await _client.get(
-      uri,
-      headers: await _defaultHeaders(),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('UFC preview request failed: ${response.statusCode}');
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final json = await _getJsonMap(uri.path + (uri.hasQuery ? '?${uri.query}' : ''));
     final items = (json['items'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(EventSummaryJson.fromJson)
@@ -128,16 +198,7 @@ class FightCueApi {
   }
 
   Future<List<LeaderboardSummary>> fetchLeaderboards() async {
-    final response = await _client.get(
-      Uri.parse('$_baseUrl/v1/leaderboards'),
-      headers: await _defaultHeaders(),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Leaderboard request failed: ${response.statusCode}');
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final json = await _getJsonMap('/v1/leaderboards');
     return (json['items'] as List<dynamic>? ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(LeaderboardSummaryJson.fromJson)
@@ -161,52 +222,24 @@ class FightCueApi {
       body['viewingCountryCode'] = viewingCountryCode;
     }
 
-    final response = await _client.put(
-      Uri.parse('$_baseUrl/v1/me/preferences'),
-      headers: await _defaultHeaders(
-        extraHeaders: {'content-type': 'application/json'},
-      ),
-      body: jsonEncode(body),
-    );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Preferences request failed: ${response.statusCode}');
-    }
+    await _putJsonMap('/v1/me/preferences', body: body);
 
     return fetchHome();
   }
 
   Future<EventSummary> setEventFollow(String eventId, bool followed) async {
-    final response = await _client.put(
-      Uri.parse('$_baseUrl/v1/me/follows/events/$eventId'),
-      headers: await _defaultHeaders(
-        extraHeaders: {'content-type': 'application/json'},
-      ),
-      body: jsonEncode({'followed': followed}),
+    final json = await _putJsonMap(
+      '/v1/me/follows/events/$eventId',
+      body: {'followed': followed},
     );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Event follow request failed: ${response.statusCode}');
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
     return EventSummaryJson.fromJson(json['item'] as Map<String, dynamic>).toMobile();
   }
 
   Future<FighterSummary> setFighterFollow(String fighterId, bool followed) async {
-    final response = await _client.put(
-      Uri.parse('$_baseUrl/v1/me/follows/fighters/$fighterId'),
-      headers: await _defaultHeaders(
-        extraHeaders: {'content-type': 'application/json'},
-      ),
-      body: jsonEncode({'followed': followed}),
+    final json = await _putJsonMap(
+      '/v1/me/follows/fighters/$fighterId',
+      body: {'followed': followed},
     );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Fighter follow request failed: ${response.statusCode}');
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
     return FighterSummaryJson.fromJson(json['item'] as Map<String, dynamic>).toMobile();
   }
 
@@ -214,21 +247,12 @@ class FightCueApi {
     String fighterId,
     Set<AlertPreset> presets,
   ) async {
-    final response = await _client.put(
-      Uri.parse('$_baseUrl/v1/me/alerts/fighters/$fighterId'),
-      headers: await _defaultHeaders(
-        extraHeaders: {'content-type': 'application/json'},
-      ),
-      body: jsonEncode({
+    final json = await _putJsonMap(
+      '/v1/me/alerts/fighters/$fighterId',
+      body: {
         'presetKeys': presets.map(_alertPresetToApi).toList(),
-      }),
+      },
     );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Fighter alerts request failed: ${response.statusCode}');
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
     return AlertsSnapshotJson.fromJson(json).toMobile();
   }
 
@@ -236,21 +260,12 @@ class FightCueApi {
     String eventId,
     Set<AlertPreset> presets,
   ) async {
-    final response = await _client.put(
-      Uri.parse('$_baseUrl/v1/me/alerts/events/$eventId'),
-      headers: await _defaultHeaders(
-        extraHeaders: {'content-type': 'application/json'},
-      ),
-      body: jsonEncode({
+    final json = await _putJsonMap(
+      '/v1/me/alerts/events/$eventId',
+      body: {
         'presetKeys': presets.map(_alertPresetToApi).toList(),
-      }),
+      },
     );
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Event alerts request failed: ${response.statusCode}');
-    }
-
-    final json = jsonDecode(response.body) as Map<String, dynamic>;
     return AlertsSnapshotJson.fromJson(json).toMobile();
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/app_strings.dart';
+import '../../core/runtime/app_diagnostics.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
@@ -60,7 +61,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
         _alerts = alerts;
         _loadFailed = false;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'alerts.load');
       if (!mounted) {
         return;
       }
@@ -113,7 +115,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
       setState(() {
         _alerts = saved;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'alerts.toggle_fighter_preset');
       if (!mounted) {
         return;
       }
@@ -160,7 +163,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
       setState(() {
         _alerts = saved;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'alerts.toggle_event_preset');
       if (!mounted) {
         return;
       }

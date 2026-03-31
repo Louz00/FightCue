@@ -18,6 +18,7 @@ import { loadBoxxerEventsPreview } from "../sources/boxxer/boxxer-events-source.
 import { loadGoldenBoyEventsPreview } from "../sources/golden-boy/golden-boy-events-source.js";
 import { loadGloryEventsPreview } from "../sources/glory/glory-events-source.js";
 import { loadMatchroomEventsPreview } from "../sources/matchroom/matchroom-events-source.js";
+import { loadOneEventsPreview } from "../sources/one/one-events-source.js";
 import { loadPbcEventsPreview } from "../sources/pbc/pbc-events-source.js";
 import { loadQueensberryEventsPreview } from "../sources/queensberry/queensberry-events-source.js";
 import { loadTopRankEventsPreview } from "../sources/top-rank/top-rank-events-source.js";
@@ -28,6 +29,7 @@ import type { UserStateStore } from "../store/user-state-store.js";
 const UFC_SOURCE_CACHE_TTL_MS = 2 * 60 * 1000;
 const GLORY_SOURCE_CACHE_TTL_MS = 2 * 60 * 1000;
 const MATCHROOM_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
+const ONE_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
 const QUEENSBERRY_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
 const TOP_RANK_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
 const PBC_SOURCE_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -77,7 +79,7 @@ export class RuntimeService {
   private readonly runtimeDataInFlight = new Map<string, Promise<ResolvedRuntimeData>>();
 
   async resolveRuntimeData(state: Awaited<ReturnType<UserStateStore["read"]>>) {
-    const cacheKey = JSON.stringify(state);
+    const cacheKey = buildRuntimeStateCacheKey(state);
     const cached = this.runtimeDataCache.get(cacheKey);
 
     this.pruneRuntimeDataCache();
@@ -152,6 +154,19 @@ export class RuntimeService {
       MATCHROOM_SOURCE_CACHE_TTL_MS,
       () =>
         loadMatchroomEventsPreview({
+          timezone,
+          selectedCountryCode: countryCode,
+        }),
+    );
+  }
+
+  async getCachedOnePreview(timezone: string, countryCode: string) {
+    return this.loadCachedPreview(
+      "one",
+      `${timezone}:${countryCode}`,
+      ONE_SOURCE_CACHE_TTL_MS,
+      () =>
+        loadOneEventsPreview({
           timezone,
           selectedCountryCode: countryCode,
         }),
@@ -270,6 +285,7 @@ export class RuntimeService {
     const [
       ufcPreview,
       gloryPreview,
+      onePreview,
       matchroomPreview,
       queensberryPreview,
       topRankPreview,
@@ -293,6 +309,14 @@ export class RuntimeService {
         countryCode: profile.viewingCountryCode,
         loader: () =>
           this.getCachedGloryPreview(profile.timezone, profile.viewingCountryCode),
+      }),
+      this.loadHomePreviewWithTimeout({
+        source: "one",
+        officialUrl: "https://www.onefc.com/events/",
+        timezone: profile.timezone,
+        countryCode: profile.viewingCountryCode,
+        loader: () =>
+          this.getCachedOnePreview(profile.timezone, profile.viewingCountryCode),
       }),
       this.loadHomePreviewWithTimeout({
         source: "matchroom",
@@ -361,7 +385,20 @@ export class RuntimeService {
             profile.timezone,
             profile.viewingCountryCode,
           ),
-      }),
+        }),
+    ]);
+
+    logSourcePreviewIssues([
+      ufcPreview,
+      gloryPreview,
+      onePreview,
+      matchroomPreview,
+      queensberryPreview,
+      topRankPreview,
+      pbcPreview,
+      goldenBoyPreview,
+      boxxerPreview,
+      espnBoxingPreview,
     ]);
 
     const withUfcEvents = mergeExternalEvents(
@@ -371,9 +408,16 @@ export class RuntimeService {
       "ufc",
       profile,
     );
-    const withGloryEvents = mergeExternalEvents(
+    const withOneEvents = mergeExternalEvents(
       state,
       withUfcEvents,
+      onePreview.items,
+      "one",
+      profile,
+    );
+    const withGloryEvents = mergeExternalEvents(
+      state,
+      withOneEvents,
       gloryPreview.items,
       "glory",
       profile,
@@ -446,6 +490,7 @@ export class RuntimeService {
       },
       timedOutSourceCount: [
         ufcPreview,
+        onePreview,
         gloryPreview,
         matchroomPreview,
         queensberryPreview,
@@ -614,5 +659,46 @@ export class RuntimeService {
       ],
       items: [],
     };
+  }
+}
+
+function buildRuntimeStateCacheKey(
+  state: Awaited<ReturnType<UserStateStore["read"]>>,
+): string {
+  return JSON.stringify({
+    timezone: state.profile.timezone,
+    viewingCountryCode: state.profile.viewingCountryCode,
+    followedFighterIds: [...state.follows.fighterIds].sort(),
+    followedEventIds: [...state.follows.eventIds].sort(),
+  });
+}
+
+function logSourcePreviewIssues(previews: EventSourcePreview[]): void {
+  for (const preview of previews) {
+    const warningMessages = preview.warnings
+      .filter((warning) => !warning.includes("disabled for route tests"))
+      .slice(0, 3);
+    const shouldWarn =
+      preview.health.status === "degraded" ||
+      (preview.mode === "fallback" && warningMessages.length > 0);
+
+    if (!shouldWarn) {
+      continue;
+    }
+
+    const payload = {
+      source: preview.source,
+      mode: preview.mode,
+      healthStatus: preview.health.status,
+      itemCount: preview.itemCount,
+      parsedItemCount: preview.health.parsedItemCount,
+      reportedItemCount: preview.health.reportedItemCount ?? null,
+      checkedPageCount: preview.health.checkedPageCount,
+      coverageGap: preview.health.coverageGap,
+      warnings: warningMessages,
+      fetchedAt: preview.fetchedAt,
+    };
+
+    console.warn("[FightCue][source.preview_issue]", JSON.stringify(payload));
   }
 }

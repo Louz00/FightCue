@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../core/app_strings.dart';
+import '../../core/runtime/app_diagnostics.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
@@ -64,7 +65,8 @@ class _AppShellState extends State<AppShell> {
       _snapshotNotifier.value = snapshot;
       widget.onLanguageChanged?.call(snapshot.languageCode);
       await _mergeLeaderboardFighters();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.sync_home');
       _homeSyncErrorNotifier.value = true;
     } finally {
       _homeSyncingNotifier.value = false;
@@ -121,7 +123,8 @@ class _AppShellState extends State<AppShell> {
       }
 
       _snapshotNotifier.value = snapshot.copyWith(fighters: nextFighters);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.merge_leaderboards');
       // Rankings stay optional so the main event flow remains stable.
     }
   }
@@ -148,7 +151,8 @@ class _AppShellState extends State<AppShell> {
     try {
       await _api.setEventFollow(eventId, nextFollowed);
       await _syncHome();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.toggle_event_follow');
       _snapshotNotifier.value = snapshot;
     }
   }
@@ -196,7 +200,8 @@ class _AppShellState extends State<AppShell> {
     try {
       await _api.setFighterFollow(fighterId, nextFollowed);
       await _syncHome();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.toggle_fighter_follow');
       _snapshotNotifier.value = snapshot;
     }
   }
@@ -212,7 +217,8 @@ class _AppShellState extends State<AppShell> {
       _snapshotNotifier.value = updated;
       widget.onLanguageChanged?.call(updated.languageCode);
       await _mergeLeaderboardFighters();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.update_language');
       _snapshotNotifier.value = snapshot;
       widget.onLanguageChanged?.call(snapshot.languageCode);
     }
@@ -228,7 +234,8 @@ class _AppShellState extends State<AppShell> {
       _snapshotNotifier.value = updated;
       widget.onLanguageChanged?.call(updated.languageCode);
       await _mergeLeaderboardFighters();
-    } catch (_) {
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.update_country');
       _snapshotNotifier.value = snapshot;
     }
   }

@@ -2,6 +2,8 @@ import type { FastifyInstance } from "fastify";
 
 import { sampleLeaderboards } from "../domain/mock-data.js";
 import { fightCueRuntimeProfile } from "../domain/models.js";
+import { resolveRawDeviceId } from "../http/device-id.js";
+import { issueSignedDeviceToken } from "../http/session-token.js";
 import type { UserStateStore } from "../store/user-state-store.js";
 
 export function registerMetaRoutes(
@@ -30,4 +32,15 @@ export function registerMetaRoutes(
   app.get("/v1/leaderboards", async () => ({
     items: sampleLeaderboards,
   }));
+
+  app.post("/v1/session/bootstrap", async (request) => {
+    const deviceId = resolveRawDeviceId(request);
+
+    return {
+      deviceId,
+      deviceToken: issueSignedDeviceToken(deviceId),
+      tokenType: "anonymous_hmac",
+      expiresInDays: 90,
+    };
+  });
 }

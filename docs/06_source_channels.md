@@ -35,13 +35,20 @@ Current implementation status:
 ### MMA
 
 1. UFC
-2. Later: PFL
-3. Later: ONE Championship
+2. ONE Championship
+3. Later: PFL
+
+Current implementation status:
+- UFC: live
+- ONE Championship: live
 
 ### Kickboxing
 
 1. GLORY
 2. Later: ONE Championship kickboxing where relevant
+
+Current implementation status:
+- GLORY: live
 
 ## Recommended implementation order
 

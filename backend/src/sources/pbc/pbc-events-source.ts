@@ -125,7 +125,7 @@ function parsePbcFightRow(
     return null;
   }
 
-  const dateText = sanitizeText(
+  const _dateText = sanitizeText(
     matchSingle(
       rowHtml,
       /<h4 class="schedule-date">[\s\S]*?<span><abbr title="[^"]+">[^<]+<\/abbr><\/span>\s*(\d{2}),\s*(\d{4})/,
@@ -153,7 +153,7 @@ function parsePbcFightRow(
     matchSingle(rowHtml, /<a href="([^"]+)" class="regular-button white">View Fight Night<\/a>/) ??
       "",
   );
-  const watchUrl =
+  const _watchUrl =
     matchSingle(rowHtml, /<a href="([^"]+)">Watch Live on ([\s\S]*?)<i class="fa fa-angle-right"/) ??
     matchSingle(rowHtml, /<a href="([^"]+)">Watch Live on ([\s\S]*?)<\/a>/);
 

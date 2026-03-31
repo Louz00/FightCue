@@ -47,6 +47,21 @@ export function registerSourceRoutes(
   );
 
   app.get<{ Querystring: { timezone?: string; country?: string } }>(
+    "/v1/sources/one/events",
+    async (request) => {
+      const deviceId = resolveDeviceId(request);
+      const parsedQuery = sourceQuerySchema.parse(request.query);
+      const state = await stateStore.read(deviceId);
+      const profile = buildRuntimeProfile(state);
+
+      return runtimeService.getCachedOnePreview(
+        parsedQuery.timezone ?? profile.timezone,
+        parsedQuery.country?.toUpperCase() ?? profile.viewingCountryCode,
+      );
+    },
+  );
+
+  app.get<{ Querystring: { timezone?: string; country?: string } }>(
     "/v1/sources/matchroom/events",
     async (request) => {
       const deviceId = resolveDeviceId(request);

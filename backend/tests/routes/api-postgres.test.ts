@@ -25,6 +25,17 @@ test("health and meta endpoints expose persistence backend information", async (
     });
     assert.equal(metaResponse.statusCode, 200);
     assert.equal(metaResponse.json().persistenceBackend, "postgres");
+
+    const bootstrapResponse = await app.inject({
+      method: "POST",
+      url: "/v1/session/bootstrap",
+      headers: {
+        "x-fightcue-device-id": "Device Route Test",
+      },
+    });
+    assert.equal(bootstrapResponse.statusCode, 200);
+    assert.equal(bootstrapResponse.json().deviceId, "device_route_test");
+    assert.equal(typeof bootstrapResponse.json().deviceToken, "string");
   } finally {
     await close();
   }

@@ -4,7 +4,7 @@ FightCue is a cross-platform mobile app for Android and iOS that helps combat sp
 
 ## Current status
 
-Last updated: 2026-03-30
+Last updated: 2026-03-31
 
 ### Confirmed decisions
 
@@ -29,6 +29,7 @@ Last updated: 2026-03-30
 - Live-backed mobile shell for home, following, settings, detail screens, and persisted follow actions
 - First live UFC source pilot now merged into the main home feed with cached fallback behavior
 - First live GLORY source is now merged into the main home feed through the official GLORY event API
+- First live ONE Championship source is now merged into the main home feed through the official ONE events page
 - UFC coverage hardening through load-more parsing and source-health checks against the official upcoming count
 - UFC upcoming coverage is now secondarily validated against ESPN schedule data to catch missing cards earlier
 - Backend persistence for anonymous profile state, follows, alert presets, and country-specific watch info
@@ -50,14 +51,19 @@ Last updated: 2026-03-30
 - Live PBC and Golden Boy boxing sources are now wired into the backend, with official-source priority over overlapping co-promoted cards
 - Live BOXXER event ingestion is now wired into the backend through the official BOXXER WordPress events API
 - The backend now keeps a short-lived cached runtime snapshot per device state, so repeated home loads do not rebuild every live source on every request
+- Signed anonymous session bootstrap is now available, so mobile clients can move beyond plain spoofable device IDs
+- Mobile API requests now use request timeouts, cached GET fallback, and lightweight diagnostics logging
+- Global Flutter error handling is now wired in as a first app-level safety net
+- Backend linting and a first GitHub Actions CI workflow are now in place
+- A first system-level dark-mode foundation is now wired into the Flutter app theme, with additional per-screen polish still needed
 
 ### Immediate priorities
 
 1. Run local development against a real PostgreSQL instance outside the current sandbox and flip `FIGHTCUE_REQUIRE_DATABASE=true`
-2. Expand boxing coverage beyond Matchroom, Queensberry, Top Rank, and deduped ESPN support
-3. Expand watch-provider verification beyond the current UFC, GLORY, Matchroom, Queensberry, Top Rank, and ESPN pilots
-4. Add push delivery, billing, and quiet-ad integrations after persistence is fully verified
-5. Add the next official promoter boxing adapters after Matchroom, Queensberry, and Top Rank stabilize
+2. Finish hardening the signed anonymous session-token flow and phase out reliance on raw device headers over time
+3. Expand watch-provider verification beyond the current UFC, GLORY, ONE, Matchroom, Queensberry, Top Rank, PBC, Golden Boy, BOXXER, and ESPN pilots
+4. Add structured backend logging, shared parsing utilities, and broader mobile test coverage
+5. Add push delivery, billing, quiet-ad integrations, and the next release foundations after persistence is fully verified
 
 ### Two-week execution plan
 
@@ -168,6 +174,12 @@ Not in the first release:
 - Added live PBC and Golden Boy event ingestion, plus route-level coverage that verifies official-source priority when the same card appears across promoters and ESPN
 - Added the first live BOXXER boxing source through the official BOXXER WordPress events API and exposed it through a dedicated source-preview endpoint
 - Added a short-lived runtime snapshot cache plus source-request coalescing so repeated identical `/v1/home` calls stay fast while live sources are warm
+- Added ESPN boxing rankings and Ring boxing ratings as source-layer inputs for future boxing leaderboards
+- Added the first live ONE Championship source against the official ONE events page and merged it into the backend runtime
+- Added signed anonymous session bootstrap and HMAC-based device tokens as the first security-hardening step for anonymous users
+- Added mobile API request timeouts, cached-response fallback, lightweight diagnostics logging, and global Flutter error handling
+- Added backend ESLint plus a first GitHub Actions CI workflow for lint, build, and test
+- Added a first system-driven dark mode theme foundation in Flutter so the app can start moving beyond light-only rendering
 
 ### 2026-03-30
 
@@ -236,15 +248,6 @@ Not in the first release:
 - Validated the backend UFC parser with a successful live source check and TypeScript build
 - Validated iOS simulator builds with `flutter build ios --simulator --no-codesign`
 
-### 2026-03-31
-
-- Added BOXXER as a live boxing source through the official BOXXER WordPress events API
-- Improved backend home-feed performance with source-request coalescing and a short-lived runtime snapshot cache
-- Added a live Queensberry source, a live Top Rank source, and live PBC and Golden Boy boxing sources with deduplication across overlapping cards
-- Added ESPN boxing schedule as a broader secondary boxing validation layer without merging duplicates into the primary promoter-driven feed
-- Added ESPN boxing rankings and Ring boxing ratings as source-layer inputs for future boxing leaderboards
-- Added preview routes and parser tests for the new boxing leaderboard sources
-
 ## Current constraints
 
 - Android is ready in Flutter tooling.
@@ -253,6 +256,7 @@ Not in the first release:
 - `Solmeriq Labs` is a working company/publisher name and can still be changed later after legal and trademark checks.
 - Backend persistence now supports PostgreSQL through `DATABASE_URL`, and strict database-only mode can be enabled with `FIGHTCUE_REQUIRE_DATABASE=true`.
 - Backend test coverage now covers time, merge, ICS, source-health logic, PostgreSQL persistence, and route-level API behavior, but still needs expansion for auth and broader source coverage.
+- Dark mode is only partially implemented today: the app theme supports it, but several screens still need dedicated dark-surface polish.
 
 ## Roadmap
 
@@ -303,6 +307,89 @@ Not in the first release:
 - free-tier ad integration
 - privacy/legal surfaces
 - analytics consent
+
+## Hardening plan
+
+This is the current execution order for turning FightCue from a strong prototype into a stable beta-ready product.
+
+### Track 1: Stability and debugging basics
+
+Priority: highest
+Estimated effort: small to medium
+
+- add HTTP timeouts to the mobile API client
+- stop silently swallowing mobile exceptions; log errors and stack traces
+- audit remaining sparse-data crash paths and parser edge cases
+- extract shared parsing helpers such as `sanitizeText`, `decodeHtmlEntities`, and `toSlug`
+- add a minimal CI pipeline that runs backend build and tests on every push
+- add ESLint and formatting checks for the backend
+
+Target outcome:
+- the app fails more gracefully
+- debugging gets faster
+- source adapters become easier to maintain safely
+
+### Track 2: Security and state hardening
+
+Priority: highest
+Estimated effort: medium
+
+- replace plain spoofable device identifiers with a signed anonymous device/session token flow
+- tighten how user state is resolved and cached so event resolution depends only on the fields that matter
+- make PostgreSQL the normal development path instead of relying on file fallback by default
+- add structured backend logging for source failures, parser drift, and request tracing
+
+Target outcome:
+- better privacy protection for user follows and alerts
+- less accidental cache churn
+- better visibility when a live source starts failing
+
+### Track 3: Mobile reliability
+
+Priority: high
+Estimated effort: medium to large
+
+- add local caching for the last successful home, event, and rankings payloads
+- add global Flutter error handling and a more graceful failure surface
+- expand mobile test coverage around API parsing, optimistic follow rollback, and the main screens
+- keep improving loading, empty, and retry states where source data is incomplete
+
+Target outcome:
+- the app remains useful when the backend is slow or temporarily unavailable
+- regressions are caught earlier
+
+### Track 4: Data quality and enrichment
+
+Priority: medium
+Estimated effort: medium
+
+- move watch-provider enrichment out of the small hardcoded fallback map and into source-level or database-backed enrichment
+- continue source coverage hardening for boxing and UFC
+- add source health summaries that are easy to inspect during development
+- prepare boxing leaderboards for future in-app release using the new ESPN and Ring source layers
+
+Target outcome:
+- better trust in event accuracy
+- less manual source-specific patching over time
+
+### Track 5: Release readiness
+
+Priority: medium
+Estimated effort: medium to large
+
+- lay the foundation for push notifications
+- add accessibility improvements such as semantics and contrast review
+- connect store-facing billing and ad infrastructure
+- revisit optional account linking once anonymous security is hardened
+
+Target outcome:
+- FightCue becomes ready for an internal beta path instead of only local development
+
+### Explicit non-priorities right now
+
+- dark mode is now a supported foundation, but it is still not polished enough across every screen to count as launch-complete
+- more feature breadth is still less important than reliability, security, and data confidence
+- new organizations should still be added only if they do not destabilize the hardening work above
 
 ## Future features backlog
 

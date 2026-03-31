@@ -32,8 +32,9 @@ class _FightCueAppState extends State<FightCueApp> {
     return MaterialApp(
       title: 'FightCue',
       debugShowCheckedModeBanner: false,
-      themeMode: ThemeMode.light,
+      themeMode: ThemeMode.system,
       theme: buildAppTheme(),
+      darkTheme: buildDarkAppTheme(),
       locale: _locale,
       supportedLocales: AppStrings.supportedLocales,
       localizationsDelegates: const [

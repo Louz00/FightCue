@@ -6,11 +6,18 @@ import { sampleLeaderboards } from "../domain/mock-data.js";
 import { fightCueRuntimeProfile } from "../domain/models.js";
 import { resolveRawDeviceId } from "../http/device-id.js";
 import { issueSignedDeviceToken } from "../http/session-token.js";
+import type { PushDispatchWorker } from "../services/push-dispatch-worker.js";
 import type { UserStateStore } from "../store/user-state-store.js";
 
 export function registerMetaRoutes(
   app: FastifyInstance,
-  { stateStore }: { stateStore: UserStateStore },
+  {
+    stateStore,
+    pushDispatchWorker,
+  }: {
+    stateStore: UserStateStore;
+    pushDispatchWorker: PushDispatchWorker;
+  },
 ): void {
   app.get("/health", async () => ({
     ok: true,
@@ -19,6 +26,7 @@ export function registerMetaRoutes(
     databaseRequired: isDatabaseRequired(),
     fileFallbackAllowed: isFileStateFallbackAllowed(),
     signedDeviceTokenRequired: isSignedDeviceTokenRequired(),
+    pushWorker: pushDispatchWorker.getStatus(),
   }));
 
   app.get("/v1/meta", async () => ({
@@ -32,6 +40,7 @@ export function registerMetaRoutes(
     databaseRequired: isDatabaseRequired(),
     fileFallbackAllowed: isFileStateFallbackAllowed(),
     signedDeviceTokenRequired: isSignedDeviceTokenRequired(),
+    pushWorker: pushDispatchWorker.getStatus(),
     runtimeProfile: fightCueRuntimeProfile,
   }));
 

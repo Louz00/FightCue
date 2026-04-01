@@ -93,6 +93,18 @@ GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
 
 If Firebase is selected but credentials are missing, the provider will stay visible in the API but test sends will be blocked with a clear message instead of failing silently.
 
+## Scheduled reminder worker
+
+FightCue can also run a lightweight in-process worker that periodically dispatches due reminders.
+
+```bash
+FIGHTCUE_PUSH_WORKER_ENABLED=true
+FIGHTCUE_PUSH_WORKER_INTERVAL_SECONDS=60
+FIGHTCUE_PUSH_WORKER_LOOKBACK_MINUTES=15
+```
+
+The worker uses the same push provider configuration as manual test sends. It is safe to keep disabled in local development until you are ready to validate reminder delivery end to end.
+
 ## Current responsibilities
 
 - organizations and events endpoints

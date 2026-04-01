@@ -13,6 +13,7 @@ import { registerFighterRoutes } from "./routes/fighter-routes.js";
 import { registerMeRoutes } from "./routes/me-routes.js";
 import { registerMetaRoutes } from "./routes/meta-routes.js";
 import { registerSourceRoutes } from "./routes/source-routes.js";
+import { PushDispatchWorker } from "./services/push-dispatch-worker.js";
 import { PushDeliveryService } from "./services/push-delivery-service.js";
 import { RuntimeService } from "./services/runtime-service.js";
 import {
@@ -70,6 +71,10 @@ export async function buildApp({
   });
   const resolvedRuntimeService = runtimeService ?? new RuntimeService(resolvedStateStore);
   const pushDeliveryService = new PushDeliveryService(resolvedStateStore);
+  const pushDispatchWorker = new PushDispatchWorker(
+    resolvedStateStore,
+    pushDeliveryService,
+  );
 
   await app.register(cors, {
     origin: process.env.CORS_ORIGIN ?? true,
@@ -80,7 +85,10 @@ export async function buildApp({
     timeWindow: "1 minute",
   });
 
-  registerMetaRoutes(app, { stateStore: resolvedStateStore });
+  registerMetaRoutes(app, {
+    stateStore: resolvedStateStore,
+    pushDispatchWorker,
+  });
   registerEventRoutes(app, {
     stateStore: resolvedStateStore,
     runtimeService: resolvedRuntimeService,
@@ -98,6 +106,8 @@ export async function buildApp({
     stateStore: resolvedStateStore,
     runtimeService: resolvedRuntimeService,
   });
+
+  pushDispatchWorker.start();
 
   app.setErrorHandler((error, _request, reply) => {
     const message = error instanceof Error ? error.message : "Unexpected server error.";
@@ -124,6 +134,7 @@ export async function buildApp({
   });
 
   app.addHook("onClose", async () => {
+    pushDispatchWorker.stop();
     await resolvedStateStore.close?.();
   });
 

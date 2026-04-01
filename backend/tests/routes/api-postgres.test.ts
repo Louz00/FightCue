@@ -19,6 +19,7 @@ test("health and meta endpoints expose persistence backend information", async (
     });
     assert.equal(healthResponse.statusCode, 200);
     assert.equal(healthResponse.json().persistenceBackend, "postgres");
+    assert.equal(healthResponse.json().pushWorker.enabled, false);
 
     const metaResponse = await app.inject({
       method: "GET",
@@ -26,6 +27,7 @@ test("health and meta endpoints expose persistence backend information", async (
     });
     assert.equal(metaResponse.statusCode, 200);
     assert.equal(metaResponse.json().persistenceBackend, "postgres");
+    assert.equal(metaResponse.json().pushWorker.enabled, false);
 
     const bootstrapResponse = await app.inject({
       method: "POST",

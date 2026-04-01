@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { Pool, type PoolClient } from "pg";
@@ -45,6 +45,7 @@ export type PersistedUserState = {
 export interface UserStateStore {
   readonly backendLabel: "file" | "postgres";
   read(deviceId?: string): Promise<PersistedUserState>;
+  listPushReadyDeviceIds(): Promise<string[]>;
   updateProfile(
     deviceId: string,
     updates: Partial<PersistedUserState["profile"]>,
@@ -262,6 +263,35 @@ class FileUserStateStore implements UserStateStore {
       await this.write(deviceId, next);
       return next;
     });
+  }
+
+  async listPushReadyDeviceIds(): Promise<string[]> {
+    const usersDirectory = path.resolve(process.cwd(), ".data", "users");
+    let entries: string[] = [];
+
+    try {
+      entries = await readdir(usersDirectory);
+    } catch {
+      return [];
+    }
+
+    const deviceIds: string[] = [];
+    for (const entry of entries) {
+      if (!entry.endsWith(".json")) {
+        continue;
+      }
+      const deviceId = entry.replace(/\.json$/u, "");
+      const state = await this.read(deviceId);
+      if (
+        state.push.pushEnabled &&
+        state.push.permissionStatus === "granted" &&
+        state.push.tokenValue
+      ) {
+        deviceIds.push(deviceId);
+      }
+    }
+
+    return deviceIds;
   }
 
   private async write(deviceId: string, state: PersistedUserState): Promise<void> {
@@ -548,6 +578,20 @@ class PostgresUserStateStore implements UserStateStore {
 
       return this.readForUser(client, userId);
     });
+  }
+
+  async listPushReadyDeviceIds(): Promise<string[]> {
+    const result = await this.pool.query<{ device_id: string }>(
+      `SELECT users.device_id
+         FROM users
+         JOIN user_push_devices ON user_push_devices.user_id = users.user_id
+        WHERE user_push_devices.push_enabled = TRUE
+          AND user_push_devices.permission_status = 'granted'
+          AND user_push_devices.token_value IS NOT NULL
+          AND user_push_devices.token_value <> ''`,
+    );
+
+    return result.rows.map((row) => row.device_id);
   }
 
   async close(): Promise<void> {

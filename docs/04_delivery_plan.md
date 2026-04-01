@@ -238,5 +238,6 @@ Current note:
 - push foundations now exist for persistence, API routes, native permission/token bridges, a first mobile settings surface, a backend push-preview planning endpoint, and provider-backed push status/test-send support
 - Firebase is now a first-class backend push provider option, but real delivery still depends on production credentials plus final APNs/device validation
 - scheduled reminder dispatch foundations now exist as backend due-preview and dispatch routes, with in-process duplicate suppression to keep repeated worker runs from immediately re-sending the same reminder
+- an optional scheduled push worker now exists in the backend runtime, with health/meta visibility and env-based interval/lookback control for local or staging reminder runs
 - offline UX is now clearer in the mobile app with saved-data timestamps, stale-data warnings, visible cached notices across home/following/alerts/detail/rankings/push-settings, pull-to-refresh, background prefetch, and stale auto-refresh on key read surfaces, but it still needs broader screen coverage and deeper proactive refresh behavior
 - billing/ad foundations now exist for monetization state, ad/analytics consent, quiet-ad eligibility, settings controls, and a reserved home-feed ad slot, but real store billing and live ad delivery are still open

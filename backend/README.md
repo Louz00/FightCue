@@ -93,6 +93,13 @@ GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
 
 If Firebase is selected but credentials are missing, the provider will stay visible in the API but test sends will be blocked with a clear message instead of failing silently.
 
+For the mobile client side, add these local platform files before expecting real device tokens from Firebase Messaging:
+
+- `mobile/android/app/google-services.json`
+- `mobile/ios/Runner/GoogleService-Info.plist`
+
+The Flutter app now attempts Firebase Messaging first and falls back to the native permission bridge if those files are missing. On iOS, final APNs validation still requires the Push Notifications capability plus Apple/Firebase console setup on a signed physical device.
+
 ## Scheduled reminder worker
 
 FightCue can also run a lightweight in-process worker that periodically dispatches due reminders.

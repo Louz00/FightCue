@@ -5,11 +5,14 @@ import 'package:flutter/material.dart';
 
 import 'src/app.dart';
 import 'src/core/runtime/app_diagnostics.dart';
+import 'src/data/firebase_runtime.dart';
 
 Future<void> main() async {
   runZonedGuarded(
-    () {
+    () async {
       WidgetsFlutterBinding.ensureInitialized();
+
+      await ensureFirebaseMessagingReady();
 
       FlutterError.onError = (details) {
         FlutterError.presentError(details);

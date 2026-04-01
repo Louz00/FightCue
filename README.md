@@ -68,6 +68,8 @@ Last updated: 2026-04-01
 - Accessibility semantics are now added on key headings, action pills, ranking toggles, and settings preference chips
 - Accessibility semantics now also cover navigation, home filter chips, home event/fighter cards, and more detail/settings interaction surfaces
 - Billing and quiet-ad foundations now exist across backend routes, mobile API parsing, settings consent controls, and a reserved quiet-ad slot in the home feed for free users
+- Firebase Messaging is now wired into the mobile app as the primary Android/iOS push-token path, with the earlier native permission bridge kept as a safe fallback when Firebase config is missing
+- The iOS app target now aligns with Firebase Messaging requirements at iOS 15, so simulator builds stay compatible with the new push stack
 
 ### Implementation status
 
@@ -128,6 +130,21 @@ Still open:
 3. Finish provider-backed push delivery with real Firebase/APNs credentials and end-to-end device validation
 4. Broaden offline UX further across additional screens and stale-state scenarios
 5. Deepen the new billing and quiet-ad foundations into real store/ad integrations once the core experience is stable
+
+### Mobile push setup
+
+To exercise real Firebase-backed mobile push delivery locally, add the platform config files that stay out of git:
+
+- `mobile/android/app/google-services.json`
+- `mobile/ios/Runner/GoogleService-Info.plist`
+
+The app now boots Firebase Messaging early and falls back to the native permission bridge if those files are missing, so local development remains usable without credentials.
+
+For Apple delivery, there is still one final console/signing step outside this repo:
+
+- enable the Push Notifications capability for the iOS app in Xcode/Apple Developer
+- connect the APNs key or certificate to the Firebase project
+- then validate on a signed physical iPhone, because the iOS simulator does not receive real remote pushes
 
 ### Two-week execution plan
 

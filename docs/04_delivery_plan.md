@@ -236,7 +236,8 @@ Why last:
 Current note:
 - accessibility work has started with semantics on key headings and interactive controls, but a broader screen-by-screen pass is still open
 - push foundations now exist for persistence, API routes, native permission/token bridges, a first mobile settings surface, a backend push-preview planning endpoint, and provider-backed push status/test-send support
-- Firebase is now a first-class backend push provider option, but real delivery still depends on production credentials plus final APNs/device validation
+- Firebase is now a first-class backend push provider option, and the mobile app now uses Firebase Messaging as its primary token path on Android/iOS while keeping the native permission bridge as a fallback when local Firebase config is missing
+- real delivery still depends on production Firebase credentials plus final APNs capability/signing validation on a physical iPhone
 - scheduled reminder dispatch foundations now exist as backend due-preview and dispatch routes, with in-process duplicate suppression to keep repeated worker runs from immediately re-sending the same reminder
 - an optional scheduled push worker now exists in the backend runtime, with health/meta visibility and env-based interval/lookback control for local or staging reminder runs
 - offline UX is now clearer in the mobile app with saved-data timestamps, stale-data warnings, visible cached notices across home/following/alerts/detail/rankings/push-settings, pull-to-refresh, background prefetch, and stale auto-refresh on key read surfaces, but it still needs broader screen coverage and deeper proactive refresh behavior

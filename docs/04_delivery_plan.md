@@ -146,6 +146,23 @@ Current note:
 
 This is the current recommended order for the next engineering cycle.
 
+Current batch order:
+
+1. security and infra cleanup
+   - require an explicit signing secret outside local development/test
+   - remove unused Redis from local infra
+2. backend maintainability and abuse controls
+   - split oversized persistence/backend files
+   - add per-device-aware rate limiting
+3. mobile maintainability
+   - split the remaining large screens and API/model files
+4. source confidence
+   - add missing parser/source tests and tighten enrichment verification
+5. product polish and release prep
+   - continue accessibility/dark-mode polish
+   - finish provider-backed push
+   - deepen billing/quiet-ads and release readiness
+
 Current execution order:
 
 1. fix mobile environment/runtime basics such as API base-URL handling
@@ -187,6 +204,7 @@ Current note:
 - PostgreSQL is now the normal default runtime path in config, while file storage is explicit opt-in fallback
 - structured source-failure logging is now in place for loader failures, preview warnings, and persistence fallback events
 - signed device tokens can now also be enforced in strict mode on stateful routes; the main remaining step is operational rollout and validation outside sandboxed sessions
+- the first backend maintainability tranche is now in place: user-state persistence is split into dedicated file/postgres implementations and rate limiting now keys off FightCue device identity instead of only shared IPs
 
 ### Stage 3: Mobile reliability
 
@@ -197,6 +215,11 @@ Current note:
 
 Why next:
 - once the backend is more trustworthy, the client should become more resilient when networks are slow or unstable
+
+Current note:
+- the first maintainability tranche is now in place: `event_detail_screen.dart`, `settings_screen.dart`, `alerts_screen.dart`, `rankings_screen.dart`, `following_screen.dart`, `app_shell.dart`, the home feed widget layer, `fighter_avatar.dart`, `editorial_ui.dart`, `app_strings.dart`, and the main API/domain model libraries have been split into smaller screen/controller, part, or helper files
+- `fightcue_api.dart` has also been lightened by extracting pure mapping helpers while keeping the public client surface stable for tests
+- the next mobile maintainability targets are the remaining oversized rendering surfaces and any API/client helpers that can still be extracted without coupling the test fakes to internal implementation details
 
 Current note:
 - local cached fallback is now in place for GET-based API responses
@@ -221,6 +244,8 @@ Why next:
 Current note:
 - watch-provider enrichment now runs through a shared backend module with organization-level defaults and event-specific overrides
 - watch-provider enrichment now also keeps provider provenance and prefers the strongest verified source when duplicate provider labels collide
+- the current live-source batch now has explicit parser/loader tests for UFC, GLORY, Golden Boy, PBC, Queensberry, Top Rank, BOXXER, ONE, and the ESPN/Ring boxing sources
+- provider selection is now stricter when a weak unknown source provider collides with a stronger event-level override
 - the next step in this stage is moving more of that enrichment toward source- and database-driven verification instead of curated overrides
 
 ### Stage 5: Beta-readiness
@@ -241,4 +266,5 @@ Current note:
 - scheduled reminder dispatch foundations now exist as backend due-preview and dispatch routes, with in-process duplicate suppression to keep repeated worker runs from immediately re-sending the same reminder
 - an optional scheduled push worker now exists in the backend runtime, with health/meta visibility and env-based interval/lookback control for local or staging reminder runs
 - offline UX is now clearer in the mobile app with saved-data timestamps, stale-data warnings, visible cached notices across home/following/alerts/detail/rankings/push-settings, pull-to-refresh, background prefetch, and stale auto-refresh on key read surfaces, but it still needs broader screen coverage and deeper proactive refresh behavior
-- billing/ad foundations now exist for monetization state, ad/analytics consent, quiet-ad eligibility, settings controls, and a reserved home-feed ad slot, but real store billing and live ad delivery are still open
+- billing/ad foundations now exist for monetization state, ad/analytics consent, quiet-ad eligibility, settings controls, a reserved home-feed ad slot, backend billing/ad provider-status routes, mobile store-readiness checks, and AdMob SDK wiring, but real store checkout and live ad credentials are still open
+- the app now also has a dedicated premium/paywall screen linked from settings, so store readiness and the current plan state are visible in-product even before checkout wiring is connected

@@ -9,6 +9,10 @@ import {
   buildRuntimePush,
 } from "../domain/runtime-data.js";
 import { buildRuntimePushPreview } from "../domain/push-preview.js";
+import {
+  getAdProviderStatus,
+  getBillingProviderStatus,
+} from "../config/monetization-providers.js";
 import { resolveDeviceId } from "../http/device-id.js";
 import {
   alertPresetSchema,
@@ -134,6 +138,14 @@ export function registerMeRoutes(
     const deviceId = resolveDeviceId(request);
     const state = await stateStore.read(deviceId);
     return buildRuntimeMonetization(state);
+  });
+
+  app.get("/v1/me/billing/provider", async () => {
+    return getBillingProviderStatus();
+  });
+
+  app.get("/v1/me/ads/provider", async () => {
+    return getAdProviderStatus();
   });
 
   app.put<{ Body: unknown }>("/v1/me/push/settings", async (request) => {

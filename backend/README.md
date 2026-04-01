@@ -63,6 +63,14 @@ If you want stateful routes to reject raw device-id fallback and require signed 
 FIGHTCUE_REQUIRE_SIGNED_DEVICE_TOKEN=true
 ```
 
+Outside local development and test runs, also set:
+
+```bash
+FIGHTCUE_SESSION_SIGNING_SECRET=replace-with-a-long-random-secret
+```
+
+FightCue now only allows the old local fallback signing secret in `development` and `test`.
+
 If `initdb` fails in a restricted environment with a shared-memory error, run the same commands in your normal macOS terminal instead of a sandboxed session.
 
 ## Push delivery providers
@@ -99,6 +107,21 @@ For the mobile client side, add these local platform files before expecting real
 - `mobile/ios/Runner/GoogleService-Info.plist`
 
 The Flutter app now attempts Firebase Messaging first and falls back to the native permission bridge if those files are missing. On iOS, final APNs validation still requires the Push Notifications capability plus Apple/Firebase console setup on a signed physical device.
+
+For repo-side billing and ad readiness, configure these backend env vars:
+
+- `FIGHTCUE_BILLING_PROVIDER`
+- `FIGHTCUE_BILLING_PRODUCT_IDS`
+- `FIGHTCUE_AD_PROVIDER`
+- `FIGHTCUE_ADMOB_APP_ID_ANDROID`
+- `FIGHTCUE_ADMOB_APP_ID_IOS`
+- `FIGHTCUE_ADMOB_BANNER_UNIT_ID_ANDROID`
+- `FIGHTCUE_ADMOB_BANNER_UNIT_ID_IOS`
+
+The backend exposes these through:
+
+- `GET /v1/me/billing/provider`
+- `GET /v1/me/ads/provider`
 
 ## Scheduled reminder worker
 

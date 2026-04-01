@@ -68,8 +68,33 @@ Last updated: 2026-04-01
 - Accessibility semantics are now added on key headings, action pills, ranking toggles, and settings preference chips
 - Accessibility semantics now also cover navigation, home filter chips, home event/fighter cards, and more detail/settings interaction surfaces
 - Billing and quiet-ad foundations now exist across backend routes, mobile API parsing, settings consent controls, and a reserved quiet-ad slot in the home feed for free users
+- Billing provider status and ad-network status are now exposed through the backend, and the mobile app now has repo-side StoreKit/Play Billing readiness checks plus AdMob SDK wiring for the reserved quiet-ad slot
 - Firebase Messaging is now wired into the mobile app as the primary Android/iOS push-token path, with the earlier native permission bridge kept as a safe fallback when Firebase config is missing
 - The iOS app target now aligns with Firebase Messaging requirements at iOS 15, so simulator builds stay compatible with the new push stack
+- Session-token signing now requires an explicit `FIGHTCUE_SESSION_SIGNING_SECRET` outside local development/test environments instead of silently falling back to a shared default secret
+- Local Docker infrastructure is now trimmed to PostgreSQL only; Redis has been removed until FightCue actually uses it
+- Backend rate limiting now scopes bursts per FightCue device identity instead of only by shared client IP
+- User-state persistence is now split into dedicated file and PostgreSQL store implementations, reducing the size and responsibility of the old combined store file
+- Mobile maintainability cleanup now includes split screen/controller files plus extracted content/part/helper files for `event_detail_screen.dart`, `settings_screen.dart`, `alerts_screen.dart`, `rankings_screen.dart`, `following_screen.dart`, `app_shell.dart`, the home feed widget layer, `fighter_avatar.dart`, `editorial_ui.dart`, `app_strings.dart`, and the main API/domain model libraries, plus a lighter `fightcue_api.dart` with pure mapping helpers extracted
+
+### Current hardening batches
+
+1. Security and infra cleanup
+   - require an explicit signing secret outside local development/test
+   - remove unused Redis from local infra and docs
+2. Backend maintainability and abuse controls
+   - split oversized persistence/backend files
+   - add per-device-aware rate limiting
+3. Mobile maintainability
+   - split the remaining large screens and parsing/model files
+4. Source confidence
+   - add missing source-adapter tests and tighten watch-provider/source verification
+   - completed for the current live event-source set; keep extending it as new sources land
+5. Product polish and release prep
+   - continue accessibility and dark-mode passes
+   - finish provider-backed push
+   - deepen billing/quiet-ads and store readiness
+   - completed in-repo with a dedicated premium/paywall surface, settings entry point, backend-driven monetization state, and store-readiness messaging; external store credentials and real checkout wiring remain
 
 ### Implementation status
 
@@ -85,6 +110,7 @@ Fully or functionally done in the current codebase:
 - global Flutter error handling is wired in
 - cached GET fallback exists for home, detail, and leaderboard-style reads
 - source-health and coverage monitoring are materially expanded
+- source confidence is now materially stronger, with targeted tests for UFC, GLORY, Golden Boy, PBC, Queensberry, Top Rank, BOXXER, ONE, ESPN boxing schedule/rankings, Ring ratings, and the supporting validation helpers
 - more live organizations are integrated, including `ONE Championship`
 - dark-mode foundations are in place
 - shared parse utilities now back the main source adapters
@@ -94,12 +120,15 @@ Fully or functionally done in the current codebase:
 - watch-provider enrichment has been moved out of the small inline runtime fallback map into a dedicated backend enrichment layer
 - strict signed-device-token mode now exists for stateful backend routes, beyond the earlier bootstrap/token foundation
 - watch-provider enrichment now keeps source-vs-default provenance and prefers the strongest verified provider when duplicate labels collide
+- watch-provider verification is now stricter when weak unknown source data conflicts with stronger curated event-level overrides
 - push-notification foundations are now in place across backend persistence, API routes, mobile API parsing, a first settings status surface, and a new backend push-preview planning endpoint
 - backend push delivery now supports `disabled`, `log`, and `firebase` provider modes, with safe misconfiguration reporting and a test-send route visible in settings
 - backend reminder dispatch foundations now exist for due scheduled reminders, including due-preview and dispatch routes plus in-process duplicate suppression for repeated worker runs
 - an in-process backend push worker now exists as an optional scheduled runner for due reminders, with status exposed in health/meta and env-controlled intervals
 - offline UX now includes cached-response timestamps, stale-data warnings, visible saved-data notices across home, following, alerts, detail, rankings, and push-settings surfaces, pull-to-refresh where it matters, and background prefetch for key read surfaces after a successful home sync
 - monetization now has a first real state foundation for premium/ad tier, ad consent, analytics consent, and quiet-ad eligibility
+- the app now includes a dedicated premium/paywall screen, reachable from settings, so the current plan state, premium value, and store-readiness path are visible before real checkout wiring lands
+- the paywall and settings surfaces now also show backend billing/ad provider readiness, while the mobile app checks local store availability and can render an AdMob-backed banner slot when unit IDs are configured
 
 Partly done:
 
@@ -110,18 +139,22 @@ Partly done:
 - extra feature breadth before hardening: some has been added, but it has been kept deliberately bounded
 - dark mode: the shared UI layer plus following, event detail, fighter profile, settings, app shell, and key home widgets are improved, but the app is not fully polished screen by screen yet
 - accessibility: the pass now also covers navigation, home filter chips, home cards, reminder chips, event/fighter detail interactions, and settings controls, but a full screen-by-screen pass is still open
+- mobile maintainability: `event_detail_screen.dart`, `settings_screen.dart`, `alerts_screen.dart`, `rankings_screen.dart`, `following_screen.dart`, `app_shell.dart`, the home feed widget layer, `fighter_avatar.dart`, `editorial_ui.dart`, `app_strings.dart`, and the main API/domain model libraries are now split into smaller files, and `fightcue_api.dart` now delegates pure mapping work to a helper layer, but several large feature/widget files still need the same treatment
 
 Still open:
 
 - run local development against a real PostgreSQL instance with `FIGHTCUE_REQUIRE_DATABASE=true` outside the current sandbox and verify that path end to end
 - keep hardening the signed anonymous session-token/device-auth flow and reduce residual reliance on raw headers in non-strict mode
+- continue backend maintainability cleanup after the first persistence-store split, especially around remaining large service files
 - expand watch-provider verification beyond the current curated/default enrichment layer and reduce remaining organization-default assumptions
+- add live-source tests for each new adapter as soon as it lands, so source confidence stays high instead of catching up later
 - broaden mobile test coverage further across home, event detail, fighter detail, settings, alerts mutations, and state transitions
+- continue mobile maintainability cleanup, especially around the remaining larger rendering surfaces and any API/client concerns that can be extracted without breaking test subclassing
 - complete a wider offline UX strategy with broader screen coverage, clearer stale-state behavior, and more proactive refresh beyond the current key read surfaces
 - continue the accessibility pass across more screens and interaction patterns
 - finish dark-mode polish across the rest of the app
 - connect real provider-backed push delivery on top of the new push foundation and preview-planning layer
-- deepen the new billing/quiet-ad foundation into real store wiring, entitlement verification, and live ad delivery
+- connect the existing premium/paywall flow to real store billing, entitlement verification, and live ad delivery
 
 ### Immediate priorities
 
@@ -129,7 +162,7 @@ Still open:
 2. Finish dark-mode polish across the remaining screens and smaller widgets
 3. Finish provider-backed push delivery with real Firebase/APNs credentials and end-to-end device validation
 4. Broaden offline UX further across additional screens and stale-state scenarios
-5. Deepen the new billing and quiet-ad foundations into real store/ad integrations once the core experience is stable
+5. Connect the existing premium/paywall and quiet-ad foundations to real store/ad integrations once the core experience is stable
 
 ### Mobile push setup
 
@@ -139,6 +172,22 @@ To exercise real Firebase-backed mobile push delivery locally, add the platform 
 - `mobile/ios/Runner/GoogleService-Info.plist`
 
 The app now boots Firebase Messaging early and falls back to the native permission bridge if those files are missing, so local development remains usable without credentials.
+
+For the new repo-side billing/ad wiring, these are the next local configuration inputs:
+
+- backend env:
+  - `FIGHTCUE_BILLING_PROVIDER`
+  - `FIGHTCUE_BILLING_PRODUCT_IDS`
+  - `FIGHTCUE_AD_PROVIDER`
+  - `FIGHTCUE_ADMOB_APP_ID_ANDROID`
+  - `FIGHTCUE_ADMOB_APP_ID_IOS`
+  - `FIGHTCUE_ADMOB_BANNER_UNIT_ID_ANDROID`
+  - `FIGHTCUE_ADMOB_BANNER_UNIT_ID_IOS`
+- mobile dart-defines for runtime ad delivery:
+  - `--dart-define=FIGHTCUE_ANDROID_BANNER_AD_UNIT_ID=...`
+  - `--dart-define=FIGHTCUE_IOS_BANNER_AD_UNIT_ID=...`
+
+The store runtime check now uses the Flutter `in_app_purchase` stack, and the reserved quiet-ad slot now uses `google_mobile_ads` when a banner unit ID is available.
 
 For Apple delivery, there is still one final console/signing step outside this repo:
 

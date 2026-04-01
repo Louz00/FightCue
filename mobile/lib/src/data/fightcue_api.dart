@@ -7,6 +7,7 @@ import '../core/runtime/app_diagnostics.dart';
 import 'api_response_cache.dart';
 import 'api_models.dart';
 import 'device_identity.dart';
+import 'fightcue_api_mappers.dart';
 import '../models/domain_models.dart';
 
 class ApiFetchResult<T> {
@@ -260,7 +261,7 @@ class FightCueApi {
   Future<ApiFetchResult<HomeSnapshot>> fetchHomeResult() async {
     final result = await _getJsonMapResult('/v1/home');
     return ApiFetchResult(
-      data: HomeSnapshotJson.fromJson(result.data).toMobile(),
+      data: mapHomeSnapshot(result.data),
       isFromCache: result.isFromCache,
       lastSyncedAt: result.lastSyncedAt,
     );
@@ -275,7 +276,7 @@ class FightCueApi {
   ) async {
     final result = await _getJsonMapResult('/v1/events/$eventId');
     return ApiFetchResult(
-      data: EventDetailSnapshotJson.fromJson(result.data).toMobile(),
+      data: mapEventDetailSnapshot(result.data),
       isFromCache: result.isFromCache,
       lastSyncedAt: result.lastSyncedAt,
     );
@@ -290,7 +291,7 @@ class FightCueApi {
   ) async {
     final result = await _getJsonMapResult('/v1/fighters/$fighterId');
     return ApiFetchResult(
-      data: FighterDetailSnapshotJson.fromJson(result.data).toMobile(),
+      data: mapFighterDetailSnapshot(result.data),
       isFromCache: result.isFromCache,
       lastSyncedAt: result.lastSyncedAt,
     );
@@ -303,7 +304,7 @@ class FightCueApi {
   Future<ApiFetchResult<AlertsSnapshot>> fetchAlertsResult() async {
     final result = await _getJsonMapResult('/v1/me/alerts');
     return ApiFetchResult(
-      data: AlertsSnapshotJson.fromJson(result.data).toMobile(),
+      data: mapAlertsSnapshot(result.data),
       isFromCache: result.isFromCache,
       lastSyncedAt: result.lastSyncedAt,
     );
@@ -316,7 +317,7 @@ class FightCueApi {
   Future<ApiFetchResult<PushSettingsSnapshot>> fetchPushSettingsResult() async {
     final result = await _getJsonMapResult('/v1/me/push');
     return ApiFetchResult(
-      data: PushSettingsSnapshotJson.fromJson(result.data).toMobile(),
+      data: mapPushSettingsSnapshot(result.data),
       isFromCache: result.isFromCache,
       lastSyncedAt: result.lastSyncedAt,
     );
@@ -325,7 +326,7 @@ class FightCueApi {
   Future<ApiFetchResult<PushPreviewSnapshot>> fetchPushPreviewResult() async {
     final result = await _getJsonMapResult('/v1/me/push/preview');
     return ApiFetchResult(
-      data: PushPreviewSnapshotJson.fromJson(result.data).toMobile(),
+      data: mapPushPreviewSnapshot(result.data),
       isFromCache: result.isFromCache,
       lastSyncedAt: result.lastSyncedAt,
     );
@@ -333,12 +334,12 @@ class FightCueApi {
 
   Future<PushProviderStatusSnapshot> fetchPushProviderStatus() async {
     final json = await _getJsonMap('/v1/me/push/provider');
-    return PushProviderStatusSnapshotJson.fromJson(json).toMobile();
+    return mapPushProviderStatusSnapshot(json);
   }
 
   Future<PushTestDispatchSnapshot> sendTestPush() async {
     final json = await _postJsonMap('/v1/me/push/test');
-    return PushTestDispatchSnapshotJson.fromJson(json).toMobile();
+    return mapPushTestDispatchSnapshot(json);
   }
 
   Future<MonetizationSnapshot> fetchMonetization() async {
@@ -348,10 +349,20 @@ class FightCueApi {
   Future<ApiFetchResult<MonetizationSnapshot>> fetchMonetizationResult() async {
     final result = await _getJsonMapResult('/v1/me/monetization');
     return ApiFetchResult(
-      data: MonetizationSnapshotJson.fromJson(result.data).toMobile(),
+      data: mapMonetizationSnapshot(result.data),
       isFromCache: result.isFromCache,
       lastSyncedAt: result.lastSyncedAt,
     );
+  }
+
+  Future<BillingProviderStatusSnapshot> fetchBillingProviderStatus() async {
+    final json = await _getJsonMap('/v1/me/billing/provider');
+    return mapBillingProviderStatusSnapshot(json);
+  }
+
+  Future<AdProviderStatusSnapshot> fetchAdProviderStatus() async {
+    final json = await _getJsonMap('/v1/me/ads/provider');
+    return mapAdProviderStatusSnapshot(json);
   }
 
   Future<MonetizationSnapshot> updateMonetizationSettings({
@@ -370,7 +381,7 @@ class FightCueApi {
       '/v1/me/monetization/settings',
       body: body,
     );
-    return MonetizationSnapshotJson.fromJson(json).toMobile();
+    return mapMonetizationSnapshot(json);
   }
 
   Future<PushSettingsSnapshot> updatePushSettings({
@@ -385,7 +396,7 @@ class FightCueApi {
           'permissionStatus': _pushPermissionStatusToApi(permissionStatus),
       },
     );
-    return PushSettingsSnapshotJson.fromJson(json).toMobile();
+    return mapPushSettingsSnapshot(json);
   }
 
   Future<PushSettingsSnapshot> registerPushToken({
@@ -401,7 +412,7 @@ class FightCueApi {
         if (tokenValue != null && tokenValue.isNotEmpty) 'tokenValue': tokenValue,
       },
     );
-    return PushSettingsSnapshotJson.fromJson(json).toMobile();
+    return mapPushSettingsSnapshot(json);
   }
 
   Future<UfcSourcePreview> fetchUfcEventsPreview({
@@ -412,19 +423,7 @@ class FightCueApi {
       '$_baseUrl/v1/sources/ufc/events?timezone=$timezone&country=$countryCode',
     );
     final json = await _getJsonMap(uri.path + (uri.hasQuery ? '?${uri.query}' : ''));
-    final items = (json['items'] as List<dynamic>? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(EventSummaryJson.fromJson)
-        .map((entry) => entry.toMobile())
-        .toList();
-
-    return UfcSourcePreview(
-      mode: json['mode'] as String? ?? 'fallback',
-      warnings: (json['warnings'] as List<dynamic>? ?? const [])
-          .map((value) => value.toString())
-          .toList(),
-      items: items,
-    );
+    return mapUfcSourcePreview(json);
   }
 
   Future<List<LeaderboardSummary>> fetchLeaderboards() async {
@@ -433,13 +432,8 @@ class FightCueApi {
 
   Future<ApiFetchResult<List<LeaderboardSummary>>> fetchLeaderboardsResult() async {
     final result = await _getJsonMapResult('/v1/leaderboards');
-    final items = (result.data['items'] as List<dynamic>? ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(LeaderboardSummaryJson.fromJson)
-        .map((entry) => entry.toMobile())
-        .toList();
     return ApiFetchResult(
-      data: items,
+      data: mapLeaderboardSummaries(result.data),
       isFromCache: result.isFromCache,
       lastSyncedAt: result.lastSyncedAt,
     );
@@ -471,7 +465,7 @@ class FightCueApi {
       '/v1/me/follows/events/$eventId',
       body: {'followed': followed},
     );
-    return EventSummaryJson.fromJson(json['item'] as Map<String, dynamic>).toMobile();
+    return mapEventSummaryItem(json['item'] as Map<String, dynamic>);
   }
 
   Future<FighterSummary> setFighterFollow(String fighterId, bool followed) async {
@@ -479,7 +473,7 @@ class FightCueApi {
       '/v1/me/follows/fighters/$fighterId',
       body: {'followed': followed},
     );
-    return FighterSummaryJson.fromJson(json['item'] as Map<String, dynamic>).toMobile();
+    return mapFighterSummaryItem(json['item'] as Map<String, dynamic>);
   }
 
   Future<AlertsSnapshot> updateFighterAlerts(
@@ -492,7 +486,7 @@ class FightCueApi {
         'presetKeys': presets.map(alertPresetToApi).toList(),
       },
     );
-    return AlertsSnapshotJson.fromJson(json).toMobile();
+    return mapAlertsSnapshot(json);
   }
 
   Future<AlertsSnapshot> updateEventAlerts(
@@ -505,7 +499,7 @@ class FightCueApi {
         'presetKeys': presets.map(alertPresetToApi).toList(),
       },
     );
-    return AlertsSnapshotJson.fromJson(json).toMobile();
+    return mapAlertsSnapshot(json);
   }
 
   String calendarUrlForEvent(String eventId, {String? calendarExportPath}) {

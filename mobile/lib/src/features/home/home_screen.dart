@@ -7,9 +7,12 @@ import '../../data/fightcue_api.dart';
 import '../../models/domain_models.dart';
 import '../../models/event_summary_utils.dart';
 import '../../widgets/editorial_ui.dart';
+import '../../widgets/fightcue_ad_slot.dart';
 import '../../widgets/fighter_avatar.dart';
 
 part 'home_widgets.dart';
+part 'home_event_cards.dart';
+part 'home_feature_cards.dart';
 
 enum _HomeFeedFilter { all, boxing, ufc, glory, following }
 

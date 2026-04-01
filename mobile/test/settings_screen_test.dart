@@ -42,6 +42,7 @@ void main() {
               api: api,
               snapshotListenable: ValueNotifier(sampleHomeSnapshot),
               strings: AppStrings.of(context),
+              billingRuntimeService: FakeBillingRuntimeService(),
               pushDeliveryService: FakePushDeliveryService(
                 statusResult: const PushDeviceRegistrationResult(
                   permissionStatus: PushPermissionStatus.prompt,
@@ -103,6 +104,7 @@ void main() {
               api: api,
               snapshotListenable: ValueNotifier(sampleHomeSnapshot),
               strings: AppStrings.of(context),
+              billingRuntimeService: FakeBillingRuntimeService(),
               pushDeliveryService: FakePushDeliveryService(
                 statusResult: const PushDeviceRegistrationResult(
                   permissionStatus: PushPermissionStatus.prompt,
@@ -120,5 +122,62 @@ void main() {
 
     expect(find.text('Showing saved billing setup'), findsOneWidget);
     expect(find.textContaining('Last synced:'), findsOneWidget);
+  });
+
+  testWidgets('Settings screen shows premium plans entry point', (tester) async {
+    final api = FakeFightCueApi(
+      pushSettingsResult: const PushSettingsSnapshot(
+        pushEnabled: false,
+        permissionStatus: PushPermissionStatus.unknown,
+        tokenRegistered: false,
+      ),
+      monetizationResult: const MonetizationSnapshot(
+        premiumState: PremiumState.free,
+        adTier: AdTier.freeWithAds,
+        adConsentRequired: true,
+        adConsentGranted: true,
+        analyticsConsent: false,
+        quietAdsEnabled: true,
+      ),
+      homeResult: const ApiFetchResult(
+        data: sampleHomeSnapshot,
+        isFromCache: false,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: SettingsScreen(
+              api: api,
+              snapshotListenable: ValueNotifier(sampleHomeSnapshot),
+              strings: AppStrings.of(context),
+              billingRuntimeService: FakeBillingRuntimeService(),
+              pushDeliveryService: FakePushDeliveryService(
+                statusResult: const PushDeviceRegistrationResult(
+                  permissionStatus: PushPermissionStatus.prompt,
+                  platform: PushTokenPlatform.ios,
+                ),
+              ),
+              onSelectLanguage: (_) {},
+              onSelectViewingCountry: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+    final plansButton = find.widgetWithText(
+      FilledButton,
+      'View premium plans',
+    );
+    await tester.scrollUntilVisible(
+      plansButton,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(plansButton, findsOneWidget);
   });
 }

@@ -42,6 +42,8 @@ export type PushDeliveryReadiness =
 export type PushPreviewTargetType = "fighter" | "event";
 export type PushPreviewDeliveryKind = "scheduled" | "signal";
 export type PushProviderType = "disabled" | "log" | "firebase";
+export type BillingProviderType = "disabled" | "storekit_play";
+export type AdProviderType = "disabled" | "google_admob";
 
 export type UserProfile = {
   id: string;
@@ -219,6 +221,22 @@ export type MonetizationSummary = {
   adConsentGranted: boolean;
   analyticsConsent: boolean;
   quietAdsEnabled: boolean;
+};
+
+export type BillingProviderStatusSummary = {
+  provider: BillingProviderType;
+  configured: boolean;
+  supportsProducts: boolean;
+  productIds: string[];
+  description: string;
+};
+
+export type AdProviderStatusSummary = {
+  provider: AdProviderType;
+  configured: boolean;
+  appIdConfigured: boolean;
+  bannerUnitConfigured: boolean;
+  description: string;
 };
 
 export type LeaderboardEntry = {

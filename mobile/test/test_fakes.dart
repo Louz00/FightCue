@@ -2,6 +2,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:fightcue_mobile/src/data/fightcue_api.dart';
+import 'package:fightcue_mobile/src/data/billing_runtime.dart';
 import 'package:fightcue_mobile/src/data/push_delivery_service.dart';
 import 'package:fightcue_mobile/src/models/domain_models.dart';
 
@@ -18,6 +19,8 @@ class FakeFightCueApi extends FightCueApi {
     this.pushPreviewResult,
     this.pushProviderStatus,
     this.pushTestDispatchResult,
+    this.billingProviderStatus,
+    this.adProviderStatus,
     this.pushError,
     this.alertsFetchResult,
     this.alertsResult,
@@ -43,6 +46,8 @@ class FakeFightCueApi extends FightCueApi {
   final ApiFetchResult<PushPreviewSnapshot>? pushPreviewResult;
   final PushProviderStatusSnapshot? pushProviderStatus;
   final PushTestDispatchSnapshot? pushTestDispatchResult;
+  final BillingProviderStatusSnapshot? billingProviderStatus;
+  final AdProviderStatusSnapshot? adProviderStatus;
   final Object? pushError;
   final ApiFetchResult<AlertsSnapshot>? alertsFetchResult;
   final AlertsSnapshot? alertsResult;
@@ -236,6 +241,32 @@ class FakeFightCueApi extends FightCueApi {
   }
 
   @override
+  Future<BillingProviderStatusSnapshot> fetchBillingProviderStatus() async {
+    return billingProviderStatus ??
+        const BillingProviderStatusSnapshot(
+          provider: BillingProviderType.storekitPlay,
+          configured: false,
+          supportsProducts: false,
+          productIds: [],
+          description:
+              'Store billing wiring is enabled, but product IDs are still missing.',
+        );
+  }
+
+  @override
+  Future<AdProviderStatusSnapshot> fetchAdProviderStatus() async {
+    return adProviderStatus ??
+        const AdProviderStatusSnapshot(
+          provider: AdProviderType.googleAdmob,
+          configured: false,
+          appIdConfigured: false,
+          bannerUnitConfigured: false,
+          description:
+              'AdMob wiring is enabled, but app IDs and banner unit IDs are still incomplete.',
+        );
+  }
+
+  @override
   Future<void> prefetchReadSurfaces(HomeSnapshot snapshot) async {}
 
   @override
@@ -310,5 +341,22 @@ class FakePushDeliveryService implements PushDeliveryService {
   @override
   Future<PushDeviceRegistrationResult> requestPermission() async {
     return requestPermissionResult ?? statusResult;
+  }
+}
+
+class FakeBillingRuntimeService extends BillingRuntimeService {
+  FakeBillingRuntimeService({
+    this.result = const BillingRuntimeStatus(
+      storeAvailable: false,
+      foundProductIds: [],
+      missingProductIds: [],
+    ),
+  });
+
+  final BillingRuntimeStatus result;
+
+  @override
+  Future<BillingRuntimeStatus> getStatus(List<String> productIds) async {
+    return result;
   }
 }

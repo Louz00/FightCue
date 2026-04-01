@@ -19,6 +19,7 @@ import {
   pushTokenSchema,
 } from "../http/schemas.js";
 import type { RuntimeService } from "../services/runtime-service.js";
+import type { PushDeliveryService } from "../services/push-delivery-service.js";
 import type { UserStateStore } from "../store/user-state-store.js";
 
 export function registerMeRoutes(
@@ -26,9 +27,11 @@ export function registerMeRoutes(
   {
     stateStore,
     runtimeService,
+    pushDeliveryService,
   }: {
     stateStore: UserStateStore;
     runtimeService: RuntimeService;
+    pushDeliveryService: PushDeliveryService;
   },
 ): void {
   app.get("/v1/me/profile", async (request) => {
@@ -85,10 +88,19 @@ export function registerMeRoutes(
     return buildRuntimePush(state);
   });
 
+  app.get("/v1/me/push/provider", async () => {
+    return pushDeliveryService.getProviderStatus();
+  });
+
   app.get("/v1/me/push/preview", async (request) => {
     const deviceId = resolveDeviceId(request);
     const state = await stateStore.read(deviceId);
     return buildRuntimePushPreview(state);
+  });
+
+  app.post("/v1/me/push/test", async (request) => {
+    const deviceId = resolveDeviceId(request);
+    return pushDeliveryService.sendTestNotificationForDevice(deviceId);
   });
 
   app.get("/v1/me/monetization", async (request) => {

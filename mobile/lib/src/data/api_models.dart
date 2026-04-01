@@ -130,6 +130,152 @@ class PushSettingsSnapshotJson {
   }
 }
 
+class PushProviderStatusSnapshotJson {
+  const PushProviderStatusSnapshotJson({
+    required this.provider,
+    required this.supportsDelivery,
+    required this.configured,
+    required this.description,
+  });
+
+  final PushProviderType provider;
+  final bool supportsDelivery;
+  final bool configured;
+  final String description;
+
+  factory PushProviderStatusSnapshotJson.fromJson(Map<String, dynamic> json) {
+    return PushProviderStatusSnapshotJson(
+      provider: _parsePushProviderType(json['provider'] as String?),
+      supportsDelivery: json['supportsDelivery'] as bool? ?? false,
+      configured: json['configured'] as bool? ?? false,
+      description: json['description'] as String? ?? '',
+    );
+  }
+
+  PushProviderStatusSnapshot toMobile() {
+    return PushProviderStatusSnapshot(
+      provider: provider,
+      supportsDelivery: supportsDelivery,
+      configured: configured,
+      description: description,
+    );
+  }
+}
+
+class PushPreviewItemSummaryJson {
+  const PushPreviewItemSummaryJson({
+    required this.id,
+    required this.deliveryKind,
+    required this.reasonKey,
+    required this.title,
+    required this.body,
+    this.scheduledLocalLabel,
+  });
+
+  final String id;
+  final String deliveryKind;
+  final String reasonKey;
+  final String title;
+  final String body;
+  final String? scheduledLocalLabel;
+
+  factory PushPreviewItemSummaryJson.fromJson(Map<String, dynamic> json) {
+    return PushPreviewItemSummaryJson(
+      id: json['id'] as String? ?? '',
+      deliveryKind: json['deliveryKind'] as String? ?? 'signal',
+      reasonKey: json['reason'] as String? ?? 'time_changes',
+      title: json['title'] as String? ?? '',
+      body: json['body'] as String? ?? '',
+      scheduledLocalLabel: json['scheduledLocalLabel'] as String?,
+    );
+  }
+
+  PushPreviewItemSummary toMobile() {
+    return PushPreviewItemSummary(
+      id: id,
+      deliveryKind: deliveryKind,
+      reasonKey: reasonKey,
+      title: title,
+      body: body,
+      scheduledLocalLabel: scheduledLocalLabel,
+    );
+  }
+}
+
+class PushPreviewSnapshotJson {
+  const PushPreviewSnapshotJson({
+    required this.deliveryReadiness,
+    required this.scheduledCount,
+    required this.signalCount,
+    required this.items,
+  });
+
+  final PushDeliveryReadiness deliveryReadiness;
+  final int scheduledCount;
+  final int signalCount;
+  final List<PushPreviewItemSummary> items;
+
+  factory PushPreviewSnapshotJson.fromJson(Map<String, dynamic> json) {
+    return PushPreviewSnapshotJson(
+      deliveryReadiness:
+          _parsePushDeliveryReadiness(json['deliveryReadiness'] as String?),
+      scheduledCount: json['scheduledCount'] as int? ?? 0,
+      signalCount: json['signalCount'] as int? ?? 0,
+      items: (json['items'] as List<dynamic>? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(PushPreviewItemSummaryJson.fromJson)
+          .map((entry) => entry.toMobile())
+          .toList(),
+    );
+  }
+
+  PushPreviewSnapshot toMobile() {
+    return PushPreviewSnapshot(
+      deliveryReadiness: deliveryReadiness,
+      scheduledCount: scheduledCount,
+      signalCount: signalCount,
+      items: items,
+    );
+  }
+}
+
+class PushTestDispatchSnapshotJson {
+  const PushTestDispatchSnapshotJson({
+    required this.provider,
+    required this.deliveryReadiness,
+    required this.dispatched,
+    required this.message,
+    this.providerMessageId,
+  });
+
+  final PushProviderType provider;
+  final PushDeliveryReadiness deliveryReadiness;
+  final bool dispatched;
+  final String message;
+  final String? providerMessageId;
+
+  factory PushTestDispatchSnapshotJson.fromJson(Map<String, dynamic> json) {
+    return PushTestDispatchSnapshotJson(
+      provider: _parsePushProviderType(json['provider'] as String?),
+      deliveryReadiness:
+          _parsePushDeliveryReadiness(json['deliveryReadiness'] as String?),
+      dispatched: json['dispatched'] as bool? ?? false,
+      message: json['message'] as String? ?? '',
+      providerMessageId: json['providerMessageId'] as String?,
+    );
+  }
+
+  PushTestDispatchSnapshot toMobile() {
+    return PushTestDispatchSnapshot(
+      provider: provider,
+      deliveryReadiness: deliveryReadiness,
+      dispatched: dispatched,
+      message: message,
+      providerMessageId: providerMessageId,
+    );
+  }
+}
+
 class MonetizationSnapshotJson {
   const MonetizationSnapshotJson({
     required this.premiumState,
@@ -599,6 +745,32 @@ PushTokenPlatform? _parsePushTokenPlatform(String? rawPlatform) {
       return PushTokenPlatform.web;
     default:
       return null;
+  }
+}
+
+PushDeliveryReadiness _parsePushDeliveryReadiness(String? rawValue) {
+  switch (rawValue) {
+    case 'ready':
+      return PushDeliveryReadiness.ready;
+    case 'disabled':
+      return PushDeliveryReadiness.disabled;
+    case 'permission_required':
+      return PushDeliveryReadiness.permissionRequired;
+    case 'token_missing':
+    default:
+      return PushDeliveryReadiness.tokenMissing;
+  }
+}
+
+PushProviderType _parsePushProviderType(String? rawValue) {
+  switch (rawValue) {
+    case 'disabled':
+      return PushProviderType.disabled;
+    case 'firebase':
+      return PushProviderType.firebase;
+    case 'log':
+    default:
+      return PushProviderType.log;
   }
 }
 

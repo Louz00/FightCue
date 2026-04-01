@@ -41,6 +41,7 @@ export type PushDeliveryReadiness =
   | "token_missing";
 export type PushPreviewTargetType = "fighter" | "event";
 export type PushPreviewDeliveryKind = "scheduled" | "signal";
+export type PushProviderType = "disabled" | "log" | "firebase";
 
 export type UserProfile = {
   id: string;
@@ -167,6 +168,24 @@ export type PushPreviewSummary = PushSettingsSummary & {
   scheduledCount: number;
   signalCount: number;
   items: PushPreviewItem[];
+};
+
+export type PushProviderStatusSummary = {
+  provider: PushProviderType;
+  supportsDelivery: boolean;
+  configured: boolean;
+  description: string;
+};
+
+export type PushTestDispatchSummary = {
+  provider: PushProviderType;
+  deliveryReadiness: PushDeliveryReadiness;
+  dispatched: boolean;
+  title: string;
+  body: string;
+  tokenPlatform?: PushTokenPlatform;
+  providerMessageId?: string;
+  message: string;
 };
 
 export type MonetizationSummary = {

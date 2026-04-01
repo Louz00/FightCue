@@ -938,4 +938,94 @@ class AppStrings {
           : 'Las alertas discretas estan desactivadas para esta base del dispositivo. $permissionLabel. $tokenLabel.',
     );
   }
+
+  String pushProviderLabel(PushProviderType provider) {
+    switch (provider) {
+      case PushProviderType.disabled:
+        return _pick(
+          en: 'Provider disabled',
+          nl: 'Provider uitgeschakeld',
+          es: 'Proveedor desactivado',
+        );
+      case PushProviderType.log:
+        return _pick(
+          en: 'Local log delivery',
+          nl: 'Lokale log-delivery',
+          es: 'Entrega local en logs',
+        );
+      case PushProviderType.firebase:
+        return _pick(
+          en: 'Firebase delivery',
+          nl: 'Firebase-delivery',
+          es: 'Entrega con Firebase',
+        );
+    }
+  }
+
+  String pushProviderStatusBody({
+    required bool configured,
+    required String description,
+  }) {
+    return _pick(
+      en: configured ? description : 'Provider setup still needs credentials. $description',
+      nl: configured
+          ? description
+          : 'De provider-inrichting heeft nog credentials nodig. $description',
+      es: configured
+          ? description
+          : 'La configuracion del proveedor aun necesita credenciales. $description',
+    );
+  }
+
+  String pushReadinessLabel(PushDeliveryReadiness readiness) {
+    switch (readiness) {
+      case PushDeliveryReadiness.ready:
+        return _pick(
+          en: 'Ready to send',
+          nl: 'Klaar om te verzenden',
+          es: 'Listo para enviar',
+        );
+      case PushDeliveryReadiness.disabled:
+        return _pick(
+          en: 'Push disabled',
+          nl: 'Push uitgeschakeld',
+          es: 'Push desactivado',
+        );
+      case PushDeliveryReadiness.permissionRequired:
+        return _pick(
+          en: 'Permission still needed',
+          nl: 'Nog toestemming nodig',
+          es: 'Aun falta permiso',
+        );
+      case PushDeliveryReadiness.tokenMissing:
+        return _pick(
+          en: 'Token still missing',
+          nl: 'Token ontbreekt nog',
+          es: 'Aun falta el token',
+        );
+    }
+  }
+
+  String pushPreviewCountsLabel({
+    required int scheduledCount,
+    required int signalCount,
+  }) {
+    return _pick(
+      en: '$scheduledCount scheduled, $signalCount signal-based reminders',
+      nl: '$scheduledCount geplande, $signalCount signaalgebaseerde herinneringen',
+      es: '$scheduledCount programados, $signalCount recordatorios por senal',
+    );
+  }
+
+  String get pushSendTestAction => _pick(
+        en: 'Send test reminder',
+        nl: 'Verstuur testherinnering',
+        es: 'Enviar recordatorio de prueba',
+      );
+
+  String get pushTestQueuedLabel => _pick(
+        en: 'Test reminder queued',
+        nl: 'Testherinnering ingepland',
+        es: 'Recordatorio de prueba en cola',
+      );
 }

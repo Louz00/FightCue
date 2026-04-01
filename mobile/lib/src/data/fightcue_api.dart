@@ -221,6 +221,38 @@ class FightCueApi {
     }
   }
 
+  Future<Map<String, dynamic>> _postJsonMap(
+    String path, {
+    Map<String, dynamic> body = const {},
+  }) async {
+    final uri = Uri.parse('$_baseUrl$path');
+
+    try {
+      final response = await _client
+          .post(
+            uri,
+            headers: await _defaultHeaders(
+              extraHeaders: {'content-type': 'application/json'},
+            ),
+            body: jsonEncode(body),
+          )
+          .timeout(_requestTimeout);
+
+      if (response.statusCode == 401) {
+        await _deviceIdentityStore.clearDeviceToken();
+      }
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError('POST $path failed: ${response.statusCode}');
+      }
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'api.post.$path');
+      rethrow;
+    }
+  }
+
   Future<HomeSnapshot> fetchHome() async {
     return (await fetchHomeResult()).data;
   }
@@ -288,6 +320,25 @@ class FightCueApi {
       isFromCache: result.isFromCache,
       lastSyncedAt: result.lastSyncedAt,
     );
+  }
+
+  Future<ApiFetchResult<PushPreviewSnapshot>> fetchPushPreviewResult() async {
+    final result = await _getJsonMapResult('/v1/me/push/preview');
+    return ApiFetchResult(
+      data: PushPreviewSnapshotJson.fromJson(result.data).toMobile(),
+      isFromCache: result.isFromCache,
+      lastSyncedAt: result.lastSyncedAt,
+    );
+  }
+
+  Future<PushProviderStatusSnapshot> fetchPushProviderStatus() async {
+    final json = await _getJsonMap('/v1/me/push/provider');
+    return PushProviderStatusSnapshotJson.fromJson(json).toMobile();
+  }
+
+  Future<PushTestDispatchSnapshot> sendTestPush() async {
+    final json = await _postJsonMap('/v1/me/push/test');
+    return PushTestDispatchSnapshotJson.fromJson(json).toMobile();
   }
 
   Future<MonetizationSnapshot> fetchMonetization() async {

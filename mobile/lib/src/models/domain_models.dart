@@ -14,6 +14,15 @@ enum PushPermissionStatus { unknown, prompt, granted, denied }
 
 enum PushTokenPlatform { android, ios, web }
 
+enum PushDeliveryReadiness {
+  ready,
+  disabled,
+  permissionRequired,
+  tokenMissing,
+}
+
+enum PushProviderType { disabled, log, firebase }
+
 class FighterSummary {
   const FighterSummary({
     required this.id,
@@ -451,4 +460,80 @@ class PushSettingsSnapshot {
       tokenUpdatedAt: tokenUpdatedAt ?? this.tokenUpdatedAt,
     );
   }
+}
+
+class PushProviderStatusSnapshot {
+  const PushProviderStatusSnapshot({
+    required this.provider,
+    required this.supportsDelivery,
+    required this.configured,
+    required this.description,
+  });
+
+  final PushProviderType provider;
+  final bool supportsDelivery;
+  final bool configured;
+  final String description;
+}
+
+class PushPreviewItemSummary {
+  const PushPreviewItemSummary({
+    required this.id,
+    required this.deliveryKind,
+    required this.reasonKey,
+    required this.title,
+    required this.body,
+    this.scheduledLocalLabel,
+  });
+
+  final String id;
+  final String deliveryKind;
+  final String reasonKey;
+  final String title;
+  final String body;
+  final String? scheduledLocalLabel;
+}
+
+class PushPreviewSnapshot {
+  const PushPreviewSnapshot({
+    required this.deliveryReadiness,
+    required this.scheduledCount,
+    required this.signalCount,
+    required this.items,
+  });
+
+  final PushDeliveryReadiness deliveryReadiness;
+  final int scheduledCount;
+  final int signalCount;
+  final List<PushPreviewItemSummary> items;
+
+  PushPreviewSnapshot copyWith({
+    PushDeliveryReadiness? deliveryReadiness,
+    int? scheduledCount,
+    int? signalCount,
+    List<PushPreviewItemSummary>? items,
+  }) {
+    return PushPreviewSnapshot(
+      deliveryReadiness: deliveryReadiness ?? this.deliveryReadiness,
+      scheduledCount: scheduledCount ?? this.scheduledCount,
+      signalCount: signalCount ?? this.signalCount,
+      items: items ?? this.items,
+    );
+  }
+}
+
+class PushTestDispatchSnapshot {
+  const PushTestDispatchSnapshot({
+    required this.provider,
+    required this.deliveryReadiness,
+    required this.dispatched,
+    required this.message,
+    this.providerMessageId,
+  });
+
+  final PushProviderType provider;
+  final PushDeliveryReadiness deliveryReadiness;
+  final bool dispatched;
+  final String message;
+  final String? providerMessageId;
 }

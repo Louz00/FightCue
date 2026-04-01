@@ -235,6 +235,7 @@ Why last:
 
 Current note:
 - accessibility work has started with semantics on key headings and interactive controls, but a broader screen-by-screen pass is still open
-- push foundations now exist for persistence, API routes, native permission/token bridges, a first mobile settings surface, and a backend push-preview planning endpoint, but real provider-backed delivery is still open
+- push foundations now exist for persistence, API routes, native permission/token bridges, a first mobile settings surface, a backend push-preview planning endpoint, and provider-backed push status/test-send support
+- Firebase is now a first-class backend push provider option, but real delivery still depends on production credentials plus final APNs/device validation
 - offline UX is now clearer in the mobile app with saved-data timestamps, stale-data warnings, visible cached notices across home/following/alerts/detail/rankings/push-settings, pull-to-refresh, background prefetch, and stale auto-refresh on key read surfaces, but it still needs broader screen coverage and deeper proactive refresh behavior
 - billing/ad foundations now exist for monetization state, ad/analytics consent, quiet-ad eligibility, settings controls, and a reserved home-feed ad slot, but real store billing and live ad delivery are still open

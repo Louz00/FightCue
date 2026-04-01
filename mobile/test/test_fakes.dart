@@ -15,6 +15,9 @@ class FakeFightCueApi extends FightCueApi {
     this.monetizationError,
     this.pushFetchResult,
     this.pushSettingsResult,
+    this.pushPreviewResult,
+    this.pushProviderStatus,
+    this.pushTestDispatchResult,
     this.pushError,
     this.alertsFetchResult,
     this.alertsResult,
@@ -37,6 +40,9 @@ class FakeFightCueApi extends FightCueApi {
   final Object? monetizationError;
   final ApiFetchResult<PushSettingsSnapshot>? pushFetchResult;
   final PushSettingsSnapshot? pushSettingsResult;
+  final ApiFetchResult<PushPreviewSnapshot>? pushPreviewResult;
+  final PushProviderStatusSnapshot? pushProviderStatus;
+  final PushTestDispatchSnapshot? pushTestDispatchResult;
   final Object? pushError;
   final ApiFetchResult<AlertsSnapshot>? alertsFetchResult;
   final AlertsSnapshot? alertsResult;
@@ -179,6 +185,54 @@ class FakeFightCueApi extends FightCueApi {
       tokenRegistered: tokenValue != null && tokenValue.isNotEmpty,
       tokenUpdatedAt: tokenValue == null ? null : DateTime.utc(2026, 3, 31, 22, 0),
     );
+  }
+
+  @override
+  Future<ApiFetchResult<PushPreviewSnapshot>> fetchPushPreviewResult() async {
+    if (pushError != null) {
+      throw pushError!;
+    }
+    if (pushPreviewResult != null) {
+      return pushPreviewResult!;
+    }
+    return const ApiFetchResult(
+      data: PushPreviewSnapshot(
+        deliveryReadiness: PushDeliveryReadiness.tokenMissing,
+        scheduledCount: 0,
+        signalCount: 0,
+        items: [],
+      ),
+      isFromCache: false,
+    );
+  }
+
+  @override
+  Future<PushProviderStatusSnapshot> fetchPushProviderStatus() async {
+    if (pushError != null) {
+      throw pushError!;
+    }
+    return pushProviderStatus ??
+        const PushProviderStatusSnapshot(
+          provider: PushProviderType.log,
+          supportsDelivery: true,
+          configured: true,
+          description: 'FightCue logs test push payloads locally.',
+        );
+  }
+
+  @override
+  Future<PushTestDispatchSnapshot> sendTestPush() async {
+    if (pushError != null) {
+      throw pushError!;
+    }
+    return pushTestDispatchResult ??
+        const PushTestDispatchSnapshot(
+          provider: PushProviderType.log,
+          deliveryReadiness: PushDeliveryReadiness.ready,
+          dispatched: true,
+          message: 'FightCue queued a test reminder for this device.',
+          providerMessageId: 'log_test_001',
+        );
   }
 
   @override

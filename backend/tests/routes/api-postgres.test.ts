@@ -202,6 +202,25 @@ test("preferences, follows, and alerts persist through postgres-backed API route
     assert.equal(pushPreview.json().scheduledCount >= 1, true);
     assert.equal(Array.isArray(pushPreview.json().items), true);
 
+    const pushProvider = await app.inject({
+      method: "GET",
+      url: "/v1/me/push/provider",
+      headers,
+    });
+    assert.equal(pushProvider.statusCode, 200);
+    assert.equal(pushProvider.json().provider, "log");
+    assert.equal(pushProvider.json().supportsDelivery, true);
+
+    const pushTest = await app.inject({
+      method: "POST",
+      url: "/v1/me/push/test",
+      headers,
+    });
+    assert.equal(pushTest.statusCode, 200);
+    assert.equal(pushTest.json().dispatched, true);
+    assert.equal(pushTest.json().provider, "log");
+    assert.equal(typeof pushTest.json().providerMessageId, "string");
+
     const persistedMonetization = await app.inject({
       method: "GET",
       url: "/v1/me/monetization",
@@ -439,6 +458,80 @@ test("strict signed-token mode accepts a valid token on stateful routes", async 
   } finally {
     await close();
     restoreEnv("FIGHTCUE_REQUIRE_SIGNED_DEVICE_TOKEN", previous);
+  }
+});
+
+test("firebase push provider reports misconfiguration without crashing test sends", async () => {
+  const previousProvider = process.env.FIGHTCUE_PUSH_PROVIDER;
+  const previousInlineCredentials = process.env.FIGHTCUE_FIREBASE_SERVICE_ACCOUNT_JSON;
+  const previousGoogleCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const previousProjectId = process.env.FIGHTCUE_FIREBASE_PROJECT_ID;
+
+  process.env.FIGHTCUE_PUSH_PROVIDER = "firebase";
+  delete process.env.FIGHTCUE_FIREBASE_SERVICE_ACCOUNT_JSON;
+  delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  process.env.FIGHTCUE_FIREBASE_PROJECT_ID = "fightcue-test";
+
+  const { app, close } = await createPostgresTestApp();
+  const headers = {
+    "x-fightcue-device-id": "device_route_test",
+  };
+
+  try {
+    await app.inject({
+      method: "PUT",
+      url: "/v1/me/push/token",
+      headers,
+      payload: {
+        permissionStatus: "granted",
+        tokenPlatform: "android",
+        tokenValue: "fcm_token_demo",
+      },
+    });
+
+    const pushProvider = await app.inject({
+      method: "GET",
+      url: "/v1/me/push/provider",
+      headers,
+    });
+    assert.equal(pushProvider.statusCode, 200);
+    assert.equal(pushProvider.json().provider, "firebase");
+    assert.equal(pushProvider.json().configured, false);
+
+    const pushTest = await app.inject({
+      method: "POST",
+      url: "/v1/me/push/test",
+      headers,
+    });
+    assert.equal(pushTest.statusCode, 200);
+    assert.equal(pushTest.json().provider, "firebase");
+    assert.equal(pushTest.json().dispatched, false);
+    assert.match(
+      pushTest.json().message,
+      /Firebase push delivery is not configured/i,
+    );
+  } finally {
+    await close();
+    if (previousProvider == null) {
+      delete process.env.FIGHTCUE_PUSH_PROVIDER;
+    } else {
+      process.env.FIGHTCUE_PUSH_PROVIDER = previousProvider;
+    }
+    if (previousInlineCredentials == null) {
+      delete process.env.FIGHTCUE_FIREBASE_SERVICE_ACCOUNT_JSON;
+    } else {
+      process.env.FIGHTCUE_FIREBASE_SERVICE_ACCOUNT_JSON = previousInlineCredentials;
+    }
+    if (previousGoogleCredentials == null) {
+      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    } else {
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = previousGoogleCredentials;
+    }
+    if (previousProjectId == null) {
+      delete process.env.FIGHTCUE_FIREBASE_PROJECT_ID;
+    } else {
+      process.env.FIGHTCUE_FIREBASE_PROJECT_ID = previousProjectId;
+    }
   }
 });
 

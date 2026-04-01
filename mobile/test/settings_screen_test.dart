@@ -66,6 +66,7 @@ void main() {
   testWidgets('Settings screen shows cached billing notice when using saved monetization state', (
     tester,
   ) async {
+    final syncedAt = DateTime.now().toUtc();
     final api = FakeFightCueApi(
       pushFetchResult: ApiFetchResult(
         data: const PushSettingsSnapshot(
@@ -74,7 +75,7 @@ void main() {
           tokenRegistered: false,
         ),
         isFromCache: true,
-        lastSyncedAt: DateTime.utc(2026, 3, 31, 21, 10),
+        lastSyncedAt: syncedAt,
       ),
       monetizationFetchResult: ApiFetchResult(
         data: const MonetizationSnapshot(
@@ -86,7 +87,7 @@ void main() {
           quietAdsEnabled: false,
         ),
         isFromCache: true,
-        lastSyncedAt: DateTime.utc(2026, 3, 31, 21, 10),
+        lastSyncedAt: syncedAt,
       ),
       homeResult: const ApiFetchResult(
         data: sampleHomeSnapshot,

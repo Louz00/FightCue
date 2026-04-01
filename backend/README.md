@@ -65,6 +65,34 @@ FIGHTCUE_REQUIRE_SIGNED_DEVICE_TOKEN=true
 
 If `initdb` fails in a restricted environment with a shared-memory error, run the same commands in your normal macOS terminal instead of a sandboxed session.
 
+## Push delivery providers
+
+FightCue now supports three backend push modes:
+
+- `FIGHTCUE_PUSH_PROVIDER=disabled`
+- `FIGHTCUE_PUSH_PROVIDER=log`
+- `FIGHTCUE_PUSH_PROVIDER=firebase`
+
+The default remains `log`, which is useful for local development.
+
+To enable Firebase-backed test delivery, configure one of:
+
+```bash
+FIGHTCUE_PUSH_PROVIDER=firebase
+FIGHTCUE_FIREBASE_PROJECT_ID=your-project-id
+FIGHTCUE_FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
+```
+
+or:
+
+```bash
+FIGHTCUE_PUSH_PROVIDER=firebase
+FIGHTCUE_FIREBASE_PROJECT_ID=your-project-id
+GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account.json
+```
+
+If Firebase is selected but credentials are missing, the provider will stay visible in the API but test sends will be blocked with a clear message instead of failing silently.
+
 ## Current responsibilities
 
 - organizations and events endpoints

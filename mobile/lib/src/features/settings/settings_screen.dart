@@ -681,6 +681,9 @@ class _MonetizationCardState extends State<_MonetizationCard> {
 class _PushSettingsCardState extends State<_PushSettingsCard> {
   late final PushDeliveryService _pushDeliveryService;
   PushSettingsSnapshot? _settings;
+  PushPreviewSnapshot? _preview;
+  PushProviderStatusSnapshot? _providerStatus;
+  String? _testStatusLabel;
   bool _isLoading = true;
   bool _isSaving = false;
   bool _hasError = false;
@@ -706,14 +709,23 @@ class _PushSettingsCardState extends State<_PushSettingsCard> {
     }
 
     try {
-      final result = await widget.api.fetchPushSettingsResult();
+      final results = await Future.wait([
+        widget.api.fetchPushSettingsResult(),
+        widget.api.fetchPushPreviewResult(),
+        widget.api.fetchPushProviderStatus(),
+      ]);
+      final result = results[0] as ApiFetchResult<PushSettingsSnapshot>;
+      final previewResult = results[1] as ApiFetchResult<PushPreviewSnapshot>;
+      final providerStatus = results[2] as PushProviderStatusSnapshot;
       final settings = result.data;
       if (mounted) {
         setState(() {
           _settings = settings;
+          _preview = previewResult.data;
+          _providerStatus = providerStatus;
           _hasError = false;
-          _usingCachedFallback = result.isFromCache;
-          _lastSyncedAt = result.lastSyncedAt;
+          _usingCachedFallback = result.isFromCache || previewResult.isFromCache;
+          _lastSyncedAt = result.lastSyncedAt ?? previewResult.lastSyncedAt;
           _didRequestStaleRefresh = false;
         });
       }
@@ -762,6 +774,16 @@ class _PushSettingsCardState extends State<_PushSettingsCard> {
       if (mounted) {
         setState(() {
           _settings = saved;
+          _preview = _preview?.copyWith(
+            deliveryReadiness: saved.permissionStatus == PushPermissionStatus.granted &&
+                    saved.tokenRegistered
+                ? PushDeliveryReadiness.ready
+                : saved.permissionStatus == PushPermissionStatus.granted
+                ? PushDeliveryReadiness.tokenMissing
+                : saved.pushEnabled
+                ? PushDeliveryReadiness.permissionRequired
+                : PushDeliveryReadiness.disabled,
+          );
         });
       }
     } catch (error, stackTrace) {
@@ -806,6 +828,7 @@ class _PushSettingsCardState extends State<_PushSettingsCard> {
           _settings = saved;
           _usingCachedFallback = false;
           _lastSyncedAt = DateTime.now().toUtc();
+          _testStatusLabel = null;
         });
       }
     } catch (error, stackTrace) {
@@ -829,6 +852,8 @@ class _PushSettingsCardState extends State<_PushSettingsCard> {
   Widget build(BuildContext context) {
     final strings = widget.strings;
     final settings = _settings;
+    final preview = _preview;
+    final providerStatus = _providerStatus;
     final pushDetailBody = settings == null
         ? strings.pushSetupBody
         : switch ((settings.permissionStatus, settings.tokenRegistered)) {
@@ -912,8 +937,42 @@ class _PushSettingsCardState extends State<_PushSettingsCard> {
                             ? strings.pushDeviceReadyLabel
                             : strings.pushDevicePendingLabel,
                       ),
+                    if (preview != null)
+                      _StatusPill(
+                        label: strings.pushReadinessLabel(preview.deliveryReadiness),
+                      ),
+                    if (providerStatus != null)
+                      _StatusPill(
+                        label: strings.pushProviderLabel(providerStatus.provider),
+                      ),
                   ],
                 ),
+                if (preview != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    strings.pushPreviewCountsLabel(
+                      scheduledCount: preview.scheduledCount,
+                      signalCount: preview.signalCount,
+                    ),
+                    style: TextStyle(
+                      color: AppColors.textSecondaryFor(context),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+                if (providerStatus != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    strings.pushProviderStatusBody(
+                      configured: providerStatus.configured,
+                      description: providerStatus.description,
+                    ),
+                    style: TextStyle(
+                      color: AppColors.textSecondaryFor(context),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
                 if (settings != null && settings.pushEnabled) ...[
                   const SizedBox(height: 14),
                   EditorialActionPill(
@@ -930,9 +989,55 @@ class _PushSettingsCardState extends State<_PushSettingsCard> {
                                   PushPermissionStatus.granted,
                             ),
                   ),
+                  if (preview?.deliveryReadiness == PushDeliveryReadiness.ready) ...[
+                    const SizedBox(height: 10),
+                    EditorialActionPill(
+                      label: strings.pushSendTestAction,
+                      onTap: _isSaving
+                          ? () {}
+                          : () async {
+                              setState(() {
+                                _isSaving = true;
+                                _testStatusLabel = null;
+                              });
+                              try {
+                                final result = await widget.api.sendTestPush();
+                                if (!mounted) {
+                                  return;
+                                }
+                                setState(() {
+                                  _testStatusLabel = result.dispatched
+                                      ? strings.pushTestQueuedLabel
+                                      : result.message;
+                                });
+                              } catch (error, stackTrace) {
+                                logUiError(
+                                  error,
+                                  stackTrace,
+                                  context: 'settings.test_push',
+                                );
+                                if (!mounted) {
+                                  return;
+                                }
+                                setState(() {
+                                  _hasError = true;
+                                });
+                              } finally {
+                                if (mounted) {
+                                  setState(() {
+                                    _isSaving = false;
+                                  });
+                                }
+                              }
+                            },
+                    ),
+                  ],
                   if (_isSaving) ...[
                     const SizedBox(height: 10),
                     _StatusPill(label: strings.pushDeviceLinkingLabel),
+                  ] else if (_testStatusLabel != null) ...[
+                    const SizedBox(height: 10),
+                    _StatusPill(label: _testStatusLabel!),
                   ],
                 ],
               ],

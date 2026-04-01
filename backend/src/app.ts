@@ -13,6 +13,7 @@ import { registerFighterRoutes } from "./routes/fighter-routes.js";
 import { registerMeRoutes } from "./routes/me-routes.js";
 import { registerMetaRoutes } from "./routes/meta-routes.js";
 import { registerSourceRoutes } from "./routes/source-routes.js";
+import { PushDeliveryService } from "./services/push-delivery-service.js";
 import { RuntimeService } from "./services/runtime-service.js";
 import {
   createUserStateStore,
@@ -68,6 +69,7 @@ export async function buildApp({
     },
   });
   const resolvedRuntimeService = runtimeService ?? new RuntimeService(resolvedStateStore);
+  const pushDeliveryService = new PushDeliveryService(resolvedStateStore);
 
   await app.register(cors, {
     origin: process.env.CORS_ORIGIN ?? true,
@@ -90,6 +92,7 @@ export async function buildApp({
   registerMeRoutes(app, {
     stateStore: resolvedStateStore,
     runtimeService: resolvedRuntimeService,
+    pushDeliveryService,
   });
   registerSourceRoutes(app, {
     stateStore: resolvedStateStore,

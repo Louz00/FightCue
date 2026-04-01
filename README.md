@@ -4,7 +4,7 @@ FightCue is a cross-platform mobile app for Android and iOS that helps combat sp
 
 ## Current status
 
-Last updated: 2026-03-31
+Last updated: 2026-04-01
 
 ### Confirmed decisions
 
@@ -93,6 +93,7 @@ Fully or functionally done in the current codebase:
 - strict signed-device-token mode now exists for stateful backend routes, beyond the earlier bootstrap/token foundation
 - watch-provider enrichment now keeps source-vs-default provenance and prefers the strongest verified provider when duplicate labels collide
 - push-notification foundations are now in place across backend persistence, API routes, mobile API parsing, a first settings status surface, and a new backend push-preview planning endpoint
+- backend push delivery now supports `disabled`, `log`, and `firebase` provider modes, with safe misconfiguration reporting and a test-send route visible in settings
 - offline UX now includes cached-response timestamps, stale-data warnings, visible saved-data notices across home, following, alerts, detail, rankings, and push-settings surfaces, pull-to-refresh where it matters, and background prefetch for key read surfaces after a successful home sync
 - monetization now has a first real state foundation for premium/ad tier, ad consent, analytics consent, and quiet-ad eligibility
 
@@ -122,7 +123,7 @@ Still open:
 
 1. Continue the accessibility pass across the remaining screens and navigation/detail edge cases
 2. Finish dark-mode polish across the remaining screens and smaller widgets
-3. Connect real push permission capture and device-token delivery on top of the new push foundation
+3. Finish provider-backed push delivery with real Firebase/APNs credentials and end-to-end device validation
 4. Broaden offline UX further across additional screens and stale-state scenarios
 5. Deepen the new billing and quiet-ad foundations into real store/ad integrations once the core experience is stable
 
@@ -251,6 +252,7 @@ Not in the first release:
 - Started the next UX tranche by making shared editorial surfaces dark-mode aware and adding semantics to core interactive controls
 - Added native iOS/Android push permission bridges plus a backend push-preview endpoint that shows which reminders FightCue would schedule or signal for the current device state
 - Added iOS remote-notification background mode configuration so simulator/device builds are closer to real push-ready app settings
+- Added backend push-provider status and test-send support, including Firebase-ready configuration paths and visible push-provider readiness in settings
 
 ### 2026-03-30
 

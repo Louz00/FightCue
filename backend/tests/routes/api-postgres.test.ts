@@ -92,13 +92,13 @@ test("preferences, follows, and alerts persist through postgres-backed API route
       method: "PUT",
       url: "/v1/me/alerts/fighters/ftr_chris_duncan",
       headers,
-      payload: { presetKeys: ["before_24h", "time_changes"] },
+      payload: { presetKeys: ["before_24h", "before_1h", "time_changes"] },
     });
     assert.equal(alertResponse.statusCode, 200);
-    assert.deepEqual(alertResponse.json().fighters.at(-1).presetKeys, [
-      "before_24h",
-      "time_changes",
-    ]);
+    assert.deepEqual(
+      [...alertResponse.json().fighters.at(-1).presetKeys].sort(),
+      ["before_24h", "before_1h", "time_changes"].sort(),
+    );
 
     const initialPush = await app.inject({
       method: "GET",
@@ -202,6 +202,16 @@ test("preferences, follows, and alerts persist through postgres-backed API route
     assert.equal(pushPreview.json().scheduledCount >= 1, true);
     assert.equal(Array.isArray(pushPreview.json().items), true);
 
+    const duePreview = await app.inject({
+      method: "GET",
+      url: "/v1/me/push/due?now=2026-04-04T23:05:00.000Z&lookbackMinutes=15",
+      headers,
+    });
+    assert.equal(duePreview.statusCode, 200);
+    assert.equal(duePreview.json().dueCount, 1);
+    assert.equal(duePreview.json().items[0].reason, "before_1h");
+    assert.equal(duePreview.json().items[0].targetType, "fighter");
+
     const pushProvider = await app.inject({
       method: "GET",
       url: "/v1/me/push/provider",
@@ -220,6 +230,26 @@ test("preferences, follows, and alerts persist through postgres-backed API route
     assert.equal(pushTest.json().dispatched, true);
     assert.equal(pushTest.json().provider, "log");
     assert.equal(typeof pushTest.json().providerMessageId, "string");
+
+    const dueDispatch = await app.inject({
+      method: "POST",
+      url: "/v1/me/push/dispatch-due?now=2026-04-04T23:05:00.000Z&lookbackMinutes=15",
+      headers,
+    });
+    assert.equal(dueDispatch.statusCode, 200);
+    assert.equal(dueDispatch.json().dueCount, 1);
+    assert.equal(dueDispatch.json().dispatchedCount, 1);
+    assert.equal(dueDispatch.json().items[0].dispatched, true);
+
+    const repeatedDueDispatch = await app.inject({
+      method: "POST",
+      url: "/v1/me/push/dispatch-due?now=2026-04-04T23:06:00.000Z&lookbackMinutes=15",
+      headers,
+    });
+    assert.equal(repeatedDueDispatch.statusCode, 200);
+    assert.equal(repeatedDueDispatch.json().dueCount, 1);
+    assert.equal(repeatedDueDispatch.json().dispatchedCount, 0);
+    assert.equal(repeatedDueDispatch.json().items[0].dispatched, false);
 
     const persistedMonetization = await app.inject({
       method: "GET",

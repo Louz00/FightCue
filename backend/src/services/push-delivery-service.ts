@@ -7,8 +7,14 @@ import {
   isFirebasePushConfigured,
   type FirebasePushConfig,
 } from "../config/push-delivery.js";
-import { buildRuntimePushPreview } from "../domain/push-preview.js";
+import {
+  DEFAULT_PUSH_DISPATCH_LOOKBACK_MS,
+  buildRuntimeDuePushSummary,
+  buildRuntimePushPreview,
+} from "../domain/push-preview.js";
 import type {
+  PushDispatchItemSummary,
+  PushDispatchSummary,
   PushProviderStatusSummary,
   PushProviderType,
   PushTestDispatchSummary,
@@ -17,10 +23,12 @@ import { logInfo } from "../observability/logger.js";
 import type { UserStateStore } from "../store/user-state-store.js";
 
 type PushDispatchPayload = {
+  reminderId: string;
   deviceId: string;
   tokenValue: string;
   title: string;
   body: string;
+  kind: "test" | "scheduled";
 };
 
 type PushDispatchReceipt = {
@@ -32,7 +40,7 @@ interface PushDispatchProvider {
   readonly supportsDelivery: boolean;
   readonly configured: boolean;
   readonly description: string;
-  sendTest(payload: PushDispatchPayload): Promise<PushDispatchReceipt>;
+  send(payload: PushDispatchPayload): Promise<PushDispatchReceipt>;
 }
 
 class DisabledPushDispatchProvider implements PushDispatchProvider {
@@ -41,7 +49,7 @@ class DisabledPushDispatchProvider implements PushDispatchProvider {
   readonly configured = false;
   readonly description = "Push delivery is disabled for this environment.";
 
-  async sendTest(_payload: PushDispatchPayload): Promise<PushDispatchReceipt> {
+  async send(_payload: PushDispatchPayload): Promise<PushDispatchReceipt> {
     throw new Error("Push delivery provider is disabled.");
   }
 }
@@ -53,15 +61,17 @@ class LogPushDispatchProvider implements PushDispatchProvider {
   readonly description =
     "FightCue logs test push payloads locally until real APNs/FCM credentials are configured.";
 
-  async sendTest(payload: PushDispatchPayload): Promise<PushDispatchReceipt> {
+  async send(payload: PushDispatchPayload): Promise<PushDispatchReceipt> {
     const providerMessageId = `log_${Date.now()}`;
-    logInfo("push.test_dispatched", {
+    logInfo(payload.kind === "test" ? "push.test_dispatched" : "push.due_dispatched", {
       provider: this.provider,
       providerMessageId,
       deviceId: payload.deviceId,
       tokenSuffix: payload.tokenValue.slice(-8),
       title: payload.title,
       body: payload.body,
+      reminderId: payload.reminderId,
+      dispatchKind: payload.kind,
     });
     return { providerMessageId };
   }
@@ -80,7 +90,7 @@ class FirebasePushDispatchProvider implements PushDispatchProvider {
       : "Firebase delivery is selected, but service account credentials are still missing.";
   }
 
-  async sendTest(payload: PushDispatchPayload): Promise<PushDispatchReceipt> {
+  async send(payload: PushDispatchPayload): Promise<PushDispatchReceipt> {
     if (!this.configured) {
       throw new Error(
         "Firebase push delivery is not configured. Set FIGHTCUE_FIREBASE_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS.",
@@ -96,8 +106,9 @@ class FirebasePushDispatchProvider implements PushDispatchProvider {
       },
       data: {
         source: "fightcue",
-        type: "test_reminder",
+        type: payload.kind === "test" ? "test_reminder" : "scheduled_reminder",
         deviceId: payload.deviceId,
+        reminderId: payload.reminderId,
       },
       android: {
         priority: "high",
@@ -116,6 +127,7 @@ class FirebasePushDispatchProvider implements PushDispatchProvider {
 
 export class PushDeliveryService {
   private readonly provider: PushDispatchProvider;
+  private readonly dispatchedReminderIds = new Map<string, number>();
 
   constructor(private readonly stateStore: UserStateStore) {
     this.provider = createPushDispatchProvider();
@@ -152,11 +164,13 @@ export class PushDeliveryService {
     }
 
     try {
-      const receipt = await this.provider.sendTest({
+      const receipt = await this.provider.send({
+        reminderId: `push_test_${deviceId}`,
         deviceId,
         tokenValue: state.push.tokenValue,
         title,
         body,
+        kind: "test",
       });
 
       return {
@@ -190,6 +204,136 @@ export class PushDeliveryService {
             ? error.message
             : "FightCue could not hand the test reminder to the active push provider.",
       };
+    }
+  }
+
+  async previewDueNotificationsForDevice(
+    deviceId: string,
+    {
+      now = new Date(),
+      lookbackMs = DEFAULT_PUSH_DISPATCH_LOOKBACK_MS,
+    }: {
+      now?: Date;
+      lookbackMs?: number;
+    } = {},
+  ) {
+    const state = await this.stateStore.read(deviceId);
+    return buildRuntimeDuePushSummary(state, now, lookbackMs);
+  }
+
+  async dispatchDueNotificationsForDevice(
+    deviceId: string,
+    {
+      now = new Date(),
+      lookbackMs = DEFAULT_PUSH_DISPATCH_LOOKBACK_MS,
+    }: {
+      now?: Date;
+      lookbackMs?: number;
+    } = {},
+  ): Promise<PushDispatchSummary> {
+    this.pruneDispatchHistory(now.getTime());
+
+    const state = await this.stateStore.read(deviceId);
+    const due = buildRuntimeDuePushSummary(state, now, lookbackMs);
+
+    if (due.deliveryReadiness !== "ready" || !state.push.tokenValue) {
+      return {
+        provider: this.provider.provider,
+        deliveryReadiness: due.deliveryReadiness,
+        dueCount: due.dueCount,
+        dispatchedCount: 0,
+        skippedCount: due.dueCount,
+        lookbackMinutes: due.lookbackMinutes,
+        items: due.items.map((item) => ({
+          ...item,
+          dispatched: false,
+          message: buildBlockedMessage(due.deliveryReadiness),
+        })),
+        message: buildBlockedMessage(due.deliveryReadiness),
+      };
+    }
+
+    const items: PushDispatchItemSummary[] = [];
+
+    for (const item of due.items) {
+      if (this.dispatchedReminderIds.has(item.id)) {
+        items.push({
+          ...item,
+          dispatched: false,
+          message: "FightCue already dispatched this reminder in the current worker window.",
+        });
+        continue;
+      }
+
+      try {
+        const receipt = await this.provider.send({
+          reminderId: item.id,
+          deviceId,
+          tokenValue: state.push.tokenValue,
+          title: item.title,
+          body: item.body,
+          kind: "scheduled",
+        });
+        this.dispatchedReminderIds.set(item.id, now.getTime());
+        logInfo("push.reminder_dispatched", {
+          provider: this.provider.provider,
+          deviceId,
+          reminderId: item.id,
+          providerMessageId: receipt.providerMessageId,
+          targetType: item.targetType,
+          targetId: item.targetId,
+          eventId: item.eventId,
+          reason: item.reason,
+        });
+        items.push({
+          ...item,
+          dispatched: true,
+          providerMessageId: receipt.providerMessageId,
+          message: "FightCue queued this due reminder for delivery.",
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "FightCue could not dispatch this due reminder.";
+        logInfo("push.reminder_dispatch_blocked", {
+          provider: this.provider.provider,
+          deviceId,
+          reminderId: item.id,
+          reason: message,
+        });
+        items.push({
+          ...item,
+          dispatched: false,
+          message,
+        });
+      }
+    }
+
+    const dispatchedCount = items.filter((item) => item.dispatched).length;
+    const skippedCount = items.length - dispatchedCount;
+
+    return {
+      provider: this.provider.provider,
+      deliveryReadiness: due.deliveryReadiness,
+      dueCount: due.dueCount,
+      dispatchedCount,
+      skippedCount,
+      lookbackMinutes: due.lookbackMinutes,
+      items,
+      message:
+        dispatchedCount > 0
+          ? `FightCue dispatched ${dispatchedCount} due reminder${dispatchedCount === 1 ? "" : "s"}.`
+          : "No new due reminders were dispatched.",
+    };
+  }
+
+  private pruneDispatchHistory(nowMs: number): void {
+    const retentionMs = 30 * 60 * 1000;
+    for (const [reminderId, dispatchedAtMs] of this.dispatchedReminderIds.entries()) {
+      if (dispatchedAtMs < nowMs - retentionMs) {
+        this.dispatchedReminderIds.delete(reminderId);
+      }
     }
   }
 }

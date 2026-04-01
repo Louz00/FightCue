@@ -3,6 +3,7 @@ import type {
   EventSummary,
   FighterSummary,
   PushDeliveryReadiness,
+  PushDueSummary,
   PushPreviewItem,
   PushPreviewSummary,
 } from "./models.js";
@@ -31,10 +32,71 @@ const scheduledOffsetsByReason: Partial<Record<AlertPresetKey, number>> = {
   before_1h: 60 * 60 * 1000,
 };
 
+export const DEFAULT_PUSH_DISPATCH_LOOKBACK_MS = 15 * 60 * 1000;
+
 export function buildRuntimePushPreview(
   state: PersistedUserState,
   now = new Date(),
 ): PushPreviewSummary {
+  const previewItems = collectPushItems(state, {
+    now,
+    scheduledWindow: "future",
+    includeSignals: true,
+    limit: 20,
+  });
+
+  const scheduledCount = previewItems.filter(
+    (item) => item.deliveryKind === "scheduled",
+  ).length;
+  const signalCount = previewItems.length - scheduledCount;
+
+  return {
+    ...buildPushSettingsSummary(state),
+    deliveryReadiness: resolvePushDeliveryReadiness(state),
+    scheduledCount,
+    signalCount,
+    items: previewItems,
+  };
+}
+
+export function buildRuntimeDuePushSummary(
+  state: PersistedUserState,
+  now = new Date(),
+  lookbackMs = DEFAULT_PUSH_DISPATCH_LOOKBACK_MS,
+): PushDueSummary {
+  const items = collectPushItems(state, {
+    now,
+    scheduledWindow: "due",
+    dueLookbackMs: lookbackMs,
+    includeSignals: false,
+    limit: 50,
+  });
+
+  return {
+    ...buildPushSettingsSummary(state),
+    deliveryReadiness: resolvePushDeliveryReadiness(state),
+    dueCount: items.length,
+    lookbackMinutes: Math.floor(lookbackMs / (60 * 1000)),
+    items,
+  };
+}
+
+function collectPushItems(
+  state: PersistedUserState,
+  {
+    now,
+    scheduledWindow,
+    includeSignals,
+    limit,
+    dueLookbackMs = DEFAULT_PUSH_DISPATCH_LOOKBACK_MS,
+  }: {
+    now: Date;
+    scheduledWindow: "future" | "due" | "all";
+    includeSignals: boolean;
+    limit: number;
+    dueLookbackMs?: number;
+  },
+): PushPreviewItem[] {
   const profile = buildRuntimeProfile(state);
   const events = buildRuntimeEvents(state, profile);
   const fighters = buildRuntimeFighters(state);
@@ -51,7 +113,15 @@ export function buildRuntimePushPreview(
 
     const presets = state.alerts.events[eventId] ?? eventAlertDefaults;
     for (const preset of presets) {
-      const item = buildPreviewItemForEventPreset(event, preset, profile.timezone, nowMs);
+      const item = buildPreviewItemForEventPreset(
+        event,
+        preset,
+        profile.timezone,
+        nowMs,
+        scheduledWindow,
+        includeSignals,
+        dueLookbackMs,
+      );
       if (item) {
         items.set(previewDedupKey(item), item);
       }
@@ -79,6 +149,9 @@ export function buildRuntimePushPreview(
           preset,
           profile.timezone,
           nowMs,
+          scheduledWindow,
+          includeSignals,
+          dueLookbackMs,
         );
         if (item) {
           items.set(previewDedupKey(item), item);
@@ -87,23 +160,7 @@ export function buildRuntimePushPreview(
     }
   }
 
-  const previewItems = [...items.values()].sort(comparePushPreviewItems).slice(0, 20);
-  const scheduledCount = previewItems.filter(
-    (item) => item.deliveryKind === "scheduled",
-  ).length;
-  const signalCount = previewItems.length - scheduledCount;
-
-  return {
-    pushEnabled: state.push.pushEnabled,
-    permissionStatus: state.push.permissionStatus,
-    tokenPlatform: state.push.tokenPlatform,
-    tokenRegistered: Boolean(state.push.tokenValue),
-    tokenUpdatedAt: state.push.tokenUpdatedAt,
-    deliveryReadiness: resolvePushDeliveryReadiness(state),
-    scheduledCount,
-    signalCount,
-    items: previewItems,
-  };
+  return [...items.values()].sort(comparePushPreviewItems).slice(0, limit);
 }
 
 function buildPreviewItemForEventPreset(
@@ -111,8 +168,14 @@ function buildPreviewItemForEventPreset(
   preset: AlertPresetKey,
   timezone: string,
   nowMs: number,
+  scheduledWindow: "future" | "due" | "all",
+  includeSignals: boolean,
+  dueLookbackMs: number,
 ): PushPreviewItem | undefined {
   if (preset === "time_changes") {
+    if (!includeSignals) {
+      return undefined;
+    }
     return {
       id: `push_preview_event_${event.id}_${preset}`,
       deliveryKind: "signal",
@@ -126,6 +189,9 @@ function buildPreviewItemForEventPreset(
   }
 
   if (preset === "watch_updates") {
+    if (!includeSignals) {
+      return undefined;
+    }
     return {
       id: `push_preview_event_${event.id}_${preset}`,
       deliveryKind: "signal",
@@ -150,6 +216,8 @@ function buildPreviewItemForEventPreset(
         : `${event.title} starts in 1 hour.`,
     timezone,
     nowMs,
+    scheduledWindow,
+    dueLookbackMs,
   });
 }
 
@@ -159,8 +227,14 @@ function buildPreviewItemForFighterPreset(
   preset: AlertPresetKey,
   timezone: string,
   nowMs: number,
+  scheduledWindow: "future" | "due" | "all",
+  includeSignals: boolean,
+  dueLookbackMs: number,
 ): PushPreviewItem | undefined {
   if (preset === "time_changes") {
+    if (!includeSignals) {
+      return undefined;
+    }
     return {
       id: `push_preview_fighter_${fighter.id}_${event.id}_${preset}`,
       deliveryKind: "signal",
@@ -174,6 +248,9 @@ function buildPreviewItemForFighterPreset(
   }
 
   if (preset === "watch_updates") {
+    if (!includeSignals) {
+      return undefined;
+    }
     return {
       id: `push_preview_fighter_${fighter.id}_${event.id}_${preset}`,
       deliveryKind: "signal",
@@ -198,6 +275,8 @@ function buildPreviewItemForFighterPreset(
         : `${fighter.name} fights in 1 hour on ${event.title}.`,
     timezone,
     nowMs,
+    scheduledWindow,
+    dueLookbackMs,
   });
 }
 
@@ -210,6 +289,8 @@ function buildScheduledPreviewItem({
   body,
   timezone,
   nowMs,
+  scheduledWindow,
+  dueLookbackMs,
 }: {
   event: EventSummary;
   preset: AlertPresetKey;
@@ -219,6 +300,8 @@ function buildScheduledPreviewItem({
   body: string;
   timezone: string;
   nowMs: number;
+  scheduledWindow: "future" | "due" | "all";
+  dueLookbackMs: number;
 }): PushPreviewItem | undefined {
   const offsetMs = scheduledOffsetsByReason[preset];
   if (offsetMs == null) {
@@ -226,7 +309,14 @@ function buildScheduledPreviewItem({
   }
 
   const scheduledFor = new Date(new Date(event.scheduledStartUtc).getTime() - offsetMs);
-  if (scheduledFor.getTime() <= nowMs) {
+  if (
+    !matchesScheduledWindow(
+      scheduledFor.getTime(),
+      nowMs,
+      scheduledWindow,
+      dueLookbackMs,
+    )
+  ) {
     return undefined;
   }
 
@@ -246,6 +336,23 @@ function buildScheduledPreviewItem({
   };
 }
 
+function matchesScheduledWindow(
+  scheduledForMs: number,
+  nowMs: number,
+  scheduledWindow: "future" | "due" | "all",
+  dueLookbackMs: number,
+): boolean {
+  switch (scheduledWindow) {
+    case "future":
+      return scheduledForMs > nowMs;
+    case "due":
+      return scheduledForMs <= nowMs && scheduledForMs >= nowMs - dueLookbackMs;
+    case "all":
+    default:
+      return true;
+  }
+}
+
 function resolvePushDeliveryReadiness(
   state: PersistedUserState,
 ): PushDeliveryReadiness {
@@ -259,6 +366,16 @@ function resolvePushDeliveryReadiness(
     return "token_missing";
   }
   return "ready";
+}
+
+function buildPushSettingsSummary(state: PersistedUserState) {
+  return {
+    pushEnabled: state.push.pushEnabled,
+    permissionStatus: state.push.permissionStatus,
+    tokenPlatform: state.push.tokenPlatform,
+    tokenRegistered: Boolean(state.push.tokenValue),
+    tokenUpdatedAt: state.push.tokenUpdatedAt,
+  };
 }
 
 function comparePushPreviewItems(a: PushPreviewItem, b: PushPreviewItem): number {

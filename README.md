@@ -94,6 +94,7 @@ Fully or functionally done in the current codebase:
 - watch-provider enrichment now keeps source-vs-default provenance and prefers the strongest verified provider when duplicate labels collide
 - push-notification foundations are now in place across backend persistence, API routes, mobile API parsing, a first settings status surface, and a new backend push-preview planning endpoint
 - backend push delivery now supports `disabled`, `log`, and `firebase` provider modes, with safe misconfiguration reporting and a test-send route visible in settings
+- backend reminder dispatch foundations now exist for due scheduled reminders, including due-preview and dispatch routes plus in-process duplicate suppression for repeated worker runs
 - offline UX now includes cached-response timestamps, stale-data warnings, visible saved-data notices across home, following, alerts, detail, rankings, and push-settings surfaces, pull-to-refresh where it matters, and background prefetch for key read surfaces after a successful home sync
 - monetization now has a first real state foundation for premium/ad tier, ad consent, analytics consent, and quiet-ad eligibility
 
@@ -253,6 +254,7 @@ Not in the first release:
 - Added native iOS/Android push permission bridges plus a backend push-preview endpoint that shows which reminders FightCue would schedule or signal for the current device state
 - Added iOS remote-notification background mode configuration so simulator/device builds are closer to real push-ready app settings
 - Added backend push-provider status and test-send support, including Firebase-ready configuration paths and visible push-provider readiness in settings
+- Added backend due-reminder planning and dispatch support so FightCue can preview and execute scheduled reminder batches instead of only sending isolated test pushes
 
 ### 2026-03-30
 

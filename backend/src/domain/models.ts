@@ -170,11 +170,35 @@ export type PushPreviewSummary = PushSettingsSummary & {
   items: PushPreviewItem[];
 };
 
+export type PushDueSummary = PushSettingsSummary & {
+  deliveryReadiness: PushDeliveryReadiness;
+  dueCount: number;
+  lookbackMinutes: number;
+  items: PushPreviewItem[];
+};
+
 export type PushProviderStatusSummary = {
   provider: PushProviderType;
   supportsDelivery: boolean;
   configured: boolean;
   description: string;
+};
+
+export type PushDispatchItemSummary = PushPreviewItem & {
+  dispatched: boolean;
+  providerMessageId?: string;
+  message: string;
+};
+
+export type PushDispatchSummary = {
+  provider: PushProviderType;
+  deliveryReadiness: PushDeliveryReadiness;
+  dueCount: number;
+  dispatchedCount: number;
+  skippedCount: number;
+  lookbackMinutes: number;
+  items: PushDispatchItemSummary[];
+  message: string;
 };
 
 export type PushTestDispatchSummary = {

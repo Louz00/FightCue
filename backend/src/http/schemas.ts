@@ -10,6 +10,11 @@ export const sourceQuerySchema = z.object({
     .optional(),
 });
 
+export const pushDispatchQuerySchema = z.object({
+  now: z.string().datetime().optional(),
+  lookbackMinutes: z.coerce.number().int().min(1).max(240).optional(),
+});
+
 export const preferencesSchema = z.object({
   language: z.enum(["en", "nl", "es"]).optional(),
   timezone: z.string().trim().min(3).max(60).optional(),

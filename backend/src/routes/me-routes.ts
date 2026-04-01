@@ -15,6 +15,7 @@ import {
   followSchema,
   monetizationSettingsSchema,
   preferencesSchema,
+  pushDispatchQuerySchema,
   pushSettingsSchema,
   pushTokenSchema,
 } from "../http/schemas.js";
@@ -98,10 +99,36 @@ export function registerMeRoutes(
     return buildRuntimePushPreview(state);
   });
 
+  app.get<{ Querystring: { now?: string; lookbackMinutes?: number } }>(
+    "/v1/me/push/due",
+    async (request) => {
+      const deviceId = resolveDeviceId(request);
+      const query = pushDispatchQuerySchema.parse(request.query);
+      return pushDeliveryService.previewDueNotificationsForDevice(deviceId, {
+        now: query.now ? new Date(query.now) : undefined,
+        lookbackMs:
+          query.lookbackMinutes == null ? undefined : query.lookbackMinutes * 60 * 1000,
+      });
+    },
+  );
+
   app.post("/v1/me/push/test", async (request) => {
     const deviceId = resolveDeviceId(request);
     return pushDeliveryService.sendTestNotificationForDevice(deviceId);
   });
+
+  app.post<{ Querystring: { now?: string; lookbackMinutes?: number } }>(
+    "/v1/me/push/dispatch-due",
+    async (request) => {
+      const deviceId = resolveDeviceId(request);
+      const query = pushDispatchQuerySchema.parse(request.query);
+      return pushDeliveryService.dispatchDueNotificationsForDevice(deviceId, {
+        now: query.now ? new Date(query.now) : undefined,
+        lookbackMs:
+          query.lookbackMinutes == null ? undefined : query.lookbackMinutes * 60 * 1000,
+      });
+    },
+  );
 
   app.get("/v1/me/monetization", async (request) => {
     const deviceId = resolveDeviceId(request);

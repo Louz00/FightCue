@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -59,15 +60,21 @@ class FightCueApi {
     DeviceIdentityStore? deviceIdentityStore,
     ApiResponseCacheStore? responseCacheStore,
     String? baseUrl,
+    int maxReadRetries = 2,
+    Duration retryBaseDelay = const Duration(milliseconds: 250),
   })  : _client = client ?? http.Client(),
         _deviceIdentityStore = deviceIdentityStore ?? DeviceIdentityStore(),
         _responseCacheStore = responseCacheStore ?? ApiResponseCacheStore(),
-        _baseUrlOverride = baseUrl;
+        _baseUrlOverride = baseUrl,
+        _maxReadRetries = maxReadRetries,
+        _retryBaseDelay = retryBaseDelay;
 
   final http.Client _client;
   final DeviceIdentityStore _deviceIdentityStore;
   final ApiResponseCacheStore _responseCacheStore;
   final String? _baseUrlOverride;
+  final int _maxReadRetries;
+  final Duration _retryBaseDelay;
   static const Duration _requestTimeout = Duration(seconds: 8);
 
   String get _baseUrl {
@@ -104,14 +111,16 @@ class FightCueApi {
     }
 
     try {
-      final response = await _client
-          .post(
-            Uri.parse('$_baseUrl/v1/session/bootstrap'),
-            headers: {
-              'x-fightcue-device-id': deviceId,
-            },
-          )
-          .timeout(_requestTimeout);
+      final response = await _sendReadRequestWithRetry(
+        () => _client
+            .post(
+              Uri.parse('$_baseUrl/v1/session/bootstrap'),
+              headers: {
+                'x-fightcue-device-id': deviceId,
+              },
+            )
+            .timeout(_requestTimeout),
+      );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw StateError(
@@ -155,12 +164,15 @@ class FightCueApi {
     final uri = Uri.parse('$_baseUrl$path');
 
     try {
-      final response = await _client
-          .get(
-            uri,
-            headers: await _defaultHeaders(),
-          )
-          .timeout(_requestTimeout);
+      final headers = await _defaultHeaders();
+      final response = await _sendReadRequestWithRetry(
+        () => _client
+            .get(
+              uri,
+              headers: headers,
+            )
+            .timeout(_requestTimeout),
+      );
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw StateError('GET $path failed: ${response.statusCode}');
@@ -530,6 +542,47 @@ class FightCueApi {
       logUiError(error, stackTrace, context: 'api.prefetch.$path');
     }
   }
+
+  Future<http.Response> _sendReadRequestWithRetry(
+    Future<http.Response> Function() send,
+  ) async {
+    Object? lastError;
+
+    for (var attempt = 0; attempt <= _maxReadRetries; attempt += 1) {
+      try {
+        final response = await send();
+        if (_shouldRetryStatusCode(response.statusCode) &&
+            attempt < _maxReadRetries) {
+          await Future<void>.delayed(_delayForRetry(attempt));
+          continue;
+        }
+        return response;
+      } catch (error) {
+        lastError = error;
+        if (!_shouldRetryError(error) || attempt >= _maxReadRetries) {
+          rethrow;
+        }
+        await Future<void>.delayed(_delayForRetry(attempt));
+      }
+    }
+
+    throw lastError ?? StateError('Read request failed without a response');
+  }
+
+  Duration _delayForRetry(int attempt) {
+    final multiplier = 1 << attempt;
+    return Duration(
+      microseconds: _retryBaseDelay.inMicroseconds * multiplier,
+    );
+  }
+}
+
+bool _shouldRetryStatusCode(int statusCode) {
+  return statusCode == 408 || statusCode == 425 || statusCode == 429 || statusCode >= 500;
+}
+
+bool _shouldRetryError(Object error) {
+  return error is TimeoutException || error is http.ClientException;
 }
 
 String _pushPermissionStatusToApi(PushPermissionStatus status) {

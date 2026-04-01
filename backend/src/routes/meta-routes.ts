@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 
+import { isDemoSeedStateEnabled } from "../config/demo-state.js";
 import { isSignedDeviceTokenRequired } from "../config/device-auth.js";
+import { requestBodyLimitBytes } from "../config/http.js";
 import { isDatabaseRequired, isFileStateFallbackAllowed } from "../config/persistence.js";
 import { sampleLeaderboards } from "../domain/mock-data.js";
 import { fightCueRuntimeProfile } from "../domain/models.js";
@@ -26,6 +28,8 @@ export function registerMetaRoutes(
     databaseRequired: isDatabaseRequired(),
     fileFallbackAllowed: isFileStateFallbackAllowed(),
     signedDeviceTokenRequired: isSignedDeviceTokenRequired(),
+    demoSeedStateEnabled: isDemoSeedStateEnabled(),
+    requestBodyLimitBytes: requestBodyLimitBytes(),
     pushWorker: pushDispatchWorker.getStatus(),
   }));
 
@@ -40,6 +44,8 @@ export function registerMetaRoutes(
     databaseRequired: isDatabaseRequired(),
     fileFallbackAllowed: isFileStateFallbackAllowed(),
     signedDeviceTokenRequired: isSignedDeviceTokenRequired(),
+    demoSeedStateEnabled: isDemoSeedStateEnabled(),
+    requestBodyLimitBytes: requestBodyLimitBytes(),
     pushWorker: pushDispatchWorker.getStatus(),
     runtimeProfile: fightCueRuntimeProfile,
   }));

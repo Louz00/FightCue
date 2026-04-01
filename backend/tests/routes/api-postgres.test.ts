@@ -9,6 +9,8 @@ import { issueSignedDeviceToken } from "../../src/http/session-token.js";
 import { RuntimeService } from "../../src/services/runtime-service.js";
 import { createPostgresUserStateStore } from "../../src/store/user-state-store.js";
 
+process.env.NODE_ENV = "test";
+
 test("health and meta endpoints expose persistence backend information", async () => {
   const { app, close } = await createPostgresTestApp();
 
@@ -20,6 +22,7 @@ test("health and meta endpoints expose persistence backend information", async (
     assert.equal(healthResponse.statusCode, 200);
     assert.equal(healthResponse.json().persistenceBackend, "postgres");
     assert.equal(healthResponse.json().pushWorker.enabled, false);
+    assert.equal(typeof healthResponse.json().requestBodyLimitBytes, "number");
 
     const metaResponse = await app.inject({
       method: "GET",
@@ -28,6 +31,7 @@ test("health and meta endpoints expose persistence backend information", async (
     assert.equal(metaResponse.statusCode, 200);
     assert.equal(metaResponse.json().persistenceBackend, "postgres");
     assert.equal(metaResponse.json().pushWorker.enabled, false);
+    assert.equal(metaResponse.json().demoSeedStateEnabled, false);
 
     const bootstrapResponse = await app.inject({
       method: "POST",
@@ -39,6 +43,64 @@ test("health and meta endpoints expose persistence backend information", async (
     assert.equal(bootstrapResponse.statusCode, 200);
     assert.equal(bootstrapResponse.json().deviceId, "device_route_test");
     assert.equal(typeof bootstrapResponse.json().deviceToken, "string");
+  } finally {
+    await close();
+  }
+});
+
+test("request body limit rejects oversized payloads before route handling", async () => {
+  const previousBodyLimit = process.env.FIGHTCUE_MAX_REQUEST_BODY_BYTES;
+  process.env.FIGHTCUE_MAX_REQUEST_BODY_BYTES = "256";
+  const { app, close } = await createPostgresTestApp();
+
+  try {
+    const response = await app.inject({
+      method: "PUT",
+      url: "/v1/me/preferences",
+      headers: {
+        "x-fightcue-device-id": "device_body_limit",
+      },
+      payload: {
+        language: "en",
+        viewingCountryCode: "NL",
+        oversizedNotes: "x".repeat(2_000),
+      },
+    });
+
+    assert.equal(response.statusCode, 413);
+  } finally {
+    await close();
+    restoreEnv("FIGHTCUE_MAX_REQUEST_BODY_BYTES", previousBodyLimit);
+  }
+});
+
+test("rate limiting scopes bursts per device instead of only per IP", async () => {
+  const { app, close } = await createPostgresTestApp();
+
+  try {
+    let limitedResponseStatus = 200;
+    for (let index = 0; index < 101; index += 1) {
+      const response = await app.inject({
+        method: "GET",
+        url: "/health",
+        headers: {
+          "x-fightcue-device-id": "device_rate_limit_a",
+        },
+      });
+      limitedResponseStatus = response.statusCode;
+    }
+
+    assert.equal(limitedResponseStatus, 429);
+
+    const differentDeviceResponse = await app.inject({
+      method: "GET",
+      url: "/health",
+      headers: {
+        "x-fightcue-device-id": "device_rate_limit_b",
+      },
+    });
+
+    assert.equal(differentDeviceResponse.statusCode, 200);
   } finally {
     await close();
   }
@@ -569,15 +631,17 @@ test("firebase push provider reports misconfiguration without crashing test send
 
 async function createPostgresTestApp({
   configureRuntimeService,
+  seedDemoContent = true,
 }: {
   configureRuntimeService?: (runtimeService: RuntimeService) => void;
+  seedDemoContent?: boolean;
 } = {}) {
   const db = newDb();
   const { Pool } = db.adapters.createPg();
   const pool = new Pool();
   const stateStore = await createPostgresUserStateStore(
     sampleUserProfile,
-    createInitialUserState(),
+    createInitialUserState({ seedDemoContent }),
     pool,
   );
   const runtimeService = createOfflineRuntimeService(stateStore);

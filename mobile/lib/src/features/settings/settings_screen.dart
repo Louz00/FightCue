@@ -12,6 +12,8 @@ import '../../models/domain_models.dart';
 import '../../widgets/editorial_ui.dart';
 
 part 'settings_content.dart';
+part 'settings_monetization.dart';
+part 'settings_push.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({

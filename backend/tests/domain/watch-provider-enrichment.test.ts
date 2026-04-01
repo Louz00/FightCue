@@ -82,3 +82,59 @@ test("enrichWatchProvidersForCountry falls back to the official page when no sou
   assert.equal(providers[0]?.label, "Custom Org event page");
   assert.equal(providers[0]?.verificationSource, "official_page_fallback");
 });
+
+test("enrichWatchProvidersForCountry lets a stronger event override beat a weak source provider", () => {
+  const event = sampleEvents.find((entry) => entry.id === "evt_ufc_327");
+  assert.ok(event);
+
+  const providers = enrichWatchProvidersForCountry(
+    {
+      ...event,
+      watchProviders: [
+        {
+          label: "ESPN+ PPV",
+          kind: "ppv",
+          countryCode: "US",
+          confidence: "unknown",
+          lastVerifiedAt: "2026-04-01T08:00:00.000Z",
+          verificationSource: "source",
+        },
+      ],
+    },
+    "US",
+  );
+  const provider = providers.find((entry) => entry.label === "ESPN+ PPV");
+
+  assert.ok(provider);
+  assert.equal(provider.verificationSource, "event_override");
+  assert.equal(provider.confidence, "likely");
+});
+
+test("enrichWatchProvidersForCountry keeps a strong source provider over a weaker override", () => {
+  const event = sampleEvents.find((entry) => entry.id === "evt_ufc_327");
+  assert.ok(event);
+
+  const providers = enrichWatchProvidersForCountry(
+    {
+      ...event,
+      watchProviders: [
+        {
+          label: "ESPN+ PPV",
+          kind: "ppv",
+          countryCode: "US",
+          confidence: "confirmed",
+          lastVerifiedAt: "2026-04-01T08:00:00.000Z",
+          verificationSource: "source",
+          providerUrl: "https://plus.espn.com/ufc-327",
+        },
+      ],
+    },
+    "US",
+  );
+  const provider = providers.find((entry) => entry.label === "ESPN+ PPV");
+
+  assert.ok(provider);
+  assert.equal(provider.verificationSource, "source");
+  assert.equal(provider.confidence, "confirmed");
+  assert.equal(provider.providerUrl, "https://plus.espn.com/ufc-327");
+});

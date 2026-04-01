@@ -219,13 +219,17 @@ Why next:
 Current note:
 - the first maintainability tranche is now in place: `event_detail_screen.dart`, `settings_screen.dart`, `alerts_screen.dart`, `rankings_screen.dart`, `following_screen.dart`, `app_shell.dart`, the home feed widget layer, `fighter_avatar.dart`, `editorial_ui.dart`, `app_strings.dart`, and the main API/domain model libraries have been split into smaller screen/controller, part, or helper files
 - `fightcue_api.dart` has also been lightened by extracting pure mapping helpers while keeping the public client surface stable for tests
+- `event_detail_content.dart` is now also split into focused header, bouts, and info part files
+- `settings_content.dart` is now split into dedicated monetization and push part files
 - the next mobile maintainability targets are the remaining oversized rendering surfaces and any API/client helpers that can still be extracted without coupling the test fakes to internal implementation details
 
 Current note:
 - local cached fallback is now in place for GET-based API responses
+- GET-based API reads now also retry with exponential backoff for transient failures, without retrying mutation calls
 - global Flutter error handling is now wired in
 - home, event detail, and fighter profile now surface saved-preview state explicitly when cached data is being shown
 - mobile tests now cover API cache detection, cached home rendering, optimistic event-follow rollback, event-detail cache/fallback behavior, and the rankings/following/alerts screens
+- mobile tests now also cover settings mutation rollback for monetization and push-state updates
 - the shared editorial UI layer is now dark-mode aware on its core cards and controls instead of assuming light-only surfaces
 - event detail, fighter profile, and settings now use more context-aware surfaces and semantics instead of relying on light-only defaults
 - home widgets and the main navigation now also use stronger semantics and more context-aware dark-mode styling on smaller controls and cards
@@ -268,3 +272,8 @@ Current note:
 - offline UX is now clearer in the mobile app with saved-data timestamps, stale-data warnings, visible cached notices across home/following/alerts/detail/rankings/push-settings, pull-to-refresh, background prefetch, and stale auto-refresh on key read surfaces, but it still needs broader screen coverage and deeper proactive refresh behavior
 - billing/ad foundations now exist for monetization state, ad/analytics consent, quiet-ad eligibility, settings controls, a reserved home-feed ad slot, backend billing/ad provider-status routes, mobile store-readiness checks, and AdMob SDK wiring, but real store checkout and live ad credentials are still open
 - the app now also has a dedicated premium/paywall screen linked from settings, so store readiness and the current plan state are visible in-product even before checkout wiring is connected
+- request-ID correlation is now in place for backend requests, and responses now echo `x-request-id` for easier traceability
+- runtime snapshots and source preview loads now emit structured cache hit/miss and inflight-reuse log events
+- slow runtime resolutions and slow source preview loads now emit explicit slow-path log events for easier staging/production diagnosis
+- repo-side release assets are now in place as branded FightCue icon and splash source files, with native Android and iOS launcher/launch assets populated from them
+- the remaining release-integration work is now mostly external: Firebase/APNs console setup, store product creation, entitlement verification, live AdMob IDs, and physical-device validation

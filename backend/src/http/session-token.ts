@@ -66,10 +66,32 @@ function sign(encodedPayload: string): string {
 }
 
 function sessionSigningSecret(): string {
-  return (
+  const configuredSecret =
     process.env.FIGHTCUE_SESSION_SIGNING_SECRET ??
-    process.env.SESSION_SIGNING_SECRET ??
-    DEFAULT_SIGNING_SECRET
+    process.env.SESSION_SIGNING_SECRET;
+
+  if (configuredSecret && configuredSecret.length > 0) {
+    return configuredSecret;
+  }
+
+  if (allowsLocalFallbackSigningSecret()) {
+    return DEFAULT_SIGNING_SECRET;
+  }
+
+  throw new Error(
+    "FightCue requires FIGHTCUE_SESSION_SIGNING_SECRET outside local development/test environments.",
+  );
+}
+
+function allowsLocalFallbackSigningSecret(): boolean {
+  const nodeEnv = (process.env.NODE_ENV ?? "development").toLowerCase();
+  if (nodeEnv === "test") {
+    return true;
+  }
+
+  return (
+    nodeEnv === "development" &&
+    process.env.FIGHTCUE_ALLOW_INSECURE_LOCAL_SIGNING_SECRET === "true"
   );
 }
 
@@ -85,4 +107,3 @@ export function sanitizeDeviceId(input: string): string {
   const normalized = input.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_");
   return normalized.length > 0 ? normalized : "device_demo_local";
 }
-

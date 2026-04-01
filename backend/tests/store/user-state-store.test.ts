@@ -1,5 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 
 import { newDb } from "pg-mem";
 
@@ -8,6 +11,7 @@ import {
   createUserStateStore,
   type PersistedUserState,
 } from "../../src/store/user-state-store.js";
+import { FileUserStateStore } from "../../src/store/file-user-state-store.js";
 import {
   sampleEvents,
   sampleFollowedFighters,
@@ -117,5 +121,25 @@ test("postgres user state store persists preferences, follows, and alerts per de
     assert.equal(secondDevice.push.pushEnabled, false);
   } finally {
     await store.close?.();
+  }
+});
+
+test("file user state store surfaces corrupted JSON instead of silently reseeding it", async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), "fightcue-file-store-"));
+  const previousCwd = process.cwd();
+  process.chdir(tempDir);
+  await mkdir(path.join(tempDir, ".data", "users"), { recursive: true });
+  await writeFile(
+    path.join(tempDir, ".data", "users", "device_alpha.json"),
+    "{ invalid json",
+    "utf8",
+  );
+
+  const store = new FileUserStateStore(initialState);
+
+  try {
+    await assert.rejects(() => store.read("device_alpha"));
+  } finally {
+    process.chdir(previousCwd);
   }
 });

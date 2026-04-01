@@ -1,3 +1,5 @@
+import { getRequestId } from "./request-context.js";
+
 type LogLevel = "info" | "warn" | "error";
 
 type LogPayload = Record<string, unknown>;
@@ -15,11 +17,13 @@ export function logError(event: string, payload: LogPayload = {}): void {
 }
 
 function emitStructuredLog(level: LogLevel, event: string, payload: LogPayload): void {
+  const requestId = getRequestId();
   const serialized = JSON.stringify({
     service: "fightcue-backend",
     event,
     level,
     timestamp: new Date().toISOString(),
+    ...(requestId ? { requestId } : {}),
     ...payload,
   });
 

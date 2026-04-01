@@ -53,6 +53,7 @@ Last updated: 2026-04-01
 - The backend now keeps a short-lived cached runtime snapshot per device state, so repeated home loads do not rebuild every live source on every request
 - Signed anonymous session bootstrap is now available, so mobile clients can move beyond plain spoofable device IDs
 - Mobile API requests now use request timeouts, cached GET fallback, and lightweight diagnostics logging
+- Mobile API read requests now use bounded retry with exponential backoff for transient network and server failures, without retrying mutation calls
 - Global Flutter error handling is now wired in as a first app-level safety net
 - Backend linting and a first GitHub Actions CI workflow are now in place
 - A first system-level dark-mode foundation is now wired into the Flutter app theme, with additional per-screen polish still needed
@@ -64,6 +65,7 @@ Last updated: 2026-04-01
 - The mobile shell now surfaces saved-preview state explicitly when home or detail views fall back to cached data
 - Mobile widget coverage now includes cached home load, optimistic follow rollback, and event-detail cache/fallback behavior
 - Mobile widget coverage now also includes rankings, alerts, and following screens so the main read-only user flows have direct UI regression coverage
+- Mobile widget coverage now also includes settings mutation rollback paths, so failed billing/push saves are tested for safe optimistic-state recovery
 - Shared editorial UI is now dark-mode aware on core surfaces instead of hardcoding light-only card colors
 - Accessibility semantics are now added on key headings, action pills, ranking toggles, and settings preference chips
 - Accessibility semantics now also cover navigation, home filter chips, home event/fighter cards, and more detail/settings interaction surfaces
@@ -139,7 +141,7 @@ Partly done:
 - extra feature breadth before hardening: some has been added, but it has been kept deliberately bounded
 - dark mode: the shared UI layer plus following, event detail, fighter profile, settings, app shell, and key home widgets are improved, but the app is not fully polished screen by screen yet
 - accessibility: the pass now also covers navigation, home filter chips, home cards, reminder chips, event/fighter detail interactions, and settings controls, but a full screen-by-screen pass is still open
-- mobile maintainability: `event_detail_screen.dart`, `settings_screen.dart`, `alerts_screen.dart`, `rankings_screen.dart`, `following_screen.dart`, `app_shell.dart`, the home feed widget layer, `fighter_avatar.dart`, `editorial_ui.dart`, `app_strings.dart`, and the main API/domain model libraries are now split into smaller files, and `fightcue_api.dart` now delegates pure mapping work to a helper layer, but several large feature/widget files still need the same treatment
+- mobile maintainability: `event_detail_screen.dart` plus `event_detail_content.dart`, `settings_screen.dart` plus `settings_content.dart`, `alerts_screen.dart`, `rankings_screen.dart`, `following_screen.dart`, `app_shell.dart`, the home feed widget layer, `fighter_avatar.dart`, `editorial_ui.dart`, `app_strings.dart`, and the main API/domain model libraries are now split into smaller files, and `fightcue_api.dart` now delegates pure mapping work to a helper layer, but several large feature/widget files still need the same treatment
 
 Still open:
 
@@ -156,13 +158,212 @@ Still open:
 - connect real provider-backed push delivery on top of the new push foundation and preview-planning layer
 - connect the existing premium/paywall flow to real store billing, entitlement verification, and live ad delivery
 
+### Consolidated review snapshot
+
+Consolidated app review date: 2026-04-01
+
+This section combines the latest external review with a fresh local validation pass on the current codebase.
+
+Current local validation:
+
+- `npm run lint`: pass
+- `npm test`: pass (`66/66`)
+- `flutter analyze`: pass
+- `flutter test`: pass
+
+Consolidated codebase snapshot:
+
+- Backend: Node.js + TypeScript + Fastify 5
+- Mobile: Flutter for Android and iOS
+- Infra: PostgreSQL 16 for local development, Firebase-ready mobile push wiring, GitHub Actions CI for backend and Flutter
+- Live sources in the repo today:
+  - UFC
+  - GLORY
+  - ONE Championship
+  - Matchroom
+  - Queensberry
+  - Top Rank
+  - PBC
+  - Golden Boy
+  - BOXXER
+  - ESPN Boxing schedule
+  - ESPN Boxing rankings
+  - Ring boxing ratings
+
+Consolidated scoring snapshot:
+
+- Architecture: `8/10`
+- Data ingestion: `9/10`
+- Security: `7/10`
+- Mobile UX code: `7/10`
+- Testing: `8/10`
+- State management: `6/10`
+- Production readiness: `6/10`
+- Documentation: `8/10`
+- Weighted overall snapshot: `7.4 / 10`
+
+What the current review confirms:
+
+- the backend architecture is strong and modular, with source registry, per-source TTLs, timeout fallbacks, multi-layer caching, and solid parser validation coverage
+- the mobile app has a stronger reliability base than a typical MVP, including offline cache fallback, optimistic updates with rollback, push foundations, monetization foundations, and broader widget coverage
+- the main remaining gaps are no longer “can FightCue work?”, but “is it hardened enough to release and maintain safely?”
+
+Most important current findings:
+
+1. Session-token security is improved, but still too dependent on local-environment assumptions.
+   - The current fallback secret in local/dev should only exist as an explicit opt-in, never as an accidental default.
+2. New anonymous users are still seeded from demo-style sample state.
+   - That is useful for prototyping, but it should not remain the default behavior for release-like onboarding.
+3. File-state fallback is safer than before, but still forgiving in ways that can hide data corruption or configuration mistakes.
+4. Watch-provider coverage is materially better, but still partially heuristic and partly override-driven rather than fully source- or data-backed.
+5. Large mobile content files remain the biggest maintainability pressure point.
+   - `event_detail_content.dart`
+   - `settings_content.dart`
+   - `home_event_cards.dart`
+6. Billing, ads, and push are now wired in-repo, but not fully production-ready until the external Apple/Google/Firebase pieces are connected.
+7. Observability is improved, but still not yet a full production operations layer.
+   - request-ID correlation now exists across HTTP handling and structured backend logs
+   - runtime/source cache hits and misses now emit structured log events
+   - slow runtime/source operations now emit structured slow-path log events
+   - what is still missing is aggregation, dashboards, alerting, and broader operational metrics
+
 ### Immediate priorities
 
-1. Continue the accessibility pass across the remaining screens and navigation/detail edge cases
-2. Finish dark-mode polish across the remaining screens and smaller widgets
-3. Finish provider-backed push delivery with real Firebase/APNs credentials and end-to-end device validation
-4. Broaden offline UX further across additional screens and stale-state scenarios
-5. Connect the existing premium/paywall and quiet-ad foundations to real store/ad integrations once the core experience is stable
+This is the strict execution order that best fits the current state of the app.
+
+#### Batch 1: Security and request hardening
+
+Priority: critical
+
+- enforce `FIGHTCUE_SESSION_SIGNING_SECRET` for every non-local deployment path and make accidental weak fallback harder to ship
+- add Fastify request body size limits and review upload/request ceilings
+- tighten the remaining non-strict device-auth paths so stateful behavior depends on signed identity by default
+- stop seeding new users from demo-style follows/events outside explicit demo mode
+
+Expected outcome:
+
+- safer default production posture
+- less spoofing/configuration risk
+- cleaner anonymous-user onboarding
+
+Status:
+
+- completed in the current codebase
+- fresh anonymous users now start clean by default unless `FIGHTCUE_SEED_DEMO_STATE=true`
+- the backend now enforces a request body size limit
+- insecure local signing fallback now requires explicit opt-in in development
+- signed device tokens remain enforceable and are now the documented default path
+
+#### Batch 2: Backend maintainability and API shape
+
+Priority: high
+
+- split `me-routes.ts` into focused route modules such as profile/preferences, follows/alerts, push, and monetization
+- continue reducing large backend files that still combine orchestration and domain policy
+- harden file-fallback behavior so corruption/config problems are visible instead of silently reseeded
+- review remaining large source adapters for more shared parsing structure where it lowers maintenance cost safely
+
+Expected outcome:
+
+- easier backend navigation
+- lower regression risk when extending user-state and push/monetization flows
+
+Status:
+
+- completed in the current codebase
+- `me-routes.ts` is now split into focused modules for profile, follows, alerts, and push
+- file-state fallback is now stricter for corrupted JSON instead of silently reseeding over unreadable state
+- the backend route surface is easier to extend without reopening one large mixed-responsibility file
+
+#### Batch 3: Mobile maintainability
+
+Priority: high
+
+- split the largest screen/content files into smaller focused parts and helper surfaces
+- continue the same cleanup for `home_event_cards.dart` and any remaining oversized content layers
+- keep API/data/model boundaries clean so `FightCueApi` stays transport-focused rather than becoming a second domain layer
+
+Expected outcome:
+
+- smaller review surface for UI changes
+- faster iteration on design and behavior without destabilizing entire screens
+
+Status:
+
+- completed for the current highest-pressure files
+- `event_detail_content.dart` is now split into dedicated header, bouts, and info part files
+- `settings_content.dart` is now split into dedicated monetization and push part files
+- earlier cleanup of home, alerts, rankings, following, shell, editorial UI, app strings, and API/domain model files remains in place
+
+#### Batch 4: Reliability and mobile quality
+
+Priority: high
+
+- add retry with exponential backoff to the mobile API client for suitable read flows
+- expand mobile widget and state tests around error cases, retries, mutation flows, and stale-cache transitions
+- continue the offline UX pass with clearer stale-state rules and broader screen coverage
+- finish the remaining accessibility and dark-mode passes as part of routine screen hardening
+
+Expected outcome:
+
+- better resilience on weak networks
+- stronger confidence in core user flows
+- more predictable offline and cached behavior
+
+Status:
+
+- completed in the current codebase
+- safe read-only retry with exponential backoff is now built into `FightCueApi`
+- settings mutation rollback paths now have direct widget coverage
+- cached/stale-state behavior is already covered across home, alerts, detail, rankings, and settings surfaces from the earlier offline UX tranche
+
+#### Batch 5: Observability and source confidence
+
+Priority: medium
+
+- add request-ID correlation across backend request handling and downstream logs
+- add cache hit/miss logging or metrics for source previews and runtime snapshots
+- add slow-operation logging for expensive source loads and heavy user-state operations
+- keep adding source tests as soon as new adapters land, rather than catching up later
+- continue reducing heuristic watch-provider assumptions over time
+
+Expected outcome:
+
+- easier production debugging
+- earlier detection of parser drift and source regressions
+- better confidence in country-specific watch data
+
+Status:
+
+- completed in the current codebase
+- backend requests now generate or reuse `x-request-id` values and echo them back on responses
+- structured backend logs now include request correlation IDs when request context exists
+- runtime snapshots and source previews now emit structured cache hit, cache miss, and inflight-reuse log events
+- slow runtime resolutions and slow source preview loads now emit explicit structured slow-operation log events
+- parser/source coverage remains backed by direct tests for the live source set already in the repo
+
+#### Batch 6: External release integrations
+
+Priority: medium
+
+- connect real Firebase/APNs credentials and validate on physical devices
+- connect real StoreKit / Play Billing products and backend entitlement verification
+- connect real AdMob app IDs and banner units, then validate consent-aware quiet ad behavior
+- finish app icon, splash, and final release metadata once the runtime integrations are stable
+
+Expected outcome:
+
+- the app moves from “repo-ready” to “store-ready”
+- monetization and push flows become real rather than preview/foundation-only
+
+Status:
+
+- repo-side tranche completed in the current codebase
+- FightCue now includes branded app-icon and splash source assets under `mobile/assets/branding/`
+- Android launcher icons and launch splash assets are now wired to FightCue-branded native resources in the repo
+- iOS app display naming now uses `FightCue`, and the iOS icon/launch image asset set is now populated from the branded source assets
+- billing, ads, and push already expose provider-readiness state in-product and through backend routes
+- the remaining work is now external-console work: real Firebase/APNs credentials, real store products, real AdMob IDs, entitlement validation, and physical-device verification
 
 ### Mobile push setup
 
@@ -188,6 +389,13 @@ For the new repo-side billing/ad wiring, these are the next local configuration 
   - `--dart-define=FIGHTCUE_IOS_BANNER_AD_UNIT_ID=...`
 
 The store runtime check now uses the Flutter `in_app_purchase` stack, and the reserved quiet-ad slot now uses `google_mobile_ads` when a banner unit ID is available.
+
+Repo-side release assets are now prepared as well:
+
+- source branding assets live in `mobile/assets/branding/app_icon.png` and `mobile/assets/branding/splash_logo.png`
+- Android native launcher icons now use the FightCue-branded icon files
+- Android launch backgrounds now render the branded splash logo on the editorial off-white background
+- iOS app icons and launch images are now populated from the same branded source assets
 
 For Apple delivery, there is still one final console/signing step outside this repo:
 

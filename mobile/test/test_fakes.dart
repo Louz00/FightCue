@@ -14,6 +14,7 @@ class FakeFightCueApi extends FightCueApi {
     this.monetizationFetchResult,
     this.monetizationResult,
     this.monetizationError,
+    this.updateMonetizationError,
     this.pushFetchResult,
     this.pushSettingsResult,
     this.pushPreviewResult,
@@ -22,6 +23,7 @@ class FakeFightCueApi extends FightCueApi {
     this.billingProviderStatus,
     this.adProviderStatus,
     this.pushError,
+    this.updatePushSettingsError,
     this.alertsFetchResult,
     this.alertsResult,
     this.alertsError,
@@ -41,6 +43,7 @@ class FakeFightCueApi extends FightCueApi {
   final ApiFetchResult<MonetizationSnapshot>? monetizationFetchResult;
   final MonetizationSnapshot? monetizationResult;
   final Object? monetizationError;
+  final Object? updateMonetizationError;
   final ApiFetchResult<PushSettingsSnapshot>? pushFetchResult;
   final PushSettingsSnapshot? pushSettingsResult;
   final ApiFetchResult<PushPreviewSnapshot>? pushPreviewResult;
@@ -49,6 +52,7 @@ class FakeFightCueApi extends FightCueApi {
   final BillingProviderStatusSnapshot? billingProviderStatus;
   final AdProviderStatusSnapshot? adProviderStatus;
   final Object? pushError;
+  final Object? updatePushSettingsError;
   final ApiFetchResult<AlertsSnapshot>? alertsFetchResult;
   final AlertsSnapshot? alertsResult;
   final Object? alertsError;
@@ -127,8 +131,8 @@ class FakeFightCueApi extends FightCueApi {
     bool? analyticsConsent,
     bool? adConsentGranted,
   }) async {
-    if (monetizationError != null) {
-      throw monetizationError!;
+    if (updateMonetizationError != null) {
+      throw updateMonetizationError!;
     }
     final current = monetizationResult ??
         monetizationFetchResult?.data ??
@@ -147,6 +151,27 @@ class FakeFightCueApi extends FightCueApi {
       quietAdsEnabled: current.premiumState == PremiumState.free &&
           (!current.adConsentRequired ||
               (adConsentGranted ?? current.adConsentGranted)),
+    );
+  }
+
+  @override
+  Future<PushSettingsSnapshot> updatePushSettings({
+    bool? pushEnabled,
+    PushPermissionStatus? permissionStatus,
+  }) async {
+    if (updatePushSettingsError != null) {
+      throw updatePushSettingsError!;
+    }
+    final current = pushSettingsResult ??
+        pushFetchResult?.data ??
+        const PushSettingsSnapshot(
+          pushEnabled: false,
+          permissionStatus: PushPermissionStatus.unknown,
+          tokenRegistered: false,
+        );
+    return current.copyWith(
+      pushEnabled: pushEnabled,
+      permissionStatus: permissionStatus,
     );
   }
 

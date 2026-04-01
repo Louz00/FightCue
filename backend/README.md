@@ -57,7 +57,7 @@ You can also explicitly disable strict database mode with:
 FIGHTCUE_REQUIRE_DATABASE=false
 ```
 
-If you want stateful routes to reject raw device-id fallback and require signed device tokens after bootstrap, set:
+Signed device tokens are now the recommended default for local and production-like runs:
 
 ```bash
 FIGHTCUE_REQUIRE_SIGNED_DEVICE_TOKEN=true
@@ -69,7 +69,33 @@ Outside local development and test runs, also set:
 FIGHTCUE_SESSION_SIGNING_SECRET=replace-with-a-long-random-secret
 ```
 
-FightCue now only allows the old local fallback signing secret in `development` and `test`.
+FightCue now only allows the old local fallback signing secret in `test`, or in `development` when you explicitly opt into it:
+
+```bash
+FIGHTCUE_ALLOW_INSECURE_LOCAL_SIGNING_SECRET=true
+```
+
+Fresh anonymous users now start clean by default. If you explicitly want seeded demo follows/events for a throwaway local demo, set:
+
+```bash
+FIGHTCUE_SEED_DEMO_STATE=true
+```
+
+The API also enforces a request body size limit. The default is 256 KB, and you can override it with:
+
+```bash
+FIGHTCUE_MAX_REQUEST_BODY_BYTES=262144
+```
+
+The `/v1/me/*` surface is now split into focused route modules for:
+
+- profile and preferences
+- follows
+- alerts
+- push
+- monetization/provider readiness
+
+The file-state fallback is also stricter now: a missing user file still seeds a fresh anonymous state, but a corrupted JSON payload is logged and surfaced instead of being silently overwritten.
 
 If `initdb` fails in a restricted environment with a shared-memory error, run the same commands in your normal macOS terminal instead of a sandboxed session.
 

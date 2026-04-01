@@ -103,6 +103,57 @@ void main() {
     expect(second.isFromCache, isTrue);
   });
 
+  test('fetchHomeResult retries transient read failures before succeeding', () async {
+    var homeCallCount = 0;
+    final client = MockClient((request) async {
+      if (request.url.path == '/v1/session/bootstrap') {
+        return http.Response(
+          jsonEncode({
+            'deviceId': 'device_test',
+            'deviceToken': 'signed-token',
+          }),
+          200,
+        );
+      }
+
+      if (request.url.path == '/v1/home') {
+        homeCallCount += 1;
+        if (homeCallCount < 3) {
+          return http.Response('temporary outage', 503);
+        }
+
+        return http.Response(
+          jsonEncode({
+            'profile': {
+              'language': 'en',
+              'timezone': 'Europe/Amsterdam',
+              'viewingCountryCode': 'NL',
+              'premiumState': 'free',
+              'isAnonymous': true,
+            },
+            'fighters': [],
+            'events': [],
+          }),
+          200,
+        );
+      }
+
+      return http.Response('{}', 404);
+    });
+
+    final api = FightCueApi(
+      client: client,
+      maxReadRetries: 2,
+      retryBaseDelay: Duration.zero,
+    );
+
+    final result = await api.fetchHomeResult();
+
+    expect(result.isFromCache, isFalse);
+    expect(result.data.languageCode, 'en');
+    expect(homeCallCount, 3);
+  });
+
   test('fetchPushSettings and updatePushSettings parse push foundation state', () async {
     final requests = <http.Request>[];
     final client = MockClient((request) async {

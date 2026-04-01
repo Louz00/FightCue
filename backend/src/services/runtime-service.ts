@@ -21,11 +21,13 @@ import {
   type LeaderboardSourceKey,
 } from "../sources/source-registry.js";
 import type { UserStateStore } from "../store/user-state-store.js";
-import { logError, logWarn } from "../observability/logger.js";
+import { logError, logInfo, logWarn } from "../observability/logger.js";
 
 const RUNTIME_DATA_CACHE_TTL_MS = 20 * 1000;
 const RUNTIME_SOURCE_TIMEOUT_MS = 6 * 1000;
 const MAX_RUNTIME_CACHE_ENTRIES = 25;
+const SLOW_RUNTIME_RESOLUTION_MS = 1_500;
+const SLOW_SOURCE_PREVIEW_LOAD_MS = 1_200;
 
 type ResolvedRuntimeData = {
   profile: UserProfile;
@@ -69,23 +71,43 @@ export class RuntimeService {
 
     this.pruneRuntimeDataCache();
     if (cached && cached.expiresAt > Date.now()) {
+      logInfo("runtime.cache_hit", {
+        cache: "runtime_snapshot",
+      });
       return cached.data;
     }
 
     const inFlight = this.runtimeDataInFlight.get(cacheKey);
     if (inFlight) {
+      logInfo("runtime.inflight_reused", {
+        cache: "runtime_snapshot",
+      });
       return inFlight;
     }
 
+    logInfo("runtime.cache_miss", {
+      cache: "runtime_snapshot",
+    });
+
+    const startedAt = Date.now();
     const pending = this.resolveRuntimeDataFresh(state)
       .then(({ data, timedOutSourceCount }) => {
         this.runtimeDataInFlight.delete(cacheKey);
+        const durationMs = Date.now() - startedAt;
         if (timedOutSourceCount === 0) {
           this.runtimeDataCache.set(cacheKey, {
             expiresAt: Date.now() + RUNTIME_DATA_CACHE_TTL_MS,
             data,
           });
           this.pruneRuntimeDataCache();
+        }
+        if (durationMs >= SLOW_RUNTIME_RESOLUTION_MS) {
+          logWarn("runtime.resolve_slow", {
+            durationMs,
+            timedOutSourceCount,
+            eventCount: data.events.length,
+            fighterCount: data.fighters.length,
+          });
         }
         return data;
       })
@@ -224,14 +246,25 @@ export class RuntimeService {
 
     const cached = this.previewCache.get(source);
     if (cached && cached.cacheKey === cacheKey && cached.expiresAt > Date.now()) {
+      logInfo("source.preview_cache_hit", {
+        source,
+      });
       return cached.preview as T;
     }
 
     const inFlight = this.previewInFlight.get(source);
     if (inFlight && inFlight.cacheKey === cacheKey) {
+      logInfo("source.preview_inflight_reused", {
+        source,
+      });
       return inFlight.promise as Promise<T>;
     }
 
+    logInfo("source.preview_cache_miss", {
+      source,
+    });
+
+    const startedAt = Date.now();
     const pending = loader()
       .then((preview) => {
         this.previewInFlight.delete(source);
@@ -240,6 +273,14 @@ export class RuntimeService {
           expiresAt: Date.now() + ttlMs,
           preview,
         });
+        const durationMs = Date.now() - startedAt;
+        if (durationMs >= SLOW_SOURCE_PREVIEW_LOAD_MS) {
+          logWarn("source.preview_load_slow", {
+            source,
+            durationMs,
+            ttlMs,
+          });
+        }
         return preview;
       })
       .catch((error) => {

@@ -332,6 +332,34 @@ function chooseBetterProvider(
     return candidate;
   }
 
+  const existingVerification = verificationSourceRank(existing.verificationSource);
+  const candidateVerification = verificationSourceRank(candidate.verificationSource);
+  const existingConfidence = confidenceRank(existing.confidence);
+  const candidateConfidence = confidenceRank(candidate.confidence);
+
+  if (
+    existing.verificationSource === "source" &&
+    existing.confidence === "unknown" &&
+    candidate.verificationSource === "event_override" &&
+    candidate.confidence !== "unknown"
+  ) {
+    return candidate;
+  }
+
+  if (
+    candidateConfidence >= existingConfidence + 2 &&
+    candidateVerification >= existingVerification - 1
+  ) {
+    return candidate;
+  }
+
+  if (
+    candidateVerification >= existingVerification + 1 &&
+    candidateConfidence >= existingConfidence - 1
+  ) {
+    return candidate;
+  }
+
   const existingScore = providerScore(existing);
   const candidateScore = providerScore(candidate);
 

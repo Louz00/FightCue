@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:fightcue_mobile/src/core/app_strings.dart';
+import 'package:fightcue_mobile/src/data/ad_runtime.dart';
+import 'package:fightcue_mobile/src/data/crash_reporting.dart';
 import 'package:fightcue_mobile/src/data/fightcue_api.dart';
 import 'package:fightcue_mobile/src/data/push_delivery_service.dart';
 import 'package:fightcue_mobile/src/features/settings/settings_screen.dart';
@@ -43,6 +45,17 @@ void main() {
               snapshotListenable: ValueNotifier(sampleHomeSnapshot),
               strings: AppStrings.of(context),
               billingRuntimeService: FakeBillingRuntimeService(),
+              adRuntimeLoader: () async => const AdRuntimeStatus(
+                sdkReady: true,
+                appIdConfigured: true,
+                bannerUnitId: 'test-banner',
+                usingTestIdentifiers: true,
+              ),
+              crashReportingLoader: () async => const CrashReportingStatus(
+                available: false,
+                providerLabel: 'disabled',
+                reason: 'Firebase is not initialized for this runtime.',
+              ),
               pushDeliveryService: FakePushDeliveryService(
                 statusResult: const PushDeviceRegistrationResult(
                   permissionStatus: PushPermissionStatus.prompt,
@@ -62,6 +75,11 @@ void main() {
     expect(find.text('Ads allowed'), findsOneWidget);
     expect(find.text('Analytics off'), findsOneWidget);
     expect(find.text('Quiet ads active'), findsOneWidget);
+    expect(find.textContaining('Google test IDs are active'), findsOneWidget);
+    expect(
+      find.textContaining('Crash reporting provider: disabled'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Settings screen shows cached billing notice when using saved monetization state', (
@@ -105,6 +123,17 @@ void main() {
               snapshotListenable: ValueNotifier(sampleHomeSnapshot),
               strings: AppStrings.of(context),
               billingRuntimeService: FakeBillingRuntimeService(),
+              adRuntimeLoader: () async => const AdRuntimeStatus(
+                sdkReady: true,
+                appIdConfigured: true,
+                bannerUnitId: 'test-banner',
+                usingTestIdentifiers: true,
+              ),
+              crashReportingLoader: () async => const CrashReportingStatus(
+                available: false,
+                providerLabel: 'disabled',
+                reason: 'Firebase is not initialized for this runtime.',
+              ),
               pushDeliveryService: FakePushDeliveryService(
                 statusResult: const PushDeviceRegistrationResult(
                   permissionStatus: PushPermissionStatus.prompt,
@@ -154,6 +183,17 @@ void main() {
               snapshotListenable: ValueNotifier(sampleHomeSnapshot),
               strings: AppStrings.of(context),
               billingRuntimeService: FakeBillingRuntimeService(),
+              adRuntimeLoader: () async => const AdRuntimeStatus(
+                sdkReady: true,
+                appIdConfigured: true,
+                bannerUnitId: 'test-banner',
+                usingTestIdentifiers: true,
+              ),
+              crashReportingLoader: () async => const CrashReportingStatus(
+                available: false,
+                providerLabel: 'disabled',
+                reason: 'Firebase is not initialized for this runtime.',
+              ),
               pushDeliveryService: FakePushDeliveryService(
                 statusResult: const PushDeviceRegistrationResult(
                   permissionStatus: PushPermissionStatus.prompt,
@@ -214,6 +254,17 @@ void main() {
               snapshotListenable: ValueNotifier(sampleHomeSnapshot),
               strings: AppStrings.of(context),
               billingRuntimeService: FakeBillingRuntimeService(),
+              adRuntimeLoader: () async => const AdRuntimeStatus(
+                sdkReady: true,
+                appIdConfigured: true,
+                bannerUnitId: 'test-banner',
+                usingTestIdentifiers: true,
+              ),
+              crashReportingLoader: () async => const CrashReportingStatus(
+                available: false,
+                providerLabel: 'disabled',
+                reason: 'Firebase is not initialized for this runtime.',
+              ),
               pushDeliveryService: FakePushDeliveryService(
                 statusResult: const PushDeviceRegistrationResult(
                   permissionStatus: PushPermissionStatus.prompt,
@@ -276,6 +327,17 @@ void main() {
               snapshotListenable: ValueNotifier(sampleHomeSnapshot),
               strings: AppStrings.of(context),
               billingRuntimeService: FakeBillingRuntimeService(),
+              adRuntimeLoader: () async => const AdRuntimeStatus(
+                sdkReady: true,
+                appIdConfigured: true,
+                bannerUnitId: 'test-banner',
+                usingTestIdentifiers: true,
+              ),
+              crashReportingLoader: () async => const CrashReportingStatus(
+                available: false,
+                providerLabel: 'disabled',
+                reason: 'Firebase is not initialized for this runtime.',
+              ),
               pushDeliveryService: FakePushDeliveryService(
                 statusResult: const PushDeviceRegistrationResult(
                   permissionStatus: PushPermissionStatus.prompt,

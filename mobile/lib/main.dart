@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'src/app.dart';
 import 'src/core/runtime/app_diagnostics.dart';
 import 'src/data/ad_runtime.dart';
+import 'src/data/crash_reporting.dart';
 import 'src/data/firebase_runtime.dart';
 
 Future<void> main() async {
@@ -14,6 +15,7 @@ Future<void> main() async {
       WidgetsFlutterBinding.ensureInitialized();
 
       await ensureFirebaseMessagingReady();
+      await ensureCrashReportingReady();
       await ensureAdMobReady();
 
       FlutterError.onError = (details) {

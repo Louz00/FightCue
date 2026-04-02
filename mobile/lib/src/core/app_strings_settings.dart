@@ -213,6 +213,32 @@ extension AppStringsSettings on AppStrings {
         nl: '$providerLabel is ${configured ? 'geconfigureerd' : 'nog niet volledig geconfigureerd'} voor FightCue. Banner-readiness is ${bannerConfigured ? 'beschikbaar' : 'nog zonder unit IDs'}.',
         es: '$providerLabel esta ${configured ? 'configurado' : 'todavia no completamente configurado'} para FightCue. La disponibilidad del banner esta ${bannerConfigured ? 'lista' : 'todavia sin unit IDs'}.',
       );
+  String adRuntimeStatusBody({
+    required bool sdkReady,
+    required bool usingTestIdentifiers,
+    required bool bannerReady,
+  }) =>
+      _pick(
+        en:
+            'Local ad runtime is ${sdkReady ? 'ready' : 'not ready'} on this device. ${usingTestIdentifiers ? 'Google test IDs are active for safe local testing.' : 'FightCue is using configured production ad IDs.'} Banner rendering is ${bannerReady ? 'available' : 'still unavailable'}.',
+        nl:
+            'De lokale advertentie-runtime is ${sdkReady ? 'klaar' : 'nog niet klaar'} op dit apparaat. ${usingTestIdentifiers ? "Google test-ID's zijn actief voor veilig lokaal testen." : "FightCue gebruikt geconfigureerde productie-ad-ID's."} Bannerweergave is ${bannerReady ? 'beschikbaar' : 'nog niet beschikbaar'}.',
+        es:
+            'La ejecucion local de anuncios esta ${sdkReady ? 'lista' : 'todavia no lista'} en este dispositivo. ${usingTestIdentifiers ? 'Los IDs de prueba de Google estan activos para pruebas locales seguras.' : 'FightCue usa IDs de anuncios de produccion configurados.'} La visualizacion del banner esta ${bannerReady ? 'disponible' : 'todavia no disponible'}.',
+      );
+  String crashReportingStatusBody({
+    required String providerLabel,
+    required bool available,
+    String? reason,
+  }) =>
+      _pick(
+        en:
+            'Crash reporting provider: $providerLabel. Runtime collection is ${available ? 'available' : 'disabled for this build/runtime'}${reason != null && reason.isNotEmpty ? ' ($reason)' : ''}.',
+        nl:
+            'Crash-reportingprovider: $providerLabel. Runtime-verzameling is ${available ? 'beschikbaar' : 'uitgeschakeld voor deze build/runtime'}${reason != null && reason.isNotEmpty ? ' ($reason)' : ''}.',
+        es:
+            'Proveedor de informes de fallos: $providerLabel. La recopilacion en tiempo de ejecucion esta ${available ? 'disponible' : 'desactivada para esta build/runtime'}${reason != null && reason.isNotEmpty ? ' ($reason)' : ''}.',
+      );
   String get freePlanLabel => _pick(
         en: 'Free tier',
         nl: 'Gratis tier',

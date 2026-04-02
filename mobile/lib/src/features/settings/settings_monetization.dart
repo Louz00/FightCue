@@ -6,6 +6,8 @@ class _MonetizationCard extends StatefulWidget {
     required this.strings,
     required this.snapshot,
     this.billingRuntimeService,
+    this.adRuntimeLoader,
+    this.crashReportingLoader,
     this.onChanged,
   });
 
@@ -13,6 +15,8 @@ class _MonetizationCard extends StatefulWidget {
   final AppStrings strings;
   final HomeSnapshot snapshot;
   final BillingRuntimeService? billingRuntimeService;
+  final Future<AdRuntimeStatus> Function()? adRuntimeLoader;
+  final Future<CrashReportingStatus> Function()? crashReportingLoader;
   final ValueChanged<MonetizationSnapshot>? onChanged;
 
   @override
@@ -30,6 +34,8 @@ class _MonetizationCardState extends State<_MonetizationCard> {
   BillingProviderStatusSnapshot? _billingProviderStatus;
   BillingRuntimeStatus? _billingRuntimeStatus;
   AdProviderStatusSnapshot? _adProviderStatus;
+  AdRuntimeStatus? _adRuntimeStatus;
+  CrashReportingStatus? _crashReportingStatus;
 
   @override
   void initState() {
@@ -54,6 +60,10 @@ class _MonetizationCardState extends State<_MonetizationCard> {
           await (widget.billingRuntimeService ?? BillingRuntimeService()).getStatus(
         billingProviderStatus.productIds,
       );
+      final adRuntimeStatus =
+          await (widget.adRuntimeLoader ?? ensureAdMobReady)();
+      final crashReportingStatus =
+          await (widget.crashReportingLoader ?? ensureCrashReportingReady)();
       if (!mounted) {
         return;
       }
@@ -62,6 +72,8 @@ class _MonetizationCardState extends State<_MonetizationCard> {
         _billingProviderStatus = billingProviderStatus;
         _billingRuntimeStatus = billingRuntimeStatus;
         _adProviderStatus = adProviderStatus;
+        _adRuntimeStatus = adRuntimeStatus;
+        _crashReportingStatus = crashReportingStatus;
         _hasError = false;
         _usingCachedFallback = result.isFromCache;
         _lastSyncedAt = result.lastSyncedAt;
@@ -318,6 +330,51 @@ class _MonetizationCardState extends State<_MonetizationCard> {
                         configured: _adProviderStatus!.configured,
                         bannerConfigured:
                             _adProviderStatus!.bannerUnitConfigured,
+                      ),
+                      style: TextStyle(
+                        color: AppColors.textSecondaryFor(context),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+                if (_adRuntimeStatus != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceAltFor(context),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      strings.adRuntimeStatusBody(
+                        sdkReady: _adRuntimeStatus!.sdkReady,
+                        usingTestIdentifiers:
+                            _adRuntimeStatus!.usingTestIdentifiers,
+                        bannerReady: _adRuntimeStatus!.bannerReady,
+                      ),
+                      style: TextStyle(
+                        color: AppColors.textSecondaryFor(context),
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+                if (_crashReportingStatus != null) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceAltFor(context),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      strings.crashReportingStatusBody(
+                        providerLabel: _crashReportingStatus!.providerLabel,
+                        available: _crashReportingStatus!.available,
+                        reason: _crashReportingStatus!.reason,
                       ),
                       style: TextStyle(
                         color: AppColors.textSecondaryFor(context),

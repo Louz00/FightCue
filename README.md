@@ -71,6 +71,9 @@ Last updated: 2026-04-01
 - Accessibility semantics now also cover navigation, home filter chips, home event/fighter cards, and more detail/settings interaction surfaces
 - Billing and quiet-ad foundations now exist across backend routes, mobile API parsing, settings consent controls, and a reserved quiet-ad slot in the home feed for free users
 - Billing provider status and ad-network status are now exposed through the backend, and the mobile app now has repo-side StoreKit/Play Billing readiness checks plus AdMob SDK wiring for the reserved quiet-ad slot
+- Mobile crash-reporting foundations are now wired for Firebase Crashlytics, with graceful no-op behavior when Firebase runtime config is missing
+- Mobile ad initialization now uses safer dev/test defaults, including official Google test AdMob identifiers for local builds when real IDs are not configured
+- Mobile settings now surface runtime safety status for ads and crash reporting, so local builds make it clear when Google test IDs or no-op crash collection are active
 - Firebase Messaging is now wired into the mobile app as the primary Android/iOS push-token path, with the earlier native permission bridge kept as a safe fallback when Firebase config is missing
 - The iOS app target now aligns with Firebase Messaging requirements at iOS 15, so simulator builds stay compatible with the new push stack
 - Session-token signing now requires an explicit `FIGHTCUE_SESSION_SIGNING_SECRET` outside local development/test environments instead of silently falling back to a shared default secret
@@ -97,6 +100,56 @@ Last updated: 2026-04-01
    - finish provider-backed push
    - deepen billing/quiet-ads and store readiness
    - completed in-repo with a dedicated premium/paywall surface, settings entry point, backend-driven monetization state, and store-readiness messaging; external store credentials and real checkout wiring remain
+
+### Fighter data direction
+
+FightCue should support richer fighter identity surfaces, but in a way that keeps data quality and likeness risk under control.
+
+Tale of the tape direction:
+
+- add a dedicated fighter-profile data layer for commonly expected combat-sports fields:
+  - height
+  - reach
+  - weight class
+  - stance
+  - age or date of birth
+  - nationality
+  - record
+  - selected performance context such as finish rate, ranking context, or recent form
+- every field should carry source-aware metadata where possible:
+  - `value`
+  - `sourceLabel`
+  - `lastUpdatedAt`
+  - optional `confidence` or `verificationState`
+- missing data should stay explicitly unknown instead of being guessed
+- cached fighter-profile data should refresh opportunistically:
+  - on fighter-profile open
+  - on follow/save actions for that fighter
+  - on a slower periodic backend refresh for fighters a user follows
+- the UI should show a lightweight `last updated` or `saved details` timestamp when fighter data is stale or cached
+
+Avatar direction:
+
+- fighter avatars should remain original, deterministic, and stylized rather than photo-derived
+- avatar generation may use broad non-unique buckets such as:
+  - skin-tone range
+  - hair-length category
+  - facial-hair yes/no or coarse type
+  - head-shape category
+  - accent colors and outfit cues
+- avatar generation should not aim for close portrait likeness and should avoid unique identity markers such as:
+  - tattoos
+  - scars
+  - exact hairlines
+  - realistic face proportions tied to a known person
+  - direct photo tracing or image-to-avatar derivation
+- the product goal is `combat identity vibe`, not `recognizable real-person likeness`
+
+Practical product rule:
+
+- tale of the tape: yes, and it should become a first-class refreshable fighter-data surface
+- stylized system avatars: yes, as the safe default
+- realistic or photo-derived fighter portraits: no, unless FightCue later has explicit rights or commissioned illustration rights for that usage
 
 ### Implementation status
 
@@ -131,6 +184,11 @@ Fully or functionally done in the current codebase:
 - monetization now has a first real state foundation for premium/ad tier, ad consent, analytics consent, and quiet-ad eligibility
 - the app now includes a dedicated premium/paywall screen, reachable from settings, so the current plan state, premium value, and store-readiness path are visible before real checkout wiring lands
 - the paywall and settings surfaces now also show backend billing/ad provider readiness, while the mobile app checks local store availability and can render an AdMob-backed banner slot when unit IDs are configured
+- mobile crash reporting now has a provider foundation via Firebase Crashlytics, but production DSN/project validation is still part of the external release setup
+- mobile runtime safety is now explicit across environments:
+  - development and simulator builds use official Google AdMob test identifiers when real ad IDs are absent
+  - release builds stay dependent on real configured billing/ad/Firebase credentials instead of silently pretending to be production-ready
+  - settings shows whether ads are running in safe local test mode and whether crash reporting is active or intentionally disabled for the current runtime
 
 Partly done:
 

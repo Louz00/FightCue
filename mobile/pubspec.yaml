@@ -12,6 +12,7 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   firebase_core: ^4.3.0
+  firebase_crashlytics: ^5.0.4
   firebase_messaging: ^16.0.4
   google_mobile_ads: ^7.0.0
   in_app_purchase: ^3.2.3

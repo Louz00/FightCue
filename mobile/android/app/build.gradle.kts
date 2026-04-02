@@ -9,6 +9,11 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+val androidAdMobAppId =
+    System.getenv("FIGHTCUE_ADMOB_APP_ID_ANDROID")
+        ?.takeIf { it.isNotBlank() }
+        ?: "ca-app-pub-3940256099942544~3347511713"
+
 android {
     namespace = "com.lou.fightcue"
     compileSdk = flutter.compileSdkVersion
@@ -32,6 +37,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["admobAppId"] = androidAdMobAppId
     }
 
     buildTypes {

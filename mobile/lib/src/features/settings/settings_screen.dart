@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import '../../core/app_strings.dart';
 import '../../core/runtime/app_diagnostics.dart';
 import '../../core/theme/app_theme.dart';
+import '../../data/ad_runtime.dart';
 import '../../data/billing_runtime.dart';
+import '../../data/crash_reporting.dart';
 import '../../data/fightcue_api.dart';
 import '../../data/push_delivery_service.dart';
 import '../paywall/paywall_screen.dart';
@@ -23,6 +25,8 @@ class SettingsScreen extends StatelessWidget {
     required this.strings,
     this.onMonetizationChanged,
     this.billingRuntimeService,
+    this.adRuntimeLoader,
+    this.crashReportingLoader,
     this.pushDeliveryService,
     required this.onSelectLanguage,
     required this.onSelectViewingCountry,
@@ -33,6 +37,8 @@ class SettingsScreen extends StatelessWidget {
   final AppStrings strings;
   final ValueChanged<MonetizationSnapshot>? onMonetizationChanged;
   final BillingRuntimeService? billingRuntimeService;
+  final Future<AdRuntimeStatus> Function()? adRuntimeLoader;
+  final Future<CrashReportingStatus> Function()? crashReportingLoader;
   final PushDeliveryService? pushDeliveryService;
   final ValueChanged<String> onSelectLanguage;
   final ValueChanged<String> onSelectViewingCountry;
@@ -68,6 +74,8 @@ class SettingsScreen extends StatelessWidget {
               strings: strings,
               snapshot: snapshot,
               billingRuntimeService: billingRuntimeService,
+              adRuntimeLoader: adRuntimeLoader,
+              crashReportingLoader: crashReportingLoader,
               onChanged: onMonetizationChanged,
             ),
             const SizedBox(height: 20),

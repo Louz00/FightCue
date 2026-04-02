@@ -10,6 +10,7 @@ import {
 import type {
   InitialPersistedUserState,
   PersistedUserState,
+  StoreHealthSnapshot,
   UserStateStore,
 } from "./user-state-store.types.js";
 
@@ -204,6 +205,13 @@ export class FileUserStateStore implements UserStateStore {
     }
 
     return deviceIds;
+  }
+
+  async getHealth(): Promise<StoreHealthSnapshot> {
+    return {
+      status: "healthy",
+      backend: this.backendLabel,
+    };
   }
 
   private async write(deviceId: string, state: PersistedUserState): Promise<void> {

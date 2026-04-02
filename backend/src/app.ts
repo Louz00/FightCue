@@ -130,6 +130,7 @@ export async function buildApp({
   registerMetaRoutes(app, {
     stateStore: resolvedStateStore,
     pushDispatchWorker,
+    runtimeService: resolvedRuntimeService,
   });
   registerEventRoutes(app, {
     stateStore: resolvedStateStore,

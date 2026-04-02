@@ -1,126 +1,14 @@
 import type {
   EventSummary,
   ProviderConfidence,
-  ProviderKind,
   ProviderVerificationSource,
   WatchProviderSummary,
 } from "./models.js";
-
-type WatchProviderSeed = {
-  label: string;
-  kind: ProviderKind;
-  confidence: ProviderConfidence;
-  providerUrl?: string;
-  verificationSource: ProviderVerificationSource;
-};
-
-const EVENT_WATCH_PROVIDER_OVERRIDES: Record<
-  string,
-  Record<string, WatchProviderSeed[]>
-> = {
-  evt_matchroom_taylor_serrano: {
-    NL: [
-      {
-        label: "DAZN",
-        kind: "streaming",
-        confidence: "confirmed",
-        verificationSource: "event_override",
-      },
-    ],
-    GB: [
-      {
-        label: "DAZN",
-        kind: "streaming",
-        confidence: "confirmed",
-        verificationSource: "event_override",
-      },
-    ],
-    US: [
-      {
-        label: "DAZN",
-        kind: "streaming",
-        confidence: "likely",
-        verificationSource: "event_override",
-      },
-    ],
-    ES: [
-      {
-        label: "DAZN",
-        kind: "streaming",
-        confidence: "confirmed",
-        verificationSource: "event_override",
-      },
-    ],
-  },
-  evt_ufc_327: {
-    NL: [
-      {
-        label: "Discovery+ / TNT Sports",
-        kind: "streaming",
-        confidence: "likely",
-        verificationSource: "event_override",
-      },
-    ],
-    GB: [
-      {
-        label: "TNT Sports Box Office",
-        kind: "ppv",
-        confidence: "likely",
-        verificationSource: "event_override",
-      },
-    ],
-    US: [
-      {
-        label: "ESPN+ PPV",
-        kind: "ppv",
-        confidence: "likely",
-        verificationSource: "event_override",
-      },
-    ],
-    ES: [
-      {
-        label: "UFC Fight Pass",
-        kind: "streaming",
-        confidence: "unknown",
-        verificationSource: "event_override",
-      },
-    ],
-  },
-  evt_ufc_fight_night_moicano_duncan: {
-    NL: [
-      {
-        label: "UFC Fight Pass",
-        kind: "streaming",
-        confidence: "likely",
-        verificationSource: "event_override",
-      },
-    ],
-    GB: [
-      {
-        label: "TNT Sports",
-        kind: "tv",
-        confidence: "likely",
-        verificationSource: "event_override",
-      },
-    ],
-    US: [
-      {
-        label: "ESPN+",
-        kind: "streaming",
-        confidence: "likely",
-        verificationSource: "event_override",
-      },
-    ],
-    ES: [
-      {
-        label: "UFC Fight Pass",
-        kind: "streaming",
-        confidence: "unknown",
-        verificationSource: "event_override",
-      },
-    ],
-  },
-};
+import {
+  EVENT_WATCH_PROVIDER_OVERRIDES,
+  organizationDefaultProvidersForCountry,
+  type WatchProviderSeed,
+} from "./watch-provider-config.js";
 
 export function enrichWatchProvidersForCountry(
   event: EventSummary,
@@ -199,100 +87,10 @@ function defaultProvidersForOrganization(
   event: EventSummary,
   countryCode: string,
 ): WatchProviderSeed[] {
-  switch (event.organizationSlug) {
-    case "ufc":
-      return countryCode === "US"
-        ? [
-            {
-              label: "ESPN+",
-              kind: "streaming",
-              confidence: "likely",
-              verificationSource: "organization_default",
-            },
-          ]
-        : [
-            {
-              label: "UFC Fight Pass",
-              kind: "streaming",
-              confidence: "unknown",
-              verificationSource: "organization_default",
-            },
-          ];
-    case "glory":
-      return [
-        {
-          label: "GLORY event page",
-          kind: "streaming",
-          confidence: "unknown",
-          verificationSource: "organization_default",
-        },
-      ];
-    case "one":
-      return [
-        {
-          label: "ONE event page",
-          kind: "streaming",
-          confidence: "unknown",
-          verificationSource: "organization_default",
-        },
-      ];
-    case "matchroom":
-      return [
-        {
-          label: "DAZN",
-          kind: "streaming",
-          confidence: "likely",
-          verificationSource: "organization_default",
-        },
-      ];
-    case "top_rank":
-      return [
-        {
-          label: "ESPN / ESPN+",
-          kind: "streaming",
-          confidence: "likely",
-          verificationSource: "organization_default",
-        },
-      ];
-    case "pbc":
-      return [
-        {
-          label: "PBC event page",
-          kind: "streaming",
-          confidence: "unknown",
-          verificationSource: "organization_default",
-        },
-      ];
-    case "golden_boy":
-      return [
-        {
-          label: "Golden Boy event page",
-          kind: "streaming",
-          confidence: "unknown",
-          verificationSource: "organization_default",
-        },
-      ];
-    case "queensberry":
-      return [
-        {
-          label: "Queensberry event page",
-          kind: "streaming",
-          confidence: "unknown",
-          verificationSource: "organization_default",
-        },
-      ];
-    case "boxxer":
-      return [
-        {
-          label: "BOXXER event page",
-          kind: "streaming",
-          confidence: "unknown",
-          verificationSource: "organization_default",
-        },
-      ];
-    default:
-      return [];
-  }
+  return organizationDefaultProvidersForCountry(
+    event.organizationSlug,
+    countryCode,
+  );
 }
 
 function normalizeSourceProviders(
@@ -402,5 +200,7 @@ function confidenceRank(confidence: ProviderConfidence): number {
       return 2;
     case "unknown":
       return 1;
+    default:
+      return 0;
   }
 }

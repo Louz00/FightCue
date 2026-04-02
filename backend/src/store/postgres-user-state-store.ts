@@ -1,6 +1,6 @@
 import { Pool, type PoolClient } from "pg";
 
-import { runSchemaMigrations } from "../db/migrations.js";
+import { getSchemaMigrationStatus, runSchemaMigrations } from "../db/migrations.js";
 import type {
   AlertPresetKey,
   PremiumState,
@@ -17,6 +17,7 @@ import {
 import type {
   InitialPersistedUserState,
   PersistedUserState,
+  StoreHealthSnapshot,
   UserStateStore,
 } from "./user-state-store.types.js";
 
@@ -193,6 +194,49 @@ export class PostgresUserStateStore implements UserStateStore {
     );
 
     return result.rows.map((row) => row.device_id);
+  }
+
+  async getHealth(): Promise<StoreHealthSnapshot> {
+    const startedAt = Date.now();
+    const poolWithStats = this.pool as Pool & {
+      totalCount?: number;
+      idleCount?: number;
+      waitingCount?: number;
+    };
+
+    try {
+      await this.pool.query("SELECT 1");
+      const migrations = await getSchemaMigrationStatus(this.pool);
+      return {
+        status: migrations.pendingCount === 0 ? "healthy" : "degraded",
+        backend: this.backendLabel,
+        database: {
+          connected: true,
+          latencyMs: Date.now() - startedAt,
+          pool: {
+            totalCount: poolWithStats.totalCount ?? null,
+            idleCount: poolWithStats.idleCount ?? null,
+            waitingCount: poolWithStats.waitingCount ?? null,
+          },
+          migrations,
+        },
+      };
+    } catch (error) {
+      return {
+        status: "degraded",
+        backend: this.backendLabel,
+        database: {
+          connected: false,
+          latencyMs: Date.now() - startedAt,
+          reason: error instanceof Error ? error.message : "Unknown database health error",
+          pool: {
+            totalCount: poolWithStats.totalCount ?? null,
+            idleCount: poolWithStats.idleCount ?? null,
+            waitingCount: poolWithStats.waitingCount ?? null,
+          },
+        },
+      };
+    }
   }
 
   async close(): Promise<void> {

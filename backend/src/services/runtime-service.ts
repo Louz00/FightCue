@@ -2,6 +2,8 @@ import type {
   EventSummary,
   FighterSummary,
   SourcePreview,
+  SourceHealthStatus,
+  SourceMode,
   UserProfile,
 } from "../domain/models.js";
 import {
@@ -51,6 +53,39 @@ type TimedRuntimeResolution = {
   timedOutSourceCount: number;
 };
 
+type RuntimeCacheCounters = {
+  hitCount: number;
+  missCount: number;
+  inflightReuseCount: number;
+};
+
+type SourceHealthSnapshot = {
+  source: string;
+  mode: SourceMode;
+  healthStatus: SourceHealthStatus;
+  itemCount: number;
+  warningCount: number;
+  fetchedAt: string;
+  observedAt: string;
+};
+
+export type RuntimeObservabilitySnapshot = {
+  runtimeSnapshotCache: RuntimeCacheCounters & {
+    entryCount: number;
+    inFlightCount: number;
+  };
+  sourcePreviewCache: RuntimeCacheCounters & {
+    entryCount: number;
+    inFlightCount: number;
+  };
+  sourceHealth: {
+    sourceCount: number;
+    degradedCount: number;
+    fallbackCount: number;
+    items: SourceHealthSnapshot[];
+  };
+};
+
 export class RuntimeService {
   constructor(private readonly stateStore: UserStateStore) {}
 
@@ -64,6 +99,17 @@ export class RuntimeService {
     }
   >();
   private readonly runtimeDataInFlight = new Map<string, Promise<ResolvedRuntimeData>>();
+  private readonly runtimeCacheCounters: RuntimeCacheCounters = {
+    hitCount: 0,
+    missCount: 0,
+    inflightReuseCount: 0,
+  };
+  private readonly sourcePreviewCacheCounters: RuntimeCacheCounters = {
+    hitCount: 0,
+    missCount: 0,
+    inflightReuseCount: 0,
+  };
+  private readonly sourceHealthBySource = new Map<string, SourceHealthSnapshot>();
 
   async resolveRuntimeData(state: Awaited<ReturnType<UserStateStore["read"]>>) {
     const cacheKey = buildRuntimeStateCacheKey(state);
@@ -71,6 +117,7 @@ export class RuntimeService {
 
     this.pruneRuntimeDataCache();
     if (cached && cached.expiresAt > Date.now()) {
+      this.runtimeCacheCounters.hitCount += 1;
       logInfo("runtime.cache_hit", {
         cache: "runtime_snapshot",
       });
@@ -79,12 +126,14 @@ export class RuntimeService {
 
     const inFlight = this.runtimeDataInFlight.get(cacheKey);
     if (inFlight) {
+      this.runtimeCacheCounters.inflightReuseCount += 1;
       logInfo("runtime.inflight_reused", {
         cache: "runtime_snapshot",
       });
       return inFlight;
     }
 
+    this.runtimeCacheCounters.missCount += 1;
     logInfo("runtime.cache_miss", {
       cache: "runtime_snapshot",
     });
@@ -201,6 +250,10 @@ export class RuntimeService {
       ),
     );
 
+    for (const preview of previews) {
+      this.recordSourceHealth(preview);
+    }
+
     logSourcePreviewIssues(previews);
 
     const mergedEvents = homeSourceDefinitions.reduce((currentEvents, definition, index) => {
@@ -246,6 +299,7 @@ export class RuntimeService {
 
     const cached = this.previewCache.get(source);
     if (cached && cached.cacheKey === cacheKey && cached.expiresAt > Date.now()) {
+      this.sourcePreviewCacheCounters.hitCount += 1;
       logInfo("source.preview_cache_hit", {
         source,
       });
@@ -254,12 +308,14 @@ export class RuntimeService {
 
     const inFlight = this.previewInFlight.get(source);
     if (inFlight && inFlight.cacheKey === cacheKey) {
+      this.sourcePreviewCacheCounters.inflightReuseCount += 1;
       logInfo("source.preview_inflight_reused", {
         source,
       });
       return inFlight.promise as Promise<T>;
     }
 
+    this.sourcePreviewCacheCounters.missCount += 1;
     logInfo("source.preview_cache_miss", {
       source,
     });
@@ -273,6 +329,7 @@ export class RuntimeService {
           expiresAt: Date.now() + ttlMs,
           preview,
         });
+        this.recordSourceHealth(preview);
         const durationMs = Date.now() - startedAt;
         if (durationMs >= SLOW_SOURCE_PREVIEW_LOAD_MS) {
           logWarn("source.preview_load_slow", {
@@ -294,6 +351,32 @@ export class RuntimeService {
     });
 
     return pending;
+  }
+
+  getObservabilitySnapshot(): RuntimeObservabilitySnapshot {
+    const sourceHealthItems = [...this.sourceHealthBySource.values()].sort((left, right) =>
+      left.source.localeCompare(right.source),
+    );
+
+    return {
+      runtimeSnapshotCache: {
+        ...this.runtimeCacheCounters,
+        entryCount: this.runtimeDataCache.size,
+        inFlightCount: this.runtimeDataInFlight.size,
+      },
+      sourcePreviewCache: {
+        ...this.sourcePreviewCacheCounters,
+        entryCount: this.previewCache.size,
+        inFlightCount: this.previewInFlight.size,
+      },
+      sourceHealth: {
+        sourceCount: sourceHealthItems.length,
+        degradedCount: sourceHealthItems.filter((item) => item.healthStatus === "degraded")
+          .length,
+        fallbackCount: sourceHealthItems.filter((item) => item.mode === "fallback").length,
+        items: sourceHealthItems,
+      },
+    };
   }
 
   private prunePreviewCache() {
@@ -418,6 +501,18 @@ export class RuntimeService {
       ],
       items: [],
     };
+  }
+
+  private recordSourceHealth(preview: SourcePreview<unknown>): void {
+    this.sourceHealthBySource.set(preview.source, {
+      source: preview.source,
+      mode: preview.mode,
+      healthStatus: preview.health.status,
+      itemCount: preview.itemCount,
+      warningCount: preview.warnings.length,
+      fetchedAt: preview.fetchedAt,
+      observedAt: new Date().toISOString(),
+    });
   }
 }
 

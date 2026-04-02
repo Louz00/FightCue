@@ -21,8 +21,26 @@ test("health and meta endpoints expose persistence backend information", async (
     });
     assert.equal(healthResponse.statusCode, 200);
     assert.equal(healthResponse.json().persistenceBackend, "postgres");
+    assert.equal(healthResponse.json().persistenceHealth.status, "healthy");
+    assert.equal(healthResponse.json().persistenceHealth.database.connected, true);
+    assert.equal(
+      healthResponse.json().persistenceHealth.database.migrations.appliedCount,
+      2,
+    );
+    assert.equal(
+      healthResponse.json().persistenceHealth.database.migrations.pendingCount,
+      0,
+    );
     assert.equal(healthResponse.json().pushWorker.enabled, false);
     assert.equal(typeof healthResponse.json().requestBodyLimitBytes, "number");
+    assert.equal(
+      healthResponse.json().runtimeObservability.runtimeSnapshotCache.missCount,
+      0,
+    );
+    assert.equal(
+      healthResponse.json().runtimeObservability.sourceHealth.sourceCount,
+      0,
+    );
 
     const metaResponse = await app.inject({
       method: "GET",
@@ -30,8 +48,18 @@ test("health and meta endpoints expose persistence backend information", async (
     });
     assert.equal(metaResponse.statusCode, 200);
     assert.equal(metaResponse.json().persistenceBackend, "postgres");
+    assert.equal(metaResponse.json().persistenceHealth.status, "healthy");
+    assert.equal(metaResponse.json().persistenceHealth.database.connected, true);
+    assert.equal(
+      metaResponse.json().persistenceHealth.database.migrations.latestAppliedMigration,
+      "002_user_push_devices.sql",
+    );
     assert.equal(metaResponse.json().pushWorker.enabled, false);
     assert.equal(metaResponse.json().demoSeedStateEnabled, false);
+    assert.equal(
+      metaResponse.json().runtimeObservability.sourcePreviewCache.entryCount,
+      0,
+    );
 
     const bootstrapResponse = await app.inject({
       method: "POST",
@@ -43,6 +71,42 @@ test("health and meta endpoints expose persistence backend information", async (
     assert.equal(bootstrapResponse.statusCode, 200);
     assert.equal(bootstrapResponse.json().deviceId, "device_route_test");
     assert.equal(typeof bootstrapResponse.json().deviceToken, "string");
+  } finally {
+    await close();
+  }
+});
+
+test("meta endpoints expose runtime cache counters and source health after home resolution", async () => {
+  const { app, close } = await createPostgresTestApp();
+
+  try {
+    const signedHeaders = {
+      "x-fightcue-device-id": "device_runtime_meta",
+      "x-fightcue-device-token": issueSignedDeviceToken("device_runtime_meta"),
+    };
+
+    const homeResponse = await app.inject({
+      method: "GET",
+      url: "/v1/home",
+      headers: signedHeaders,
+    });
+
+    assert.equal(homeResponse.statusCode, 200);
+
+    const metaResponse = await app.inject({
+      method: "GET",
+      url: "/v1/meta",
+    });
+
+    assert.equal(metaResponse.statusCode, 200);
+    assert.equal(
+      metaResponse.json().runtimeObservability.runtimeSnapshotCache.missCount >= 1,
+      true,
+    );
+    assert.equal(
+      metaResponse.json().runtimeObservability.sourceHealth.sourceCount >= 1,
+      true,
+    );
   } finally {
     await close();
   }

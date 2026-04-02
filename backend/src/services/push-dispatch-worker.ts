@@ -7,13 +7,17 @@ export type PushDispatchWorkerStatus = {
   enabled: boolean;
   running: boolean;
   inFlight: boolean;
+  healthStatus: "disabled" | "idle" | "healthy" | "warning" | "degraded";
   intervalSeconds: number;
   lookbackMinutes: number;
   lastRunAt?: string;
   lastCompletedAt?: string;
+  lastFailureAt?: string;
   lastError?: string;
   lastDeviceCount?: number;
   lastDispatchedCount?: number;
+  lastRunDurationMs?: number;
+  consecutiveFailureCount: number;
 };
 
 export class PushDispatchWorker {
@@ -21,9 +25,12 @@ export class PushDispatchWorker {
   private inFlight = false;
   private lastRunAt?: string;
   private lastCompletedAt?: string;
+  private lastFailureAt?: string;
   private lastError?: string;
   private lastDeviceCount?: number;
   private lastDispatchedCount?: number;
+  private lastRunDurationMs?: number;
+  private consecutiveFailureCount = 0;
 
   constructor(
     private readonly stateStore: UserStateStore,
@@ -53,6 +60,7 @@ export class PushDispatchWorker {
       return;
     }
 
+    const startedAt = Date.now();
     this.inFlight = true;
     this.lastRunAt = now.toISOString();
     this.lastError = undefined;
@@ -72,17 +80,25 @@ export class PushDispatchWorker {
       this.lastDeviceCount = deviceIds.length;
       this.lastDispatchedCount = dispatchedCount;
       this.lastCompletedAt = new Date().toISOString();
+      this.lastRunDurationMs = Date.now() - startedAt;
+      this.consecutiveFailureCount = 0;
 
       logInfo("push.worker_completed", {
         deviceCount: deviceIds.length,
         dispatchedCount,
         intervalSeconds: this.intervalMs / 1000,
         lookbackMinutes: this.lookbackMs / (60 * 1000),
+        durationMs: this.lastRunDurationMs,
       });
     } catch (error) {
       this.lastError = error instanceof Error ? error.message : "Unknown push worker error";
+      this.lastFailureAt = new Date().toISOString();
+      this.lastRunDurationMs = Date.now() - startedAt;
+      this.consecutiveFailureCount += 1;
       logError("push.worker_failed", {
         reason: this.lastError,
+        consecutiveFailureCount: this.consecutiveFailureCount,
+        durationMs: this.lastRunDurationMs,
       });
     } finally {
       this.inFlight = false;
@@ -102,13 +118,37 @@ export class PushDispatchWorker {
       enabled: this.enabled,
       running: this.timer != null,
       inFlight: this.inFlight,
+      healthStatus: this.getHealthStatus(),
       intervalSeconds: this.intervalMs / 1000,
       lookbackMinutes: this.lookbackMs / (60 * 1000),
       lastRunAt: this.lastRunAt,
       lastCompletedAt: this.lastCompletedAt,
+      lastFailureAt: this.lastFailureAt,
       lastError: this.lastError,
       lastDeviceCount: this.lastDeviceCount,
       lastDispatchedCount: this.lastDispatchedCount,
+      lastRunDurationMs: this.lastRunDurationMs,
+      consecutiveFailureCount: this.consecutiveFailureCount,
     };
+  }
+
+  private getHealthStatus(): PushDispatchWorkerStatus["healthStatus"] {
+    if (!this.enabled) {
+      return "disabled";
+    }
+
+    if (this.consecutiveFailureCount >= 3) {
+      return "degraded";
+    }
+
+    if (this.consecutiveFailureCount > 0) {
+      return "warning";
+    }
+
+    if (this.lastCompletedAt != null) {
+      return "healthy";
+    }
+
+    return "idle";
   }
 }

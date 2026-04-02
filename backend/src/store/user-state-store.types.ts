@@ -37,6 +37,29 @@ export type InitialPersistedUserState = Omit<PersistedUserState, "profile"> & {
   profile: Omit<PersistedUserState["profile"], "userId">;
 };
 
+export type SchemaMigrationStatus = {
+  totalCount: number;
+  appliedCount: number;
+  pendingCount: number;
+  latestAppliedMigration?: string;
+};
+
+export type StoreHealthSnapshot = {
+  status: "healthy" | "degraded";
+  backend: "file" | "postgres";
+  database?: {
+    connected: boolean;
+    latencyMs?: number;
+    reason?: string;
+    pool?: {
+      totalCount: number | null;
+      idleCount: number | null;
+      waitingCount: number | null;
+    };
+    migrations?: SchemaMigrationStatus;
+  };
+};
+
 export interface UserStateStore {
   readonly backendLabel: "file" | "postgres";
   read(deviceId?: string): Promise<PersistedUserState>;
@@ -61,5 +84,6 @@ export interface UserStateStore {
     deviceId: string,
     updates: Partial<PersistedUserState["push"]>,
   ): Promise<PersistedUserState>;
+  getHealth?(): Promise<StoreHealthSnapshot>;
   close?(): Promise<void>;
 }

@@ -4,7 +4,7 @@ FightCue is a cross-platform mobile app for Android and iOS that helps combat sp
 
 ## Current status
 
-Last updated: 2026-04-01
+Last updated: 2026-04-02
 
 ### Confirmed decisions
 
@@ -81,6 +81,10 @@ Last updated: 2026-04-01
 - Backend rate limiting now scopes bursts per FightCue device identity instead of only by shared client IP
 - User-state persistence is now split into dedicated file and PostgreSQL store implementations, reducing the size and responsibility of the old combined store file
 - Mobile maintainability cleanup now includes split screen/controller files plus extracted content/part/helper files for `event_detail_screen.dart`, `settings_screen.dart`, `alerts_screen.dart`, `rankings_screen.dart`, `following_screen.dart`, `app_shell.dart`, the home feed widget layer, `fighter_avatar.dart`, `editorial_ui.dart`, `app_strings.dart`, and the main API/domain model libraries, plus a lighter `fightcue_api.dart` with pure mapping helpers extracted
+- Backend operations hardening now includes tracked SQL migrations, persistence health snapshots, PostgreSQL pool visibility, and stronger push-worker degradation status in `/health` and `/v1/meta`
+- Runtime/source observability now includes aggregated cache counters plus last-seen source-health snapshots for local and staging diagnostics
+- Watch-provider overrides and organization defaults now live in dedicated config data instead of inside enrichment scoring logic
+- The home event-card layer is now split into dedicated card, primitive, and bout-preview parts, and monetization runtime panels are now separated from settings mutation logic
 
 ### Current hardening batches
 
@@ -166,6 +170,7 @@ Fully or functionally done in the current codebase:
 - cached GET fallback exists for home, detail, and leaderboard-style reads
 - source-health and coverage monitoring are materially expanded
 - source confidence is now materially stronger, with targeted tests for UFC, GLORY, Golden Boy, PBC, Queensberry, Top Rank, BOXXER, ONE, ESPN boxing schedule/rankings, Ring ratings, and the supporting validation helpers
+- backend operations visibility is now materially stronger, with tracked SQL migrations, persistence health snapshots, PostgreSQL pool counts, push-worker degradation status, and a runtime/source observability snapshot exposed in metadata and health endpoints
 - more live organizations are integrated, including `ONE Championship`
 - dark-mode foundations are in place
 - shared parse utilities now back the main source adapters
@@ -200,6 +205,7 @@ Partly done:
 - dark mode: the shared UI layer plus following, event detail, fighter profile, settings, app shell, and key home widgets are improved, but the app is not fully polished screen by screen yet
 - accessibility: the pass now also covers navigation, home filter chips, home cards, reminder chips, event/fighter detail interactions, and settings controls, but a full screen-by-screen pass is still open
 - mobile maintainability: `event_detail_screen.dart` plus `event_detail_content.dart`, `settings_screen.dart` plus `settings_content.dart`, `alerts_screen.dart`, `rankings_screen.dart`, `following_screen.dart`, `app_shell.dart`, the home feed widget layer, `fighter_avatar.dart`, `editorial_ui.dart`, `app_strings.dart`, and the main API/domain model libraries are now split into smaller files, and `fightcue_api.dart` now delegates pure mapping work to a helper layer, but several large feature/widget files still need the same treatment
+- mobile maintainability moved another step forward on 2026-04-02: `home_screen.dart` now listens through a single merged listenable, `home_event_cards.dart` is split into dedicated card/primitives/bout parts, and monetization runtime panels are extracted out of the main settings monetization state file
 
 Still open:
 
@@ -218,16 +224,16 @@ Still open:
 
 ### Consolidated review snapshot
 
-Consolidated app review date: 2026-04-01
+Consolidated app review date: 2026-04-02
 
 This section combines the latest external review with a fresh local validation pass on the current codebase.
 
 Current local validation:
 
 - `npm run lint`: pass
-- `npm test`: pass (`66/66`)
+- `npm test`: pass (`70/70`)
 - `flutter analyze`: pass
-- `flutter test`: pass
+- `flutter test`: pass (`42/42`)
 
 Consolidated codebase snapshot:
 
@@ -351,6 +357,8 @@ Status:
 - completed for the current highest-pressure files
 - `event_detail_content.dart` is now split into dedicated header, bouts, and info part files
 - `settings_content.dart` is now split into dedicated monetization and push part files
+- `home_event_cards.dart` is now split into dedicated card, primitive, and bout-preview part files
+- monetization runtime/status panels are now extracted out of the main settings monetization state file
 - earlier cleanup of home, alerts, rankings, following, shell, editorial UI, app strings, and API/domain model files remains in place
 
 #### Batch 4: Reliability and mobile quality
@@ -374,6 +382,7 @@ Status:
 - safe read-only retry with exponential backoff is now built into `FightCueApi`
 - settings mutation rollback paths now have direct widget coverage
 - cached/stale-state behavior is already covered across home, alerts, detail, rankings, and settings surfaces from the earlier offline UX tranche
+- release-readiness tests now also cover non-release bypass behavior, and settings has direct stale cached billing-state coverage
 
 #### Batch 5: Observability and source confidence
 
@@ -398,6 +407,9 @@ Status:
 - structured backend logs now include request correlation IDs when request context exists
 - runtime snapshots and source previews now emit structured cache hit, cache miss, and inflight-reuse log events
 - slow runtime resolutions and slow source preview loads now emit explicit structured slow-operation log events
+- `/health` and `/v1/meta` now expose runtime/source observability snapshots with aggregated cache counters and last-seen source-health items
+- push-worker status now reports warning/degraded health, consecutive failure counts, last failure timing, and run duration
+- migration tracking now records applied SQL files in `schema_migrations`
 - parser/source coverage remains backed by direct tests for the live source set already in the repo
 
 #### Batch 6: External release integrations
@@ -476,6 +488,37 @@ Minimum mobile release checklist:
 - production AdMob app IDs configured for Android and iOS
 - production AdMob banner unit IDs configured if quiet ads are enabled
 - no Google test ad identifiers left active in release builds
+
+Physical-device smoke checklist:
+
+- iPhone and Android device both install and launch the current debug/release-candidate build
+- splash screen, app icon, and app name render correctly on both platforms
+- home feed loads without falling back to a permanent error or empty state
+- core filters such as `UFC`, `Boxing`, and `GLORY` switch cleanly and update visible cards
+- event detail opens from home and shows bouts, timing, and watch info without layout breakage
+- fighter profile opens from event detail and renders avatar, metadata, and follow state correctly
+- follow and unfollow actions persist after app restart for both fighters and events
+- settings changes for language and viewing country persist after app restart
+- paywall opens from settings and shows the expected current-plan and provider-readiness state
+- quiet-ad slot behavior is correct for the current runtime:
+  - local/testing builds may use Google test ad identifiers
+  - release-candidate builds must not use Google test ad identifiers
+- push permission flow behaves correctly:
+  - prompt appears on first request where expected
+  - granted/denied state is reflected in settings
+  - token registration state updates after permission and sync
+- backend-connected refresh still works after app has been backgrounded and reopened
+- dark mode and light mode both remain readable on key screens: home, event detail, fighter profile, settings, alerts
+- no startup crash, native crash, or repeated startup warning loop appears on either physical device
+
+Recommended smoke-test order:
+
+1. launch the app cold on both devices
+2. verify home, filters, event detail, and fighter profile
+3. verify follow persistence and settings persistence across restart
+4. verify paywall, billing/ad readiness, and quiet-ad behavior
+5. verify push permission, token sync, and settings status
+6. repeat one final cold launch and quick navigation pass
 
 ### Two-week execution plan
 

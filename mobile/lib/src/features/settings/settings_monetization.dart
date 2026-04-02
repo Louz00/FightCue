@@ -215,174 +215,22 @@ class _MonetizationCardState extends State<_MonetizationCard> {
                       _StatusPill(label: strings.monetizationSavingLabel),
                   ],
                 ),
-                if (settings.adConsentRequired) ...[
-                  const SizedBox(height: 14),
-                  Text(
-                    strings.adConsentTitle,
-                    style: TextStyle(
-                      color: AppColors.textPrimaryFor(context),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  _SettingsPreferenceWrap(
-                    children: [
-                      _PreferenceChip(
-                        label: strings.adConsentDisabledLabel,
-                        selected: !settings.adConsentGranted,
-                        onSelected: _isSaving
-                            ? () {}
-                            : () => _save(adConsentGranted: false),
-                      ),
-                      _PreferenceChip(
-                        label: strings.adConsentEnabledLabel,
-                        selected: settings.adConsentGranted,
-                        onSelected: _isSaving
-                            ? () {}
-                            : () => _save(adConsentGranted: true),
-                      ),
-                    ],
-                  ),
-                ],
                 const SizedBox(height: 14),
-                Text(
-                  strings.analyticsConsentTitle,
-                  style: TextStyle(
-                    color: AppColors.textPrimaryFor(context),
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _SettingsPreferenceWrap(
-                  children: [
-                    _PreferenceChip(
-                      label: strings.analyticsDisabledLabel,
-                      selected: !settings.analyticsConsent,
-                      onSelected: _isSaving
-                          ? () {}
-                          : () => _save(analyticsConsent: false),
-                    ),
-                    _PreferenceChip(
-                      label: strings.analyticsEnabledLabel,
-                      selected: settings.analyticsConsent,
-                      onSelected: _isSaving
-                          ? () {}
-                          : () => _save(analyticsConsent: true),
-                    ),
-                  ],
+                _MonetizationConsentControls(
+                  strings: strings,
+                  settings: settings,
+                  isSaving: _isSaving,
+                  onSave: _save,
                 ),
                 const SizedBox(height: 14),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAltFor(context),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    strings.billingFoundationBody,
-                    style: TextStyle(
-                      color: AppColors.textSecondaryFor(context),
-                      height: 1.4,
-                    ),
-                  ),
+                _MonetizationRuntimePanels(
+                  strings: strings,
+                  billingProviderStatus: _billingProviderStatus,
+                  billingRuntimeStatus: _billingRuntimeStatus,
+                  adProviderStatus: _adProviderStatus,
+                  adRuntimeStatus: _adRuntimeStatus,
+                  crashReportingStatus: _crashReportingStatus,
                 ),
-                if (_billingProviderStatus != null) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceAltFor(context),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      strings.storeProviderStatusBody(
-                        providerLabel: strings.billingProviderLabel(
-                          _billingProviderStatus!.provider,
-                        ),
-                        configured: _billingProviderStatus!.configured,
-                        runtimeReady: _billingRuntimeStatus?.fullyReady ?? false,
-                      ),
-                      style: TextStyle(
-                        color: AppColors.textSecondaryFor(context),
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-                if (_adProviderStatus != null) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceAltFor(context),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      strings.adProviderStatusBody(
-                        providerLabel: strings.adProviderLabel(
-                          _adProviderStatus!.provider,
-                        ),
-                        configured: _adProviderStatus!.configured,
-                        bannerConfigured:
-                            _adProviderStatus!.bannerUnitConfigured,
-                      ),
-                      style: TextStyle(
-                        color: AppColors.textSecondaryFor(context),
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-                if (_adRuntimeStatus != null) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceAltFor(context),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      strings.adRuntimeStatusBody(
-                        sdkReady: _adRuntimeStatus!.sdkReady,
-                        usingTestIdentifiers:
-                            _adRuntimeStatus!.usingTestIdentifiers,
-                        bannerReady: _adRuntimeStatus!.bannerReady,
-                      ),
-                      style: TextStyle(
-                        color: AppColors.textSecondaryFor(context),
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-                if (_crashReportingStatus != null) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceAltFor(context),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      strings.crashReportingStatusBody(
-                        providerLabel: _crashReportingStatus!.providerLabel,
-                        available: _crashReportingStatus!.available,
-                        reason: _crashReportingStatus!.reason,
-                      ),
-                      style: TextStyle(
-                        color: AppColors.textSecondaryFor(context),
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 14),
                 SizedBox(
                   width: double.infinity,

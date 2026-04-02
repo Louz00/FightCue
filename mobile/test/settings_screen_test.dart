@@ -153,6 +153,84 @@ void main() {
     expect(find.textContaining('Last synced:'), findsOneWidget);
   });
 
+  testWidgets('Settings screen marks stale cached billing state clearly', (
+    tester,
+  ) async {
+    final syncedAt = DateTime.now()
+        .toUtc()
+        .subtract(ApiFetchResult.staleThreshold + const Duration(minutes: 5));
+    final api = FakeFightCueApi(
+      pushFetchResult: ApiFetchResult(
+        data: const PushSettingsSnapshot(
+          pushEnabled: true,
+          permissionStatus: PushPermissionStatus.prompt,
+          tokenRegistered: false,
+        ),
+        isFromCache: true,
+        lastSyncedAt: syncedAt,
+      ),
+      monetizationFetchResult: ApiFetchResult(
+        data: const MonetizationSnapshot(
+          premiumState: PremiumState.free,
+          adTier: AdTier.freeWithAds,
+          adConsentRequired: true,
+          adConsentGranted: false,
+          analyticsConsent: false,
+          quietAdsEnabled: false,
+        ),
+        isFromCache: true,
+        lastSyncedAt: syncedAt,
+      ),
+      homeResult: const ApiFetchResult(
+        data: sampleHomeSnapshot,
+        isFromCache: false,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: SettingsScreen(
+              api: api,
+              snapshotListenable: ValueNotifier(sampleHomeSnapshot),
+              strings: AppStrings.of(context),
+              billingRuntimeService: FakeBillingRuntimeService(),
+              adRuntimeLoader: () async => const AdRuntimeStatus(
+                sdkReady: true,
+                appIdConfigured: true,
+                bannerUnitId: 'test-banner',
+                usingTestIdentifiers: true,
+              ),
+              crashReportingLoader: () async => const CrashReportingStatus(
+                available: false,
+                providerLabel: 'disabled',
+                reason: 'Firebase is not initialized for this runtime.',
+              ),
+              pushDeliveryService: FakePushDeliveryService(
+                statusResult: const PushDeviceRegistrationResult(
+                  permissionStatus: PushPermissionStatus.prompt,
+                  platform: PushTokenPlatform.ios,
+                ),
+              ),
+              onSelectLanguage: (_) {},
+              onSelectViewingCountry: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(
+      find.textContaining(
+        'This saved data may be out of date until the next live refresh succeeds.',
+      ),
+      findsWidgets,
+    );
+  });
+
   testWidgets('Settings screen shows premium plans entry point', (tester) async {
     final api = FakeFightCueApi(
       pushSettingsResult: const PushSettingsSnapshot(

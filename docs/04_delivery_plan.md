@@ -65,6 +65,7 @@ Current note:
 - route modularization is now in place with extracted runtime service and focused route files
 - strict database-only mode is now available through `FIGHTCUE_REQUIRE_DATABASE=true`
 - route-level integration tests now validate PostgreSQL-backed metadata, preferences, follows, and alerts
+- tracked SQL migrations now record applied files in `schema_migrations`, and `/health` plus `/v1/meta` expose persistence health, migration status, and pool visibility
 
 ## Step 5: Source ingestion
 
@@ -91,7 +92,8 @@ Current note:
 - BOXXER is now live through the official BOXXER WordPress events API
 - ESPN boxing rankings and Ring boxing ratings are now available as editorial source layers for future boxing leaderboard work
 - runtime resolution now keeps a short-lived cached home snapshot and coalesces in-flight source requests for faster repeated home loads
-- next priority is continuing hardening work around parsing utilities, watch-provider enrichment, and source observability
+- runtime/source observability now also exposes aggregated cache counters and last-seen source-health snapshots for staging/local diagnostics
+- next priority is continuing hardening work around parsing utilities and moving more provider confidence toward source-backed verification
 
 ## Step 6: Release features
 
@@ -222,6 +224,7 @@ Current note:
 - `event_detail_content.dart` is now also split into focused header, bouts, and info part files
 - `settings_content.dart` is now split into dedicated monetization and push part files
 - the next mobile maintainability targets are the remaining oversized rendering surfaces and any API/client helpers that can still be extracted without coupling the test fakes to internal implementation details
+- `home_screen.dart` now listens through a single merged listenable instead of nested builders, `home_event_cards.dart` is split into card/primitives/bout parts, and monetization runtime panels are now separated from settings mutation/state logic
 
 Current note:
 - local cached fallback is now in place for GET-based API responses
@@ -250,6 +253,7 @@ Current note:
 - watch-provider enrichment now also keeps provider provenance and prefers the strongest verified source when duplicate provider labels collide
 - the current live-source batch now has explicit parser/loader tests for UFC, GLORY, Golden Boy, PBC, Queensberry, Top Rank, BOXXER, ONE, and the ESPN/Ring boxing sources
 - provider selection is now stricter when a weak unknown source provider collides with a stronger event-level override
+- curated watch-provider overrides and organization defaults now live in dedicated config data instead of inside the enrichment scoring logic
 - the next step in this stage is moving more of that enrichment toward source- and database-driven verification instead of curated overrides
 
 ### Stage 5: Beta-readiness
@@ -278,3 +282,4 @@ Current note:
 - slow runtime resolutions and slow source preview loads now emit explicit slow-path log events for easier staging/production diagnosis
 - repo-side release assets are now in place as branded FightCue icon and splash source files, with native Android and iOS launcher/launch assets populated from them
 - the remaining release-integration work is now mostly external: Firebase/APNs console setup, store product creation, entitlement verification, live AdMob IDs, and physical-device validation
+- a concrete physical-device smoke checklist now exists in the README so iPhone and Android validation can be repeated consistently before external release steps

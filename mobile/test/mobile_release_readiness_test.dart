@@ -6,6 +6,27 @@ import 'package:fightcue_mobile/src/data/firebase_runtime.dart';
 import 'package:fightcue_mobile/src/data/mobile_release_readiness.dart';
 
 void main() {
+  test('non-release runtime skips provider readiness enforcement', () {
+    final status = evaluateMobileReleaseReadiness(
+      firebaseStatus: const FirebaseMessagingBootstrapStatus(available: false),
+      crashReportingStatus: const CrashReportingStatus(
+        available: false,
+        providerLabel: 'disabled',
+      ),
+      adRuntimeStatus: const AdRuntimeStatus(
+        sdkReady: false,
+        appIdConfigured: false,
+        bannerUnitId: null,
+        usingTestIdentifiers: false,
+      ),
+      releaseModeOverride: false,
+    );
+
+    expect(status.isReleaseMode, isFalse);
+    expect(status.fullyReady, isTrue);
+    expect(status.issues, isEmpty);
+  });
+
   test('release runtime reports missing provider config', () {
     final status = evaluateMobileReleaseReadiness(
       firebaseStatus: const FirebaseMessagingBootstrapStatus(available: false),

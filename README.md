@@ -19,9 +19,12 @@ Last updated: 2026-04-02
 - Temporary working bundle/application ID base: `com.lou.fightcue`
 - Identity model: anonymous users by default with optional account creation
 - Monetization model: free tier with quiet ads, premium tier without ads
-- Watch information: country-based availability with manual country override
+- Watch information: not shown in the main UI for now; this can return later as a dedicated feature
 - Follow model: users can follow fighters as well as events
-- Home priority: followed fighters and followed events must be visible immediately
+- Home priority: home should show only upcoming events; saved fighters and saved events belong in a dedicated favorites area
+- Saved fighter icon: heart
+- Saved event icon: glove
+- UI naming: `GLORY` should be presented as `Glory Kickboxing`
 - Privacy and security are first-class product requirements
 
 ### In progress
@@ -892,7 +895,148 @@ See [docs/07_user_data_privacy_and_ads.md](docs/07_user_data_privacy_and_ads.md)
 
 ## UX and UI
 
-See [docs/08_ux_ui_direction.md](docs/08_ux_ui_direction.md).
+### Current page map for the next UI and UX pass
+
+Primary navigation:
+
+- `Home`
+- `Leaderboard`
+- `Favorites`
+- `Alerts`
+- `Settings`
+
+Supporting screens:
+
+- `Event detail`
+- `Fighter profile`
+- `Premium / Paywall`
+
+Current repo surfaces already cover these flows under the existing shell:
+
+- home
+- rankings
+- following
+- alerts
+- settings
+- event detail
+- fighter profile
+- paywall
+
+For the next UI and UX generation pass, `Following` should be reframed as `Favorites`, and `Rankings` can be presented as `Leaderboard` if that reads cleaner in the new navigation.
+
+### Required screen direction
+
+- `Home`: show only upcoming events. Do not place followed fighters or saved events on the homepage. The homepage should feel like a clean upcoming-events feed.
+- `Home filters`: support multi-select chips so users can combine combat sports or organizations such as `Boxing + UFC` or `Boxing + Glory Kickboxing`. Replace `Glory` with `Glory Kickboxing` in the UI.
+- `Favorites`: split clearly into `Fighters` and `Events`.
+- `Favorites -> Fighters`: show fighters the user has liked with a heart icon. Tapping a fighter opens the fighter profile with avatar, tale of the tape, and the next scheduled fight if one exists.
+- `Favorites -> Events`: show saved events with a glove icon instead of a heart. Saved events must be easy to reopen and export to the calendar with the correct local date and time.
+- `Leaderboard`: show more than five fighters. The minimum target is ten entries per ranking list, and the UI should be able to handle longer lists cleanly when the source provides them.
+- `Event detail`: prioritize local date and time, card structure, key bouts, save-state with glove icon, and calendar export. Do not show watch-provider information in this design pass.
+- `Fighter profile`: include stylized avatar, name, record, nationality, organization hint, full tale of the tape, and a clear `next fight` block when the fighter is booked.
+- `Alerts`: keep this page lightweight and practical. It should manage reminder presets for followed fighters and saved events without becoming a noisy dashboard.
+- `Settings`: keep only what is truly needed. Focus on language, notifications, timezone, and premium. Do not include an ad on/off setting. Ads disappear only when the user has premium.
+- `Paywall`: explain the difference between free and premium in a calm, premium-feeling way. The main user-facing premium promise is `no ads`, plus a better reminder experience.
+
+### Design constraints
+
+- the UI should feel professional, premium, clean, and calm
+- use stylized original avatars instead of photos
+- no watch-provider UI for now; that may return later
+- favor strong time hierarchy, generous spacing, and low-noise cards
+- use clear icon semantics:
+  - fighter saved state: heart
+  - event saved state: glove
+- avoid cluttered dashboards, dense tables, or overly gamified layouts
+
+### AI design prompt
+
+```text
+Design a professional, clean, premium mobile app UI and UX for FightCue, a combat sports app for iOS and Android.
+
+FightCue helps users track upcoming combat sports events in their local timezone. The product covers Boxing, UFC, MMA, Kickboxing, and specifically Glory Kickboxing.
+
+Important product rules:
+- Home must show only upcoming events.
+- Do not place followed fighters or saved events on the home screen.
+- Home needs multi-select filter chips, so users can combine filters like Boxing + UFC or Boxing + Glory Kickboxing.
+- Use the label "Glory Kickboxing" instead of "Glory".
+- Fighters can be saved with a heart icon.
+- Events can be saved with a glove icon.
+- Saved events must support calendar export with the correct local date and time.
+- Fighter profile must show a tale of the tape and whether the fighter has an upcoming fight, including which event it is.
+- Leaderboards must support at least 10 fighters per list, and scale cleanly when there are more.
+- Settings must stay simple and practical.
+- There must be no manual ad on/off toggle. Ads are removed only when the user has premium.
+- Do not show where users can watch the fight in this design pass.
+- Use stylized, original avatars instead of real fighter photos.
+
+Required page map:
+1. Home
+   - Upcoming events only
+   - Multi-select filter chips
+   - Clean event cards with event name, organization, local date, local time, city/venue, key bout if available, and save-event glove action
+
+2. Leaderboard
+   - Ranking lists with at least 10 entries
+   - Clear hierarchy for rank, fighter, record, and source
+   - Must work for longer lists without feeling crowded
+
+3. Favorites
+   - Split into two tabs or segments: Fighters and Events
+   - Fighters view shows liked fighters with heart icon
+   - Events view shows saved events with glove icon
+
+4. Fighter Profile
+   - Avatar
+   - Name, nickname if available, record, nationality, organization
+   - Tale of the tape section
+   - Next fight section
+   - Related event cards if booked
+
+5. Event Detail
+   - Strong event header
+   - Local date/time first
+   - Main card and prelim structure
+   - Save-event glove action
+   - Calendar export action
+   - Fighter rows with avatars and heart-save affordance where relevant
+
+6. Alerts
+   - Lightweight reminder management for saved fighters and saved events
+   - Should feel simple, not like an enterprise settings panel
+
+7. Settings
+   - Language
+   - Notifications
+   - Timezone
+   - Premium
+   - No ad toggle
+
+8. Premium / Paywall
+   - Free vs Premium comparison
+   - Premium removes ads
+   - Clean and trustworthy presentation
+
+Visual direction:
+- Editorial sports product feel
+- White or off-white base with strong red accents
+- Premium, minimal, modern, clean
+- Strong typography and time/date hierarchy
+- Card-based layout with generous breathing room
+- No clutter, no noisy dashboards, no gimmicky gamification
+- Must feel polished on both iPhone and Android
+
+Output requested:
+- mobile-first UX structure
+- navigation map
+- wireframe-level screen descriptions
+- polished visual direction
+- key components and interaction patterns
+- clean, production-ready UI concept
+```
+
+For the longer UX direction reference, see [docs/08_ux_ui_direction.md](docs/08_ux_ui_direction.md).
 
 ## Domain Data Model
 

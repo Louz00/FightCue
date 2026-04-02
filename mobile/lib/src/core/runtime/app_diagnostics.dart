@@ -16,6 +16,13 @@ void clearUiErrorReporter() {
   _secondaryReporter = null;
 }
 
+void logUiNotice(
+  String message, {
+  required String context,
+}) {
+  debugPrint('[FightCue][$context] $message');
+}
+
 void logUiError(
   Object error,
   StackTrace stackTrace, {

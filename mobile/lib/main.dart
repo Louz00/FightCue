@@ -8,15 +8,23 @@ import 'src/core/runtime/app_diagnostics.dart';
 import 'src/data/ad_runtime.dart';
 import 'src/data/crash_reporting.dart';
 import 'src/data/firebase_runtime.dart';
+import 'src/data/mobile_release_readiness.dart';
 
 Future<void> main() async {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
-      await ensureFirebaseMessagingReady();
-      await ensureCrashReportingReady();
-      await ensureAdMobReady();
+      final firebaseStatus = await ensureFirebaseMessagingReady();
+      final crashReportingStatus = await ensureCrashReportingReady();
+      final adRuntimeStatus = await ensureAdMobReady();
+      logMobileReleaseReadiness(
+        evaluateMobileReleaseReadiness(
+          firebaseStatus: firebaseStatus,
+          crashReportingStatus: crashReportingStatus,
+          adRuntimeStatus: adRuntimeStatus,
+        ),
+      );
 
       FlutterError.onError = (details) {
         FlutterError.presentError(details);

@@ -272,6 +272,7 @@ Current note:
 - offline UX is now clearer in the mobile app with saved-data timestamps, stale-data warnings, visible cached notices across home/following/alerts/detail/rankings/push-settings, pull-to-refresh, background prefetch, and stale auto-refresh on key read surfaces, but it still needs broader screen coverage and deeper proactive refresh behavior
 - billing/ad foundations now exist for monetization state, ad/analytics consent, quiet-ad eligibility, settings controls, a reserved home-feed ad slot, backend billing/ad provider-status routes, mobile store-readiness checks, and AdMob SDK wiring, but real store checkout and live ad credentials are still open
 - the app now also has a dedicated premium/paywall screen linked from settings, so store readiness and the current plan state are visible in-product even before checkout wiring is connected
+- mobile startup now also evaluates release-readiness for Firebase, Crashlytics, and AdMob so release builds log missing provider config instead of silently looking production-ready
 - request-ID correlation is now in place for backend requests, and responses now echo `x-request-id` for easier traceability
 - runtime snapshots and source preview loads now emit structured cache hit/miss and inflight-reuse log events
 - slow runtime resolutions and slow source preview loads now emit explicit slow-path log events for easier staging/production diagnosis

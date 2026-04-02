@@ -432,6 +432,12 @@ To exercise real Firebase-backed mobile push delivery locally, add the platform 
 
 The app now boots Firebase Messaging early and falls back to the native permission bridge if those files are missing, so local development remains usable without credentials.
 
+Mobile runtime release safety now behaves like this:
+
+- development and simulator builds stay permissive and log-friendly
+- release builds emit startup readiness notices when Firebase, Crashlytics, or AdMob production config is still incomplete
+- release builds should not ship while Google test ad identifiers are still active
+
 For the new repo-side billing/ad wiring, these are the next local configuration inputs:
 
 - backend env:
@@ -460,6 +466,16 @@ For Apple delivery, there is still one final console/signing step outside this r
 - enable the Push Notifications capability for the iOS app in Xcode/Apple Developer
 - connect the APNs key or certificate to the Firebase project
 - then validate on a signed physical iPhone, because the iOS simulator does not receive real remote pushes
+
+Minimum mobile release checklist:
+
+- Firebase project connected for both Android and iOS
+- `google-services.json` present for Android release builds
+- `GoogleService-Info.plist` present for iOS release builds
+- Crashlytics confirmed in a signed release/runtime build
+- production AdMob app IDs configured for Android and iOS
+- production AdMob banner unit IDs configured if quiet ads are enabled
+- no Google test ad identifiers left active in release builds
 
 ### Two-week execution plan
 

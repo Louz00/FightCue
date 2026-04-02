@@ -16,10 +16,12 @@ class _HeroEventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mainBout = headlineBoutForEvent(event);
-    final primaryWatchProvider = primaryWatchProviderLabel(event);
-    final watchLabel = primaryWatchProvider == null
-        ? event.sourceLabel
-        : '${strings.whereToWatch}: $primaryWatchProvider';
+    final dateParts = event.localDateLabel.split(' ');
+    final dateDay = dateParts.isNotEmpty ? dateParts.last : event.localDateLabel;
+    final heroTitle = mainBout == null
+        ? event.title.toUpperCase()
+        : '${mainBout.fighterAName.toUpperCase()}\nVS ${mainBout.fighterBName.toUpperCase()}';
+    final heroDetail = mainBout?.weightClass ?? mainBout?.slotLabel ?? event.organization;
 
     return Semantics(
       button: true,
@@ -29,9 +31,15 @@ class _HeroEventCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(28),
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.surfaceFor(context),
+            gradient: const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF2B2B2B),
+                Color(0xFF111111),
+              ],
+            ),
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: AppColors.borderFor(context)),
             boxShadow: AppShadows.cardFor(context),
           ),
           child: Column(
@@ -46,20 +54,64 @@ class _HeroEventCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _EventMetaLine(
-                      primary: '${event.localDateLabel}  •  ${event.localTimeLabel}',
-                      secondary: event.locationLabel,
+                    Text(
+                      '${event.organization.toUpperCase()}  •  ${event.locationLabel.toUpperCase()}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFFFFD5DB),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11,
+                        letterSpacing: 0.9,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      heroTitle,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 32,
+                        height: 0.92,
+                        letterSpacing: -1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _DateBlock(
+                          topLabel: event.localDateLabel.toUpperCase(),
+                          dayLabel: dateDay,
+                          inverse: true,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: _EventMetaLine(
+                            primary: event.localTimeLabel,
+                            secondary: event.locationLabel,
+                            inverse: true,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     if (mainBout == null)
                       _PendingFightCard(strings: strings)
-                    else
+                    else ...[
+                      _HeroMetricStrip(
+                        leftLabel: 'Main event time',
+                        leftValue: event.localTimeLabel,
+                        rightLabel: 'Division',
+                        rightValue: heroDetail,
+                      ),
+                      const SizedBox(height: 16),
                       _EventFaceoffPreview(
                         bout: mainBout,
                         prominent: true,
+                        inverse: true,
                       ),
-                    const SizedBox(height: 14),
-                    _WatchInfoBand(label: watchLabel),
+                    ],
                     const SizedBox(height: 14),
                     Row(
                       children: [
@@ -76,6 +128,7 @@ class _HeroEventCard extends StatelessWidget {
                             label: event.isFollowed
                                 ? strings.unfollowAction
                                 : strings.followAction,
+                            icon: Icons.sports_mma,
                             onTap: onToggleFollow,
                           ),
                         ),
@@ -87,6 +140,95 @@ class _HeroEventCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _HeroMetricStrip extends StatelessWidget {
+  const _HeroMetricStrip({
+    required this.leftLabel,
+    required this.leftValue,
+    required this.rightLabel,
+    required this.rightValue,
+  });
+
+  final String leftLabel;
+  final String leftValue;
+  final String rightLabel;
+  final String rightValue;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0x14FFFFFF),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _HeroMetric(
+              label: leftLabel,
+              value: leftValue,
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 34,
+            color: const Color(0x24FFFFFF),
+          ),
+          Expanded(
+            child: _HeroMetric(
+              label: rightLabel,
+              value: rightValue,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroMetric extends StatelessWidget {
+  const _HeroMetric({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              color: Color(0xFFFFD5DB),
+              fontWeight: FontWeight.w700,
+              fontSize: 10,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value.toUpperCase(),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -110,10 +252,8 @@ class _ExpandableEventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mainBout = headlineBoutForEvent(event);
-    final primaryWatchProvider = primaryWatchProviderLabel(event);
-    final watchLabel = primaryWatchProvider == null
-        ? event.sourceLabel
-        : '${strings.whereToWatch}: $primaryWatchProvider';
+    final dateParts = event.localDateLabel.split(' ');
+    final dateDay = dateParts.isNotEmpty ? dateParts.last : event.localDateLabel;
 
     return Semantics(
       container: true,
@@ -142,17 +282,28 @@ class _ExpandableEventCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _EventMetaLine(
-                        primary: event.localTimeLabel,
-                        secondary: event.locationLabel,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _DateBlock(
+                            topLabel: event.localDateLabel.toUpperCase(),
+                            dayLabel: dateDay,
+                            compact: true,
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: _EventMetaLine(
+                              primary: event.localTimeLabel,
+                              secondary: event.locationLabel,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 14),
                       if (mainBout == null)
                         _PendingFightCard(strings: strings)
                       else
                         _EventFaceoffPreview(bout: mainBout),
-                      const SizedBox(height: 12),
-                      _WatchInfoBand(label: watchLabel),
                     ],
                   ),
                 ),
@@ -184,6 +335,7 @@ class _ExpandableEventCard extends StatelessWidget {
                       label: event.isFollowed
                           ? strings.unfollowAction
                           : strings.followAction,
+                      icon: Icons.sports_mma,
                       onTap: onToggleFollow,
                     ),
                   ),
@@ -214,6 +366,67 @@ class _ExpandableEventCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DateBlock extends StatelessWidget {
+  const _DateBlock({
+    required this.topLabel,
+    required this.dayLabel,
+    this.compact = false,
+    this.inverse = false,
+  });
+
+  final String topLabel;
+  final String dayLabel;
+  final bool compact;
+  final bool inverse;
+
+  @override
+  Widget build(BuildContext context) {
+    final background = inverse
+        ? const Color(0x16FFFFFF)
+        : AppColors.surfaceAltFor(context);
+    final topColor = inverse
+        ? const Color(0xFFFFD5DB)
+        : AppColors.textSecondaryFor(context);
+    final dayColor = inverse ? Colors.white : AppColors.textPrimaryFor(context);
+
+    return Container(
+      width: compact ? 82 : 92,
+      padding: EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: compact ? 10 : 12,
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        children: [
+          Text(
+            topLabel,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: topColor,
+              fontWeight: FontWeight.w800,
+              fontSize: 10,
+              letterSpacing: 0.7,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            dayLabel,
+            style: TextStyle(
+              color: dayColor,
+              fontWeight: FontWeight.w900,
+              fontSize: compact ? 24 : 28,
+              letterSpacing: -0.8,
+            ),
+          ),
+        ],
       ),
     );
   }

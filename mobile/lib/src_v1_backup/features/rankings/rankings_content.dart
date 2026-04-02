@@ -48,14 +48,6 @@ class _RankingsContent extends StatelessWidget {
             orElse: () => availableDivisions.first,
           );
         }
-        LeaderboardEntrySummary? championEntry;
-        if (selectedDivision != null) {
-          final entries = selectedDivision.entries;
-          championEntry = entries.firstWhere(
-            (entry) => entry.isChampion,
-            orElse: () => entries.first,
-          );
-        }
 
         if (rankingsResult?.isStaleCache ?? false) {
           if (!didRequestStaleRefresh) {
@@ -115,11 +107,8 @@ class _RankingsContent extends StatelessWidget {
               if (selectedDivision == null)
                 _EmptyCard(strings: strings)
               else ...[
-                _DivisionHero(
-                  division: selectedDivision,
-                  strings: strings,
-                ),
-                const SizedBox(height: 16),
+                EditorialSectionTitle(label: selectedDivision.title),
+                const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -134,240 +123,29 @@ class _RankingsContent extends StatelessWidget {
                       .toList(),
                 ),
                 const SizedBox(height: 16),
-                _RankingTableHeader(strings: strings),
-                const SizedBox(height: 8),
-                _ChampionBand(champion: championEntry!),
-                const SizedBox(height: 10),
-                ...selectedDivision.entries
-                    .where((entry) => !entry.isChampion)
-                    .map(
-                      (entry) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _RankingEntryRow(
-                          entry: entry,
-                          onTap: entry.fighterId.isEmpty
-                              ? null
-                              : () => onOpenFighter(entry.fighterId),
-                        ),
-                      ),
-                    ),
-                const SizedBox(height: 12),
                 _SourceCard(
                   division: selectedDivision,
                   body: strings.rankingsSourceBody,
                   sourceLabel: strings.sourceLabel,
+                ),
+                const SizedBox(height: 16),
+                ...selectedDivision.entries.map(
+                  (entry) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _RankingEntryCard(
+                      entry: entry,
+                      strings: strings,
+                      onTap: entry.fighterId.isEmpty
+                          ? null
+                          : () => onOpenFighter(entry.fighterId),
+                    ),
+                  ),
                 ),
               ],
             ],
           ],
         );
       },
-    );
-  }
-}
-
-class _DivisionHero extends StatelessWidget {
-  const _DivisionHero({
-    required this.division,
-    required this.strings,
-  });
-
-  final LeaderboardSummary division;
-  final AppStrings strings;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceFor(context),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: AppShadows.cardFor(context),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'OFFICIAL RANKINGS',
-            style: TextStyle(
-              color: AppColors.accent,
-              fontWeight: FontWeight.w800,
-              fontSize: 11,
-              letterSpacing: 1.1,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            '${division.organization.toUpperCase()} ${division.title.toUpperCase()}',
-            style: TextStyle(
-              color: AppColors.textPrimaryFor(context),
-              fontWeight: FontWeight.w900,
-              fontSize: 30,
-              height: 0.94,
-              letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _HeroDataChip(
-                icon: Icons.fitness_center_outlined,
-                label: division.weightClass,
-              ),
-              _HeroDataChip(
-                icon: Icons.groups_2_outlined,
-                label: division.group == RankingGroup.men
-                    ? strings.menLabel
-                    : strings.womenLabel,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HeroDataChip extends StatelessWidget {
-  const _HeroDataChip({
-    required this.icon,
-    required this.label,
-  });
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAltFor(context),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppColors.textSecondaryFor(context)),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: AppColors.textPrimaryFor(context),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RankingTableHeader extends StatelessWidget {
-  const _RankingTableHeader({required this.strings});
-
-  final AppStrings strings;
-
-  @override
-  Widget build(BuildContext context) {
-    final style = TextStyle(
-      color: AppColors.textSecondaryFor(context),
-      fontWeight: FontWeight.w800,
-      fontSize: 11,
-      letterSpacing: 1,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
-        children: [
-          SizedBox(width: 34, child: Text('RANK', style: style)),
-          const SizedBox(width: 56),
-          Expanded(child: Text('FIGHTER', style: style)),
-          SizedBox(
-            width: 82,
-            child: Text(
-              strings.recordLabel.toUpperCase(),
-              style: style,
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ChampionBand extends StatelessWidget {
-  const _ChampionBand({required this.champion});
-
-  final LeaderboardEntrySummary champion;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.accent,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(
-            width: 52,
-            child: Text(
-              'CHAMP',
-              style: TextStyle(
-                color: Color(0xFFFFD5DB),
-                fontWeight: FontWeight.w900,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-          FighterAvatar(
-            name: champion.fighterName,
-            size: 42,
-            showInitialsChip: false,
-            framed: false,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  champion.fighterName.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  champion.organization.toUpperCase(),
-                  style: const TextStyle(
-                    color: Color(0xFFFFE4E8),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 11,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            champion.recordLabel,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -551,93 +329,145 @@ class _SourceCard extends StatelessWidget {
   }
 }
 
-class _RankingEntryRow extends StatelessWidget {
-  const _RankingEntryRow({
+class _RankingEntryCard extends StatelessWidget {
+  const _RankingEntryCard({
     required this.entry,
+    required this.strings,
     this.onTap,
   });
 
   final LeaderboardEntrySummary entry;
+  final AppStrings strings;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final surface = AppColors.surfaceFor(context);
+    final border = AppColors.borderFor(context);
+    final textPrimary = AppColors.textPrimaryFor(context);
+    final textSecondary = AppColors.textSecondaryFor(context);
+
     return Semantics(
       button: onTap != null,
       label: entry.fighterName,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(22),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceFor(context),
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: AppShadows.cardFor(context),
-            ),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 34,
-                  child: Text(
-                    entry.rank.toString(),
-                    style: TextStyle(
-                      color: AppColors.accent.withValues(alpha: 0.35),
-                      fontWeight: FontWeight.w900,
-                      fontSize: 24,
-                    ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          decoration: BoxDecoration(
+            color: surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: border),
+            boxShadow: AppShadows.cardFor(context),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+                decoration: const BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
                   ),
                 ),
-                const SizedBox(width: 10),
-                FighterAvatar(
-                  name: entry.fighterName,
-                  size: 44,
-                  showInitialsChip: false,
-                  framed: true,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        entry.fighterName.toUpperCase(),
-                        style: TextStyle(
-                          color: AppColors.textPrimaryFor(context),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          height: 1.08,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Text(
+                        entry.rank.toString(),
+                        style: const TextStyle(
+                          color: AppColors.accent,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
                         entry.organization.toUpperCase(),
-                        style: TextStyle(
-                          color: AppColors.textSecondaryFor(context),
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          letterSpacing: 0.8,
+                          letterSpacing: 0.4,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                SizedBox(
-                  width: 82,
-                  child: Text(
-                    entry.recordLabel,
-                    textAlign: TextAlign.right,
-                    style: TextStyle(
-                      color: AppColors.textPrimaryFor(context),
-                      fontWeight: FontWeight.w800,
                     ),
-                  ),
+                    if (entry.isChampion)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0x22FFFFFF),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(color: const Color(0x33FFFFFF)),
+                        ),
+                        child: Text(
+                          strings.championLabel.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    FighterAvatar(
+                      name: entry.fighterName,
+                      size: 64,
+                      showInitialsChip: false,
+                      framed: true,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.fighterName,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 20,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            entry.recordLabel,
+                            style: TextStyle(
+                              color: textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (entry.pointsLabel != null) ...[
+                            const SizedBox(height: 10),
+                            EditorialMetaBand(label: entry.pointsLabel!),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),

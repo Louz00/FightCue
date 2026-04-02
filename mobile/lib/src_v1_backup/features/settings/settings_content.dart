@@ -46,46 +46,26 @@ class _HighlightSettingsCard extends StatelessWidget {
           ),
           Padding(
             padding: const EdgeInsets.all(18),
-            child: Column(
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _QuickStat(
-                        label: strings.accountModelTitle,
-                        value: accountModeLabel,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _QuickStat(
-                        label: strings.currentPlanTitle,
-                        value: planLabel,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _QuickStat(
-                        label: strings.currentTimezoneTitle,
-                        value: timezone,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceAltFor(context),
-                    borderRadius: BorderRadius.circular(18),
+                Expanded(
+                  child: _QuickStat(
+                    label: strings.accountModelTitle,
+                    value: accountModeLabel,
                   ),
-                  child: Text(
-                    strings.settingsSubtitle,
-                    style: TextStyle(
-                      color: AppColors.textSecondaryFor(context),
-                      height: 1.45,
-                    ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _QuickStat(
+                    label: strings.currentPlanTitle,
+                    value: planLabel,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _QuickStat(
+                    label: strings.currentTimezoneTitle,
+                    value: timezone,
                   ),
                 ),
               ],

@@ -16,10 +16,12 @@ class _FightCardSectionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final surface = AppColors.surfaceFor(context);
+    final border = AppColors.borderFor(context);
     return Container(
       decoration: BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: border),
       ),
       child: Row(
         children: [
@@ -57,6 +59,7 @@ class _SectionToggleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textPrimary = AppColors.textPrimaryFor(context);
     final textSecondary = AppColors.textSecondaryFor(context);
 
     return Semantics(
@@ -69,14 +72,20 @@ class _SectionToggleButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
           decoration: BoxDecoration(
-            color: selected ? AppColors.accent : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+            border: selected
+                ? Border(
+                    bottom: BorderSide(
+                      color: textPrimary,
+                      width: 2.5,
+                    ),
+                  )
+                : null,
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: selected ? Colors.white : textSecondary,
+              color: selected ? textPrimary : textSecondary,
               fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
             ),
           ),

@@ -1,5 +1,9 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    - lib/src_v1_backup/**
+
 linter:
   rules:
     avoid_print: true

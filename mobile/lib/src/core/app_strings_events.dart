@@ -86,15 +86,20 @@ extension AppStringsEvents on AppStrings {
         nl: 'Volgende optreden',
         es: 'Proxima aparicion',
       );
+  String get taleOfTheTapeTitle => _pick(
+        en: 'Tale of the tape',
+        nl: 'Tale of the tape',
+        es: 'Tale of the tape',
+      );
   String get unfollowAction => _pick(
-        en: 'Unfollow',
-        nl: 'Ontvolgen',
-        es: 'Dejar de seguir',
+        en: 'Remove',
+        nl: 'Verwijderen',
+        es: 'Quitar',
       );
   String get favoriteFighterAction => _pick(
-        en: 'Favorite fighter',
-        nl: 'Favoriete vechter',
-        es: 'Peleador favorito',
+        en: 'Save fighter',
+        nl: 'Sla vechter op',
+        es: 'Guardar peleador',
       );
   String get openFighterHint => _pick(
         en: 'Tap a fighter to open the profile',
@@ -102,29 +107,29 @@ extension AppStringsEvents on AppStrings {
         es: 'Toca un peleador para abrir el perfil',
       );
   String get followedFightersEmptyTitle => _pick(
-        en: 'No followed fighters yet',
-        nl: 'Nog geen gevolgde vechters',
-        es: 'Aun no hay peleadores seguidos',
+        en: 'No saved fighters yet',
+        nl: 'Nog geen opgeslagen vechters',
+        es: 'Aun no hay peleadores guardados',
       );
   String get followedFightersEmptyBody => _pick(
-        en: 'Favorite fighters to keep them visible on the home screen and to unlock quieter alerts later.',
-        nl: 'Markeer vechters als favoriet om ze op de home te houden en later rustigere meldingen te krijgen.',
-        es: 'Marca peleadores como favoritos para mantenerlos visibles en inicio y activar alertas mas discretas despues.',
+        en: 'Save fighters with the heart icon to keep their profile, tale of the tape, and next fight close by.',
+        nl: 'Sla vechters op met het hartje om hun profiel, tale of the tape en volgende gevecht dichtbij te houden.',
+        es: 'Guarda peleadores con el icono de corazon para mantener cerca su perfil, tale of the tape y proxima pelea.',
       );
   String get followedEventsEmptyTitle => _pick(
-        en: 'No followed events yet',
-        nl: 'Nog geen gevolgde evenementen',
-        es: 'Aun no hay eventos seguidos',
+        en: 'No saved events yet',
+        nl: 'Nog geen opgeslagen events',
+        es: 'Aun no hay eventos guardados',
       );
   String get followedEventsEmptyBody => _pick(
-        en: 'Follow whole cards when you want card-level reminders, watch updates, and calendar export.',
-        nl: 'Volg hele kaarten als je kaartniveau-herinneringen, kijkupdates en agenda-export wilt.',
-        es: 'Sigue carteleras completas si quieres recordatorios, actualizaciones para ver y exportacion al calendario.',
+        en: 'Save full events with the glove icon when you want reminders and fast calendar export.',
+        nl: 'Sla volledige events op met het handschoen-icoon als je herinneringen en snelle agenda-export wilt.',
+        es: 'Guarda eventos completos con el icono de guante si quieres recordatorios y exportacion rapida al calendario.',
       );
   String get followAction => _pick(
-        en: 'Follow',
-        nl: 'Volgen',
-        es: 'Seguir',
+        en: 'Save event',
+        nl: 'Sla event op',
+        es: 'Guardar evento',
       );
   String get alertAction => _pick(
         en: 'Alert',

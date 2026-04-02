@@ -68,12 +68,6 @@ class _AlertsContent extends StatelessWidget {
                 body: strings.alertsSubtitle,
                 trailingLabel:
                     '${snapshot.followedFighters.length + snapshot.followedEvents.length}',
-                footer: _AlertsHeroFooter(
-                  usingCachedFallback: usingCachedFallback,
-                  loadFailed: loadFailed,
-                  trackedCount: snapshot.followedFighters.length +
-                      snapshot.followedEvents.length,
-                ),
               ),
               const SizedBox(height: 24),
               if (loadFailed) ...[
@@ -94,18 +88,12 @@ class _AlertsContent extends StatelessWidget {
                   ),
                   actionLabel: strings.retryAction,
                   onAction: onRefreshAlerts,
-                  ),
-                  const SizedBox(height: 16),
+                ),
+                const SizedBox(height: 16),
               ] else if (isLoading && alerts == null) ...[
                 EditorialLoadingCard(label: strings.liveSyncingLabel),
                 const SizedBox(height: 16),
               ],
-              _AlertsSummaryStrip(
-                strings: strings,
-                fighterCount: snapshot.followedFighters.length,
-                eventCount: snapshot.followedEvents.length,
-              ),
-              const SizedBox(height: 20),
               EditorialSectionTitle(label: strings.fighterReminderPresetsTitle),
               const SizedBox(height: 12),
               if (snapshot.followedFighters.isEmpty)
@@ -307,10 +295,6 @@ class _FighterReminderCard extends StatelessWidget {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        EditorialMetaBand(
-                          label: fighter.recordLabel,
-                        ),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
@@ -384,41 +368,16 @@ class _EventReminderCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          mainBout == null
-                              ? strings.pendingCardTitle
-                              : '${mainBout.fighterAName} vs ${mainBout.fighterBName}',
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 20,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceAlt,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          event.localDateLabel,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    mainBout == null
+                        ? strings.pendingCardTitle
+                        : '${mainBout.fighterAName} vs ${mainBout.fighterBName}',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 20,
+                      letterSpacing: -0.3,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   EditorialMetaBand(
@@ -466,178 +425,6 @@ class _PresetChipData {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-}
-
-class _AlertsSummaryStrip extends StatelessWidget {
-  const _AlertsSummaryStrip({
-    required this.strings,
-    required this.fighterCount,
-    required this.eventCount,
-  });
-
-  final AppStrings strings;
-  final int fighterCount;
-  final int eventCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: AppShadows.card,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _AlertsMetricCard(
-              label: strings.followedFightersTitle,
-              value: '$fighterCount',
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 42,
-            color: AppColors.border,
-          ),
-          Expanded(
-            child: _AlertsMetricCard(
-              label: strings.followedEventsTitle,
-              value: '$eventCount',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AlertsMetricCard extends StatelessWidget {
-  const _AlertsMetricCard({
-    required this.label,
-    required this.value,
-  });
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontWeight: FontWeight.w900,
-              fontSize: 26,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AlertsHeroFooter extends StatelessWidget {
-  const _AlertsHeroFooter({
-    required this.usingCachedFallback,
-    required this.loadFailed,
-    required this.trackedCount,
-  });
-
-  final bool usingCachedFallback;
-  final bool loadFailed;
-  final int trackedCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final status = loadFailed
-        ? 'Fallback mode'
-        : usingCachedFallback
-        ? 'Saved preview'
-        : 'Live feed';
-
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0x18FFFFFF),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'STATUS',
-                  style: TextStyle(
-                    color: Color(0xFFFFE4E8),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  status.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0x18FFFFFF),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'TRACKED',
-                  style: TextStyle(
-                    color: Color(0xFFFFE4E8),
-                    fontWeight: FontWeight.w700,
-                    fontSize: 10,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '$trackedCount',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 22,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _ReminderPill extends StatelessWidget {

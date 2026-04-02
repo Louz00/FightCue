@@ -72,9 +72,9 @@ extension AppStringsSettings on AppStrings {
         es: 'Cambios de horario',
       );
   String get reminderPresetWatch => _pick(
-        en: 'Watch provider updates',
-        nl: 'Updates van kijkproviders',
-        es: 'Actualizaciones del proveedor',
+        en: 'Card updates',
+        nl: 'Kaartupdates',
+        es: 'Actualizaciones de cartelera',
       );
   String get alertPolicyTitle => _pick(
         en: 'Alert style',

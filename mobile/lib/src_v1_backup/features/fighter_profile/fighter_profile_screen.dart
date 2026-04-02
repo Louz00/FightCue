@@ -158,37 +158,6 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
                     },
                   ),
                   const SizedBox(height: 24),
-                  EditorialSectionTitle(label: strings.taleOfTheTapeTitle),
-                  const SizedBox(height: 12),
-                  EditorialSurfaceCard(
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _ProfileMetric(
-                                label: strings.recordLabel,
-                                value: fighter.recordLabel,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _ProfileMetric(
-                                label: strings.nationalityLabel,
-                                value: fighter.nationalityLabel,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        _ProfileMetric(
-                          label: strings.nextAppearanceTitle,
-                          value: fighter.nextAppearanceLabel,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
                   EditorialSectionTitle(label: strings.aboutFighterTitle),
                   const SizedBox(height: 12),
                   EditorialSurfaceCard(
@@ -229,47 +198,6 @@ class _FighterProfileScreenState extends State<FighterProfileScreen> {
             },
           );
         },
-      ),
-    );
-  }
-}
-
-class _ProfileMetric extends StatelessWidget {
-  const _ProfileMetric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceAltFor(context),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: AppColors.textSecondaryFor(context),
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              color: AppColors.textPrimaryFor(context),
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -448,6 +376,10 @@ class _RelatedEventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mainBout = headlineBoutForEvent(event);
+    final primaryWatchProvider = primaryWatchProviderLabel(event);
+    final watchLabel = primaryWatchProvider == null
+        ? event.sourceLabel
+        : '${strings.whereToWatch}: $primaryWatchProvider';
 
     return Semantics(
       button: true,
@@ -513,6 +445,8 @@ class _RelatedEventCard extends StatelessWidget {
                           ),
                         ],
                       ),
+                    const SizedBox(height: 14),
+                    EditorialMetaBand(label: watchLabel),
                     const SizedBox(height: 14),
                     EditorialActionPill(
                       label: strings.viewEventDetails,

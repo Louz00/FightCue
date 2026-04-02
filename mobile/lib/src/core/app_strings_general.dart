@@ -18,14 +18,14 @@ extension AppStringsGeneral on AppStrings {
         es: 'Proximas peleas',
       );
   String get homeSubtitle => _pick(
-        en: 'Boxing, MMA, and kickboxing in your timezone.',
-        nl: 'Boxing, MMA en kickboksen in jouw tijdzone.',
-        es: 'Boxeo, MMA y kickboxing en tu zona horaria.',
+        en: 'Upcoming boxing, MMA, UFC, and Glory Kickboxing events in your timezone.',
+        nl: 'Aankomende boksen-, MMA-, UFC- en Glory Kickboxing-events in jouw tijdzone.',
+        es: 'Proximos eventos de boxeo, MMA, UFC y Glory Kickboxing en tu zona horaria.',
       );
   String get following => _pick(
-        en: 'Following',
-        nl: 'Volgend',
-        es: 'Siguiendo',
+        en: 'Favorites',
+        nl: 'Favorieten',
+        es: 'Favoritos',
       );
   String get alerts => _pick(
         en: 'Alerts',
@@ -43,19 +43,19 @@ extension AppStringsGeneral on AppStrings {
         es: 'Ajustes',
       );
   String get rankingsNavLabel => _pick(
-        en: 'Rankings',
-        nl: 'Ranglijsten',
-        es: 'Rankings',
+        en: 'Leaderboard',
+        nl: 'Leaderboard',
+        es: 'Leaderboard',
       );
   String get rankingsTitle => _pick(
-        en: 'Division rankings',
-        nl: 'Divisie-ranglijsten',
-        es: 'Rankings por division',
+        en: 'Leaderboard',
+        nl: 'Leaderboard',
+        es: 'Leaderboard',
       );
   String get rankingsSubtitle => _pick(
-        en: 'Clean weight-class leaderboards with a clear source label for every list.',
-        nl: 'Strakke gewichtsklasse-ranglijsten met een duidelijke bronvermelding per lijst.',
-        es: 'Rankings limpios por peso con una fuente clara para cada lista.',
+        en: 'Clean combat-sports leaderboards with clear source labels and room for longer lists.',
+        nl: 'Strakke combat-sports leaderboards met duidelijke bronvermelding en ruimte voor langere lijsten.',
+        es: 'Leaderboards limpios de deportes de combate con fuente clara y espacio para listas mas largas.',
       );
   String get menLabel => _pick(
         en: 'Men',
@@ -93,9 +93,9 @@ extension AppStringsGeneral on AppStrings {
         es: 'Avatar estilizado',
       );
   String get settingsSubtitle => _pick(
-        en: 'Language, country, account, and premium preferences.',
-        nl: 'Taal, land, account en premiumvoorkeuren.',
-        es: 'Idioma, pais, cuenta y preferencias premium.',
+        en: 'Language, notifications, timezone, and premium.',
+        nl: 'Taal, meldingen, tijdzone en premium.',
+        es: 'Idioma, notificaciones, zona horaria y premium.',
       );
   String get yourTime => _pick(
         en: 'your time',
@@ -103,14 +103,14 @@ extension AppStringsGeneral on AppStrings {
         es: 'tu hora',
       );
   String get followingTitle => _pick(
-        en: 'Your follows',
-        nl: 'Jouw favorieten',
-        es: 'Tus seguidos',
+        en: 'Favorites',
+        nl: 'Favorieten',
+        es: 'Favoritos',
       );
   String get followingSubtitle => _pick(
-        en: 'Fast access to tracked fighters and event cards.',
-        nl: 'Snelle toegang tot gevolgde vechters en event cards.',
-        es: 'Acceso rapido a peleadores seguidos y carteleras.',
+        en: 'Quick access to saved fighters and saved events.',
+        nl: 'Snelle toegang tot opgeslagen vechters en opgeslagen events.',
+        es: 'Acceso rapido a peleadores guardados y eventos guardados.',
       );
   String get nextFight => _pick(
         en: 'Next big fight',
@@ -123,14 +123,14 @@ extension AppStringsGeneral on AppStrings {
         es: 'Evento principal',
       );
   String get followedFightersTitle => _pick(
-        en: 'Followed fighters',
-        nl: 'Gevolgde vechters',
-        es: 'Peleadores seguidos',
+        en: 'Saved fighters',
+        nl: 'Opgeslagen vechters',
+        es: 'Peleadores guardados',
       );
   String get followedEventsTitle => _pick(
-        en: 'Followed events',
-        nl: 'Gevolgde evenementen',
-        es: 'Eventos seguidos',
+        en: 'Saved events',
+        nl: 'Opgeslagen events',
+        es: 'Eventos guardados',
       );
   String get filterAllLabel => _pick(
         en: 'All',
@@ -148,14 +148,19 @@ extension AppStringsGeneral on AppStrings {
         es: 'UFC',
       );
   String get filterGloryLabel => _pick(
-        en: 'GLORY',
-        nl: 'GLORY',
-        es: 'GLORY',
+        en: 'Glory Kickboxing',
+        nl: 'Glory Kickboxing',
+        es: 'Glory Kickboxing',
       );
-  String get filterFollowingLabel => _pick(
-        en: 'Following',
-        nl: 'Volgend',
-        es: 'Seguidos',
+  String get filterMmaLabel => _pick(
+        en: 'MMA',
+        nl: 'MMA',
+        es: 'MMA',
+      );
+  String get filterResetLabel => _pick(
+        en: 'All',
+        nl: 'Alles',
+        es: 'Todo',
       );
   String get upcomingEventsTitle => _pick(
         en: 'Upcoming events',
@@ -163,9 +168,9 @@ extension AppStringsGeneral on AppStrings {
         es: 'Proximos eventos',
       );
   String get filteredFeedTitle => _pick(
-        en: 'Filter the feed',
-        nl: 'Filter de feed',
-        es: 'Filtra el feed',
+        en: 'Choose one or more filters',
+        nl: 'Kies een of meer filters',
+        es: 'Elige uno o mas filtros',
       );
   String get noFilteredEventsTitle => _pick(
         en: 'No events in this filter yet',

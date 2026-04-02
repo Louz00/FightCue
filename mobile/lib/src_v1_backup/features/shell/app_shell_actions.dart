@@ -1,0 +1,213 @@
+part of 'app_shell.dart';
+
+extension _AppShellActions on _AppShellState {
+  Future<void> _bootstrap() async {
+    await _syncHome();
+  }
+
+  Future<void> _syncHome() async {
+    _homeSyncingNotifier.value = true;
+    _homeSyncErrorNotifier.value = false;
+
+    try {
+      final result = await _api.fetchHomeResult();
+      final snapshot = result.data;
+      _homeCachedFallbackNotifier.value = result.isFromCache;
+      _homeLastSyncedAtNotifier.value = result.lastSyncedAt;
+      _snapshotNotifier.value = snapshot;
+      widget.onLanguageChanged?.call(snapshot.languageCode);
+      await _mergeLeaderboardFighters();
+      if (!result.isFromCache) {
+        unawaited(_api.prefetchReadSurfaces(_snapshotNotifier.value));
+      }
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.sync_home');
+      _homeSyncErrorNotifier.value = true;
+    } finally {
+      _homeSyncingNotifier.value = false;
+    }
+  }
+
+  Future<void> _mergeLeaderboardFighters() async {
+    try {
+      final leaderboards = await _api.fetchLeaderboards();
+      final snapshot = _snapshotNotifier.value;
+      final fightersById = {
+        for (final fighter in snapshot.fighters) fighter.id: fighter,
+      };
+      final fightersByName = {
+        for (final fighter in snapshot.fighters)
+          fighter.name.toLowerCase(): fighter,
+      };
+      final nextFighters = [...snapshot.fighters];
+
+      for (final leaderboard in leaderboards) {
+        for (final entry in leaderboard.entries) {
+          final existingById = fightersById[entry.fighterId];
+          if (existingById != null) {
+            continue;
+          }
+
+          final existingByName = fightersByName[entry.fighterName.toLowerCase()];
+          if (existingByName != null) {
+            final updated = existingByName.copyWith(
+              recordLabel: entry.recordLabel,
+              organizationHint: leaderboard.organization,
+            );
+            final index = nextFighters.indexOf(existingByName);
+            nextFighters[index] = updated;
+            fightersById[entry.fighterId] = updated;
+            fightersByName[entry.fighterName.toLowerCase()] = updated;
+            continue;
+          }
+
+          final created = FighterSummary(
+            id: entry.fighterId,
+            name: entry.fighterName,
+            sport: Sport.mma,
+            organizationHint: leaderboard.organization,
+            recordLabel: entry.recordLabel,
+            nationalityLabel: 'TBD',
+            headline: 'Official ranking preview fighter entry.',
+            nextAppearanceLabel: leaderboard.weightClass,
+            isFollowed: false,
+          );
+          nextFighters.add(created);
+          fightersById[entry.fighterId] = created;
+          fightersByName[entry.fighterName.toLowerCase()] = created;
+        }
+      }
+
+      _snapshotNotifier.value = snapshot.copyWith(fighters: nextFighters);
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.merge_leaderboards');
+    }
+  }
+
+  Future<void> _toggleEventFollow(String eventId) async {
+    final snapshot = _snapshotNotifier.value;
+    final current = snapshot.eventById(eventId);
+
+    if (current == null) {
+      return;
+    }
+
+    final nextFollowed = !current.isFollowed;
+    _snapshotNotifier.value = snapshot.copyWith(
+      events: snapshot.events
+          .map(
+            (event) => event.id == eventId
+                ? event.copyWith(isFollowed: nextFollowed)
+                : event,
+          )
+          .toList(),
+    );
+
+    try {
+      await _api.setEventFollow(eventId, nextFollowed);
+      await _syncHome();
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.toggle_event_follow');
+      _snapshotNotifier.value = snapshot;
+    }
+  }
+
+  Future<void> _toggleFighterFollow(String fighterId) async {
+    final snapshot = _snapshotNotifier.value;
+    final current = snapshot.fighterById(fighterId);
+
+    if (current == null) {
+      return;
+    }
+
+    final nextFollowed = !current.isFollowed;
+    final nextFighters = snapshot.fighters
+        .map(
+          (fighter) => fighter.id == fighterId
+              ? fighter.copyWith(isFollowed: nextFollowed)
+              : fighter,
+        )
+        .toList();
+    final followedIds = nextFighters
+        .where((fighter) => fighter.isFollowed)
+        .map((fighter) => fighter.id)
+        .toSet();
+    final nextEvents = snapshot.events
+        .map(
+          (event) => event.copyWith(
+            bouts: event.bouts
+                .map(
+                  (bout) => bout.copyWith(
+                    includesFollowedFighter:
+                        followedIds.contains(bout.fighterAId) ||
+                        followedIds.contains(bout.fighterBId),
+                  ),
+                )
+                .toList(),
+          ),
+        )
+        .toList();
+
+    _snapshotNotifier.value = snapshot.copyWith(
+      fighters: nextFighters,
+      events: nextEvents,
+    );
+
+    try {
+      await _api.setFighterFollow(fighterId, nextFollowed);
+      await _syncHome();
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.toggle_fighter_follow');
+      _snapshotNotifier.value = snapshot;
+    }
+  }
+
+  Future<void> _updateLanguage(String languageCode) async {
+    final snapshot = _snapshotNotifier.value;
+
+    _snapshotNotifier.value = snapshot.copyWith(languageCode: languageCode);
+    widget.onLanguageChanged?.call(languageCode);
+
+    try {
+      final updated = await _api.updatePreferences(languageCode: languageCode);
+      _snapshotNotifier.value = updated;
+      widget.onLanguageChanged?.call(updated.languageCode);
+      await _mergeLeaderboardFighters();
+      unawaited(_api.prefetchReadSurfaces(_snapshotNotifier.value));
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.update_language');
+      _snapshotNotifier.value = snapshot;
+      widget.onLanguageChanged?.call(snapshot.languageCode);
+    }
+  }
+
+  Future<void> _updateViewingCountry(String countryCode) async {
+    final snapshot = _snapshotNotifier.value;
+
+    _snapshotNotifier.value =
+        snapshot.copyWith(viewingCountryCode: countryCode);
+
+    try {
+      final updated =
+          await _api.updatePreferences(viewingCountryCode: countryCode);
+      _snapshotNotifier.value = updated;
+      widget.onLanguageChanged?.call(updated.languageCode);
+      await _mergeLeaderboardFighters();
+      unawaited(_api.prefetchReadSurfaces(_snapshotNotifier.value));
+    } catch (error, stackTrace) {
+      logUiError(error, stackTrace, context: 'app_shell.update_country');
+      _snapshotNotifier.value = snapshot;
+    }
+  }
+
+  void _applyMonetizationSnapshot(MonetizationSnapshot monetization) {
+    final snapshot = _snapshotNotifier.value;
+    _snapshotNotifier.value = snapshot.copyWith(
+      premiumState: monetization.premiumState,
+      adTier: monetization.adTier,
+      adConsentRequired: monetization.adConsentRequired,
+      adConsentGranted: monetization.adConsentGranted,
+      analyticsConsent: monetization.analyticsConsent,
+    );
+  }
+}

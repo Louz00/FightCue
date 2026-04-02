@@ -8,136 +8,82 @@ class _OverviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceFor(context);
-    final border = AppColors.borderFor(context);
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: border),
+        color: AppColors.surfaceFor(context),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: AppShadows.cardFor(context),
       ),
       child: Column(
         children: [
-          _OverviewRow(
-            label: strings.organizationLabel,
-            value: event.organization,
+          Row(
+            children: [
+              Expanded(
+                child: _OverviewMetricCard(
+                  label: strings.organizationLabel,
+                  value: event.organization,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _OverviewMetricCard(
+                  label: strings.venueLabel,
+                  value: event.venueLabel,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          _OverviewRow(
-            label: strings.venueLabel,
-            value: event.venueLabel,
+          Row(
+            children: [
+              Expanded(
+                child: _OverviewMetricCard(
+                  label: strings.yourTimeLabel,
+                  value: event.localTimeLabel,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _OverviewMetricCard(
+                  label: strings.eventLocalStartLabel,
+                  value: event.eventLocalTimeLabel,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          _OverviewRow(
-            label: strings.selectedCountryLabel,
-            value: event.selectedCountryCode,
-          ),
-          const SizedBox(height: 12),
-          _OverviewRow(
-            label: strings.sourceLabel,
-            value: event.sourceLabel,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OverviewRow extends StatelessWidget {
-  const _OverviewRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final textSecondary = AppColors.textSecondaryFor(context);
-    final textPrimary = AppColors.textPrimaryFor(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: textPrimary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ProviderCard extends StatelessWidget {
-  const _ProviderCard({
-    required this.provider,
-    required this.strings,
-  });
-
-  final WatchProviderSummary provider;
-  final AppStrings strings;
-
-  @override
-  Widget build(BuildContext context) {
-    final surface = AppColors.surfaceFor(context);
-    final border = AppColors.borderFor(context);
-    final surfaceAlt = AppColors.surfaceAltFor(context);
-    final textPrimary = AppColors.textPrimaryFor(context);
-    final textSecondary = AppColors.textSecondaryFor(context);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: border),
-      ),
-      child: Row(
-        children: [
           Container(
-            width: 42,
-            height: 42,
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: surfaceAlt,
-              borderRadius: BorderRadius.circular(14),
+              color: AppColors.surfaceAltFor(context),
+              borderRadius: BorderRadius.circular(24),
             ),
-            child: const Icon(
-              Icons.play_circle_outline,
-              color: AppColors.accent,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  provider.label,
+                  strings.sourceLabel.toUpperCase(),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: AppColors.textSecondaryFor(context),
+                      ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  event.sourceLabel,
                   style: TextStyle(
-                    color: textPrimary,
+                    color: AppColors.textPrimaryFor(context),
                     fontWeight: FontWeight.w800,
-                    fontSize: 16,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 10),
                 Text(
-                  '${strings.selectedCountryLabel}: ${provider.countryCode}  •  ${provider.confidenceLabel}',
+                  '${event.locationLabel} • ${event.venueLabel}',
                   style: TextStyle(
-                    color: textSecondary,
-                    fontSize: 12,
+                    color: AppColors.textSecondaryFor(context),
+                    height: 1.45,
                   ),
                 ),
               ],
@@ -149,31 +95,94 @@ class _ProviderCard extends StatelessWidget {
   }
 }
 
-class _PanelTitle extends StatelessWidget {
-  const _PanelTitle({required this.label});
+class _OverviewMetricCard extends StatelessWidget {
+  const _OverviewMetricCard({required this.label, required this.value});
 
   final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundFor(context),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: AppColors.textSecondaryFor(context),
+                ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: TextStyle(
+              color: AppColors.textPrimaryFor(context),
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PanelTitle extends StatelessWidget {
+  const _PanelTitle({
+    required this.label,
+    this.eyebrow,
+  });
+
+  final String label;
+  final String? eyebrow;
 
   @override
   Widget build(BuildContext context) {
     final textPrimary = AppColors.textPrimaryFor(context);
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Semantics(
-          header: true,
-          child: Text(
-            label.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        if (eyebrow != null) ...[
+          Text(
+            eyebrow!.toUpperCase(),
+            style: const TextStyle(
+              color: AppColors.accent,
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+              letterSpacing: 1.0,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        Row(
+          children: [
+            Semantics(
+              header: true,
+              child: Text(
+                label.toUpperCase(),
+                style: TextStyle(
                   color: textPrimary,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 24,
+                  letterSpacing: -0.8,
                 ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            height: 2,
-            color: AppColors.accent,
-          ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Container(
+                height: 2,
+                color: AppColors.accent,
+              ),
+            ),
+          ],
         ),
       ],
     );

@@ -4,18 +4,16 @@ class _EventFaceoffPreview extends StatelessWidget {
   const _EventFaceoffPreview({
     required this.bout,
     this.prominent = false,
-    this.inverse = false,
   });
 
   final BoutSummary bout;
   final bool prominent;
-  final bool inverse;
 
   @override
   Widget build(BuildContext context) {
     final avatarSize = prominent ? 72.0 : 58.0;
     final nameStyle = TextStyle(
-      color: inverse ? Colors.white : AppColors.textPrimaryFor(context),
+      color: AppColors.textPrimaryFor(context),
       fontWeight: FontWeight.w800,
       fontSize: prominent ? 18 : 16,
       letterSpacing: -0.3,
@@ -29,7 +27,6 @@ class _EventFaceoffPreview extends StatelessWidget {
             avatarSize: avatarSize,
             alignEnd: false,
             nameStyle: nameStyle,
-            inverse: inverse,
           ),
         ),
         Container(
@@ -39,17 +36,15 @@ class _EventFaceoffPreview extends StatelessWidget {
             vertical: prominent ? 12 : 10,
           ),
           decoration: BoxDecoration(
-            color: inverse
-                ? const Color(0x14FFFFFF)
-                : AppColors.surfaceAltFor(context),
+            color: AppColors.surfaceAltFor(context),
             borderRadius: BorderRadius.circular(18),
           ),
           child: Column(
             children: [
               Text(
                 bout.slotLabel.toUpperCase(),
-                style: TextStyle(
-                  color: inverse ? const Color(0xFFFFD5DB) : AppColors.accent,
+                style: const TextStyle(
+                  color: AppColors.accent,
                   fontWeight: FontWeight.w800,
                   fontSize: 11,
                   letterSpacing: 0.4,
@@ -59,10 +54,8 @@ class _EventFaceoffPreview extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   bout.weightClass!,
-                  style: TextStyle(
-                    color: inverse
-                        ? const Color(0xFFFFD5DB)
-                        : AppColors.textSecondary,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
@@ -77,7 +70,6 @@ class _EventFaceoffPreview extends StatelessWidget {
             avatarSize: avatarSize,
             alignEnd: true,
             nameStyle: nameStyle,
-            inverse: inverse,
           ),
         ),
       ],
@@ -91,14 +83,12 @@ class _PreviewFighterSide extends StatelessWidget {
     required this.avatarSize,
     required this.alignEnd,
     required this.nameStyle,
-    required this.inverse,
   });
 
   final String name;
   final double avatarSize;
   final bool alignEnd;
   final TextStyle nameStyle;
-  final bool inverse;
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +96,7 @@ class _PreviewFighterSide extends StatelessWidget {
       name: name,
       size: avatarSize,
       showInitialsChip: false,
-      framed: !inverse,
+      framed: true,
     );
     final label = Expanded(
       child: Text(

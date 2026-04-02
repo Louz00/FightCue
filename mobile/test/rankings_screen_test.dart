@@ -74,7 +74,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Division rankings'), findsOneWidget);
+    expect(find.text('Leaderboard'), findsWidgets);
     expect(find.text('Lightweight'), findsWidgets);
     expect(find.text('Strawweight'), findsNothing);
 

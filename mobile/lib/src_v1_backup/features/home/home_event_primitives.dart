@@ -52,7 +52,7 @@ class _EventCardHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
       decoration: const BoxDecoration(
         color: AppColors.accent,
         borderRadius: BorderRadius.only(
@@ -72,8 +72,6 @@ class _EventCardHeader extends StatelessWidget {
                 style: const TextStyle(
                   color: Color(0xFFFFE4E8),
                   fontWeight: FontWeight.w700,
-                  fontSize: 11,
-                  letterSpacing: 0.6,
                 ),
               ),
             ],
@@ -83,10 +81,10 @@ class _EventCardHeader extends StatelessWidget {
             event.title.toUpperCase(),
             style: const TextStyle(
               color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 22,
-              height: 1.02,
-              letterSpacing: -0.6,
+              fontWeight: FontWeight.w800,
+              fontSize: 20,
+              height: 1.06,
+              letterSpacing: -0.4,
             ),
           ),
         ],
@@ -99,41 +97,61 @@ class _EventMetaLine extends StatelessWidget {
   const _EventMetaLine({
     required this.primary,
     required this.secondary,
-    this.inverse = false,
   });
 
   final String primary;
   final String secondary;
-  final bool inverse;
 
   @override
   Widget build(BuildContext context) {
-    final primaryColor = inverse
-        ? Colors.white
-        : AppColors.textPrimaryFor(context);
-    final secondaryColor = inverse
-        ? const Color(0xFFFFD5DB)
-        : AppColors.textSecondaryFor(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Text(
           primary,
           style: TextStyle(
-            color: primaryColor,
+            color: AppColors.textPrimaryFor(context),
             fontWeight: FontWeight.w800,
           ),
         ),
-        const SizedBox(height: 4),
         Text(
           secondary,
           style: TextStyle(
-            color: secondaryColor,
+            color: AppColors.textSecondaryFor(context),
             fontWeight: FontWeight.w600,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _WatchInfoBand extends StatelessWidget {
+  const _WatchInfoBand({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: label,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceAltFor(context),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: AppColors.textPrimaryFor(context),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -168,13 +186,11 @@ class _ActionPill extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.emphasized = false,
-    this.icon,
   });
 
   final String label;
   final VoidCallback onTap;
   final bool emphasized;
-  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -196,25 +212,13 @@ class _ActionPill extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
             border: Border.all(color: borderColor),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.max,
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 16, color: textColor),
-                const SizedBox(width: 6),
-              ],
-              Flexible(
-                child: Text(
-                  label,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: textColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),

@@ -97,7 +97,7 @@ void main() {
     expect(find.text('Showing saved preview'), findsOneWidget);
     expect(find.textContaining('Last synced:'), findsOneWidget);
     expect(find.text('Pull down to refresh the live feed.'), findsOneWidget);
-    expect(find.text('Upcoming fights'), findsOneWidget);
+    expect(find.text('UPCOMING FIGHTS'), findsOneWidget);
   });
 
   testWidgets('AppShell rolls back optimistic event follow changes on API error', (
@@ -118,18 +118,18 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final unfollowButton = find.ancestor(
-      of: find.text('Unfollow'),
+    final removeButton = find.ancestor(
+      of: find.text('Remove'),
       matching: find.byType(InkWell),
     );
 
-    expect(unfollowButton, findsWidgets);
-    tester.widget<InkWell>(unfollowButton.first).onTap?.call();
+    expect(removeButton, findsWidgets);
+    tester.widget<InkWell>(removeButton.first).onTap?.call();
     await tester.pump();
-    expect(find.text('Follow'), findsOneWidget);
+    expect(find.text('Save event'), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 20));
     await tester.pumpAndSettle();
-    expect(find.text('Unfollow'), findsOneWidget);
+    expect(find.text('Remove'), findsOneWidget);
   });
 }

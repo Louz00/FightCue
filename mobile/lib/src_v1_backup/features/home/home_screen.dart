@@ -16,7 +16,7 @@ part 'home_event_bouts.dart';
 part 'home_event_primitives.dart';
 part 'home_feature_cards.dart';
 
-enum _HomeFeedFilter { boxing, ufc, mma, glory }
+enum _HomeFeedFilter { all, boxing, ufc, glory, following }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -49,7 +49,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final Set<_HomeFeedFilter> _selectedFilters = {};
+  _HomeFeedFilter _selectedFilter = _HomeFeedFilter.all;
 
   @override
   Widget build(BuildContext context) {
@@ -74,14 +74,39 @@ class _HomeScreenState extends State<HomeScreen> {
         final remainingEvents = heroEvent == null
             ? filteredEvents
             : filteredEvents.where((event) => event.id != heroEvent.id).toList();
+        final filteredFollowedEvents = snapshot.followedEvents
+            .where((event) => _matchesFilter(event))
+            .where((event) => event.id != heroEvent?.id)
+            .toList();
 
         return RefreshIndicator(
           onRefresh: widget.onRetrySync,
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
             children: [
-              _HomeIntro(
-                strings: widget.strings,
+              Text(
+                widget.strings.appName.toUpperCase(),
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                widget.strings.homeTitle,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: 280,
+                child: Text(
+                  widget.strings.homeSubtitle,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                widget.strings.pullToRefreshHint,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondaryFor(context),
+                    ),
               ),
               const SizedBox(height: 24),
               if (hasSyncError) ...[
@@ -122,13 +147,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 EditorialLoadingCard(label: widget.strings.liveSyncingLabel),
                 const SizedBox(height: 16),
               ],
-              _SectionEyebrow(label: 'Fight program'),
-              const SizedBox(height: 10),
-              _HomeSummaryBand(
-                eventCount: filteredEvents.length,
-                activeFilterCount: _selectedFilters.length,
-              ),
-              const SizedBox(height: 24),
               _SectionTitle(label: widget.strings.filteredFeedTitle),
               const SizedBox(height: 12),
               SingleChildScrollView(
@@ -136,36 +154,38 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   children: [
                     _FilterChip(
-                      label: widget.strings.filterResetLabel,
-                      selected: _selectedFilters.isEmpty,
-                      onTap: () => setState(_selectedFilters.clear),
+                      label: widget.strings.filterAllLabel,
+                      selected: _selectedFilter == _HomeFeedFilter.all,
+                      onTap: () => setState(
+                        () => _selectedFilter = _HomeFeedFilter.all,
+                      ),
                     ),
                     _FilterChip(
                       label: widget.strings.filterBoxingLabel,
-                      selected: _selectedFilters.contains(_HomeFeedFilter.boxing),
+                      selected: _selectedFilter == _HomeFeedFilter.boxing,
                       onTap: () => setState(
-                        () => _toggleFilter(_HomeFeedFilter.boxing),
+                        () => _selectedFilter = _HomeFeedFilter.boxing,
                       ),
                     ),
                     _FilterChip(
                       label: widget.strings.filterUfcLabel,
-                      selected: _selectedFilters.contains(_HomeFeedFilter.ufc),
+                      selected: _selectedFilter == _HomeFeedFilter.ufc,
                       onTap: () => setState(
-                        () => _toggleFilter(_HomeFeedFilter.ufc),
-                      ),
-                    ),
-                    _FilterChip(
-                      label: widget.strings.filterMmaLabel,
-                      selected: _selectedFilters.contains(_HomeFeedFilter.mma),
-                      onTap: () => setState(
-                        () => _toggleFilter(_HomeFeedFilter.mma),
+                        () => _selectedFilter = _HomeFeedFilter.ufc,
                       ),
                     ),
                     _FilterChip(
                       label: widget.strings.filterGloryLabel,
-                      selected: _selectedFilters.contains(_HomeFeedFilter.glory),
+                      selected: _selectedFilter == _HomeFeedFilter.glory,
                       onTap: () => setState(
-                        () => _toggleFilter(_HomeFeedFilter.glory),
+                        () => _selectedFilter = _HomeFeedFilter.glory,
+                      ),
+                    ),
+                    _FilterChip(
+                      label: widget.strings.filterFollowingLabel,
+                      selected: _selectedFilter == _HomeFeedFilter.following,
+                      onTap: () => setState(
+                        () => _selectedFilter = _HomeFeedFilter.following,
                       ),
                     ),
                   ],
@@ -185,6 +205,44 @@ class _HomeScreenState extends State<HomeScreen> {
               ] else ...[
                 _EmptyFilterState(strings: widget.strings),
                 const SizedBox(height: 24),
+              ],
+              _SectionTitle(label: widget.strings.followedFightersTitle),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 224,
+                child: snapshot.followedFighters.isEmpty
+                    ? _EmptyFollowedFightersCard(strings: widget.strings)
+                    : ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: snapshot.followedFighters.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemBuilder: (context, index) {
+                          final fighter = snapshot.followedFighters[index];
+                          return _FollowedFighterCard(
+                            fighter: fighter,
+                            strings: widget.strings,
+                            onTap: () => widget.onOpenFighter(fighter.id),
+                          );
+                        },
+                      ),
+              ),
+              const SizedBox(height: 24),
+              if (filteredFollowedEvents.isNotEmpty) ...[
+                _SectionTitle(label: widget.strings.followedEventsTitle),
+                const SizedBox(height: 12),
+                ...filteredFollowedEvents.map(
+                  (event) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _ExpandableEventCard(
+                      event: event,
+                      strings: widget.strings,
+                      onOpenEvent: () => widget.onOpenEvent(event.id),
+                      onOpenFighter: widget.onOpenFighter,
+                      onToggleFollow: () => widget.onToggleEventFollow(event.id),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
               if (remainingEvents.isNotEmpty) ...[
                 _SectionTitle(label: widget.strings.upcomingEventsTitle),
@@ -212,6 +270,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
+              _InfoPanel(
+                title: widget.strings.accountModelTitle,
+                body: widget.strings.accountModelBody,
+              ),
+              const SizedBox(height: 12),
+              _InfoPanel(
+                title: widget.strings.watchInfoTitle,
+                body: widget.strings.watchInfoBody,
+              ),
             ],
           ),
         );
@@ -223,33 +290,18 @@ class _HomeScreenState extends State<HomeScreen> {
     return snapshot.events.where(_matchesFilter).toList();
   }
 
-  void _toggleFilter(_HomeFeedFilter filter) {
-    if (_selectedFilters.contains(filter)) {
-      _selectedFilters.remove(filter);
-      return;
-    }
-
-    _selectedFilters.add(filter);
-  }
-
   bool _matchesFilter(EventSummary event) {
-    if (_selectedFilters.isEmpty) {
-      return true;
+    switch (_selectedFilter) {
+      case _HomeFeedFilter.all:
+        return true;
+      case _HomeFeedFilter.boxing:
+        return event.sport == Sport.boxing;
+      case _HomeFeedFilter.ufc:
+        return event.organization.toLowerCase() == 'ufc';
+      case _HomeFeedFilter.glory:
+        return event.organization.toLowerCase() == 'glory';
+      case _HomeFeedFilter.following:
+        return event.isFollowed;
     }
-
-    return _selectedFilters.any((filter) {
-      switch (filter) {
-        case _HomeFeedFilter.boxing:
-          return event.sport == Sport.boxing;
-        case _HomeFeedFilter.ufc:
-          return event.organization.toLowerCase() == 'ufc';
-        case _HomeFeedFilter.mma:
-          return event.sport == Sport.mma;
-        case _HomeFeedFilter.glory:
-          return event.organization.toLowerCase() == 'glory' ||
-              event.organization.toLowerCase() == 'glory kickboxing' ||
-              event.sport == Sport.kickboxing;
-      }
-    });
   }
 }

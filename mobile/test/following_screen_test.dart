@@ -21,7 +21,7 @@ const _emptySnapshot = HomeSnapshot(
 );
 
 void main() {
-  testWidgets('Following screen renders followed fighters and events', (
+  testWidgets('Favorites screen renders saved fighters and events', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -45,12 +45,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('KATIE TAYLOR'), findsOneWidget);
-    expect(find.text('Your follows'), findsOneWidget);
-    expect(find.text('FOLLOWED FIGHTERS'), findsOneWidget);
-    expect(find.text('FOLLOWED EVENTS', skipOffstage: false), findsOneWidget);
+    expect(find.text('Favorites'), findsWidgets);
+    expect(find.text('Saved fighters'), findsWidgets);
+    expect(find.text('Saved events'), findsWidgets);
   });
 
-  testWidgets('Following screen shows empty states when nothing is followed', (
+  testWidgets('Favorites screen shows empty states when nothing is saved', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -73,11 +73,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('No followed fighters yet'), findsOneWidget);
-    expect(find.text('No followed events yet'), findsOneWidget);
+    expect(find.text('No saved fighters yet'), findsOneWidget);
+
+    await tester.tap(find.text('Saved events').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('No saved events yet'), findsOneWidget);
   });
 
-  testWidgets('Following screen shows cached preview notice when using saved home state', (
+  testWidgets('Favorites screen shows cached preview notice when using saved home state', (
     tester,
   ) async {
     await tester.pumpWidget(

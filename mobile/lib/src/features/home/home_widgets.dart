@@ -1,5 +1,54 @@
 part of 'home_screen.dart';
 
+class _HomeIntro extends StatelessWidget {
+  const _HomeIntro({required this.strings});
+
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          strings.appName.toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: AppColors.textPrimaryFor(context),
+              ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          strings.homeTitle.toUpperCase(),
+          style: TextStyle(
+            color: AppColors.textPrimaryFor(context),
+            fontWeight: FontWeight.w900,
+            fontSize: 38,
+            height: 0.92,
+            letterSpacing: -1.4,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: 300,
+          child: Text(
+            strings.homeSubtitle,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: AppColors.textSecondaryFor(context),
+                ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          strings.pullToRefreshHint,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondaryFor(context),
+              ),
+        ),
+      ],
+    );
+  }
+}
+
 class _FilterChip extends StatelessWidget {
   const _FilterChip({
     required this.label,
@@ -15,8 +64,6 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final background =
         selected ? AppColors.accent : AppColors.surfaceFor(context);
-    final borderColor =
-        selected ? AppColors.accent : AppColors.borderFor(context);
     final textColor =
         selected ? Colors.white : AppColors.textPrimaryFor(context);
 
@@ -30,22 +77,134 @@ class _FilterChip extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(999),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             decoration: BoxDecoration(
               color: background,
               borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: borderColor),
+              boxShadow: selected ? AppShadows.cardFor(context) : null,
             ),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (selected) ...[
+                  Icon(
+                    Icons.check,
+                    size: 16,
+                    color: textColor,
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SectionEyebrow extends StatelessWidget {
+  const _SectionEyebrow({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label.toUpperCase(),
+      style: TextStyle(
+        color: AppColors.accent,
+        fontWeight: FontWeight.w800,
+        fontSize: 11,
+        letterSpacing: 1.1,
+      ),
+    );
+  }
+}
+
+class _HomeSummaryBand extends StatelessWidget {
+  const _HomeSummaryBand({
+    required this.eventCount,
+    required this.activeFilterCount,
+  });
+
+  final int eventCount;
+  final int activeFilterCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceFor(context),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.borderFor(context)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _HomeSummaryMetric(
+              label: 'Events',
+              value: '$eventCount',
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 36,
+            color: AppColors.borderFor(context),
+          ),
+          Expanded(
+            child: _HomeSummaryMetric(
+              label: 'Filters',
+              value: '$activeFilterCount',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeSummaryMetric extends StatelessWidget {
+  const _HomeSummaryMetric({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            color: AppColors.textSecondaryFor(context),
+            fontWeight: FontWeight.w700,
+            fontSize: 11,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: TextStyle(
+            color: AppColors.textPrimaryFor(context),
+            fontWeight: FontWeight.w900,
+            fontSize: 24,
+            letterSpacing: -0.7,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -94,51 +253,6 @@ class _EmptyFilterState extends StatelessWidget {
   }
 }
 
-class _EmptyFollowedFightersCard extends StatelessWidget {
-  const _EmptyFollowedFightersCard({required this.strings});
-
-  final AppStrings strings;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      container: true,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceFor(context),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: AppColors.borderFor(context)),
-          boxShadow: AppShadows.cardFor(context),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              strings.followedFightersEmptyTitle,
-              style: TextStyle(
-                color: AppColors.textPrimaryFor(context),
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-                letterSpacing: -0.4,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              strings.followedFightersEmptyBody,
-              style: TextStyle(
-                color: AppColors.textSecondaryFor(context),
-                height: 1.45,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.label});
 
@@ -146,79 +260,29 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textColor = AppColors.textPrimaryFor(context);
-
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Semantics(
           header: true,
           child: Text(
             label.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: textColor,
-                ),
+            style: TextStyle(
+              color: AppColors.textPrimaryFor(context),
+              fontWeight: FontWeight.w900,
+              fontSize: 28,
+              height: 0.96,
+              letterSpacing: -1,
+            ),
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            height: 2,
-            color: AppColors.accent,
-          ),
+        const Spacer(),
+        Container(
+          width: 44,
+          height: 4,
+          color: AppColors.accent,
         ),
       ],
-    );
-  }
-}
-
-class _InfoPanel extends StatelessWidget {
-  const _InfoPanel({required this.title, required this.body});
-
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      container: true,
-      label: title,
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceFor(context),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.borderFor(context)),
-          boxShadow: AppShadows.cardFor(context),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.circular(999),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              title,
-              style: TextStyle(
-                color: AppColors.textPrimaryFor(context),
-                fontWeight: FontWeight.w800,
-                fontSize: 18,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              body,
-              style: TextStyle(color: AppColors.textSecondaryFor(context)),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

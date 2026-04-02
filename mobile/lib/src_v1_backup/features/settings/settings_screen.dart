@@ -60,7 +60,7 @@ class SettingsScreen extends StatelessWidget {
               eyebrow: strings.settings.toUpperCase(),
               title: strings.settings,
               body: strings.settingsSubtitle,
-              trailingLabel: snapshot.timezone,
+              trailingLabel: snapshot.viewingCountryCode,
             ),
             const SizedBox(height: 24),
             _HighlightSettingsCard(
@@ -107,6 +107,38 @@ class SettingsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+            EditorialSectionTitle(label: strings.watchInfoTitle),
+            const SizedBox(height: 12),
+            _SettingCard(
+              title: strings.watchInfoTitle,
+              body: strings.watchInfoBody,
+              icon: Icons.public_outlined,
+              child: _SettingsPreferenceWrap(
+                children: [
+                  _PreferenceChip(
+                    label: strings.countryNetherlandsLabel,
+                    selected: snapshot.viewingCountryCode == 'NL',
+                    onSelected: () => onSelectViewingCountry('NL'),
+                  ),
+                  _PreferenceChip(
+                    label: strings.countryUnitedKingdomLabel,
+                    selected: snapshot.viewingCountryCode == 'GB',
+                    onSelected: () => onSelectViewingCountry('GB'),
+                  ),
+                  _PreferenceChip(
+                    label: strings.countryUnitedStatesLabel,
+                    selected: snapshot.viewingCountryCode == 'US',
+                    onSelected: () => onSelectViewingCountry('US'),
+                  ),
+                  _PreferenceChip(
+                    label: strings.countrySpainLabel,
+                    selected: snapshot.viewingCountryCode == 'ES',
+                    onSelected: () => onSelectViewingCountry('ES'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             EditorialSectionTitle(label: strings.runtimeSectionTitle),
             const SizedBox(height: 12),
             _SettingCard(
@@ -126,6 +158,20 @@ class SettingsScreen extends StatelessWidget {
               strings: strings,
               pushDeliveryService: pushDeliveryService,
             ),
+            const SizedBox(height: 12),
+            _SettingCard(
+              title: strings.sourcePilotTitle,
+              body: strings.sourcePilotBody,
+              icon: Icons.sports_mma_outlined,
+            ),
+            if (snapshot.premiumState == PremiumState.free) ...[
+              const SizedBox(height: 12),
+              _SettingCard(
+                title: strings.quietAdsTitle,
+                body: strings.quietAdsBody,
+                icon: Icons.campaign_outlined,
+              ),
+            ],
           ],
         );
       },

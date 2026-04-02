@@ -88,6 +88,8 @@ Last updated: 2026-04-02
 - Runtime/source observability now includes aggregated cache counters plus last-seen source-health snapshots for local and staging diagnostics
 - Watch-provider overrides and organization defaults now live in dedicated config data instead of inside enrichment scoring logic
 - The home event-card layer is now split into dedicated card, primitive, and bout-preview parts, and monetization runtime panels are now separated from settings mutation logic
+- A first full mobile UI v2 pass is now implemented in the repo across `Home`, `Leaderboard`, `Favorites`, `Event detail`, `Fighter profile`, `Alerts`, and `Settings`, using the editorial white/red system with cleaner hierarchy and upcoming-events-first navigation
+- The old mobile layout is now preserved under `mobile/lib/src_v1_backup/` so the repo keeps a direct code-level rollback path while v2 is being tested
 
 ### Current hardening batches
 
@@ -895,7 +897,7 @@ See [docs/07_user_data_privacy_and_ads.md](docs/07_user_data_privacy_and_ads.md)
 
 ## UX and UI
 
-### Current page map for the next UI and UX pass
+### Current page map in the mobile app
 
 Primary navigation:
 
@@ -914,15 +916,38 @@ Supporting screens:
 Current repo surfaces already cover these flows under the existing shell:
 
 - home
-- rankings
-- following
+- leaderboard
+- favorites
 - alerts
 - settings
 - event detail
 - fighter profile
 - paywall
 
-For the next UI and UX generation pass, `Following` should be reframed as `Favorites`, and `Rankings` can be presented as `Leaderboard` if that reads cleaner in the new navigation.
+Current implementation note:
+
+- the route/file structure still contains some legacy names such as `following_*` and `rankings_*`, but the user-facing mobile UI now presents these as `Favorites` and `Leaderboard`
+- the older pre-v2 mobile layout is preserved in `mobile/lib/src_v1_backup/`
+
+### Current UI v2 status
+
+The current mobile app is already partway through the intended v2 design direction:
+
+- `Home` now focuses on upcoming events only
+- `Home` supports multi-select filters including `Boxing`, `UFC`, `MMA`, and `Glory Kickboxing`
+- `Favorites` now separates saved fighters and saved events
+- `Leaderboard` now uses a more editorial ranking layout with stronger hierarchy
+- `Event detail` now prioritizes event context, main-event emphasis, fight-card structure, and calendar export
+- `Fighter profile` now foregrounds tale of the tape and next-fight context
+- `Alerts` and `Settings` now use the same editorial card system and clearer status communication
+
+This is intentionally a product-safe adaptation of the newer design language:
+
+- stronger typography and card hierarchy: yes
+- cleaner editorial sports feel: yes
+- betting, odds, replay, or watch-provider clutter: no
+- realistic fighter photography: no
+- stylized system avatars: yes
 
 ### Required screen direction
 
@@ -948,6 +973,14 @@ For the next UI and UX generation pass, `Following` should be reframed as `Favor
   - fighter saved state: heart
   - event saved state: glove
 - avoid cluttered dashboards, dense tables, or overly gamified layouts
+
+### Rollback safety
+
+If the v2 mobile UI direction needs to be rolled back or compared against the previous layout:
+
+- Git history keeps the pre-v2 and transition commits
+- the current repo also keeps a code-level backup under `mobile/lib/src_v1_backup/`
+- `mobile/analysis_options.yaml` excludes that backup path so it does not affect normal analysis or builds
 
 ### AI design prompt
 

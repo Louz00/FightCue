@@ -88,12 +88,12 @@ class _AppShellState extends State<AppShell> {
               label: strings.homeNavLabel,
             ),
             NavigationDestination(
-              icon: const Icon(Icons.leaderboard_outlined),
+              icon: const Icon(Icons.star_border),
               tooltip: strings.rankingsNavLabel,
               label: strings.rankingsNavLabel,
             ),
             NavigationDestination(
-              icon: const Icon(Icons.favorite_border),
+              icon: const Icon(Icons.bookmark_border),
               tooltip: strings.following,
               label: strings.following,
             ),

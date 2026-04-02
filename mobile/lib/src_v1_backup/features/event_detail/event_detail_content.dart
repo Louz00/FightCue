@@ -104,12 +104,26 @@ class _EventDetailInfoSections extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
+        if (event.watchProviders.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _PanelTitle(label: strings.watchProvidersTitle),
+          ),
+          const SizedBox(height: 12),
+          ...event.watchProviders.map(
+            (provider) => Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+              child: _ProviderCard(
+                provider: provider,
+                strings: strings,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: _PanelTitle(
-            label: strings.eventOverviewTitle,
-            eyebrow: 'Event dossier',
-          ),
+          child: _PanelTitle(label: strings.eventOverviewTitle),
         ),
         const SizedBox(height: 12),
         Padding(
